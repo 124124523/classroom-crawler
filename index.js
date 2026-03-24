@@ -1,4 +1,4 @@
-require('dotenv').config(); // ← 반드시 최상단 (모든 require보다 위)
+require('dotenv').config();
 
 const express = require('express');
 const session = require('express-session');
@@ -13,23 +13,32 @@ app.use(session({
   saveUninitialized: false,
 }));
 
+// 학생 인증 시작
 app.get('/auth/google/start', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).send('userId 파라미터 필요');
-  const url = await getAuthUrl(userId);
-  res.redirect(url);
+  try {
+    const url = await getAuthUrl(userId);
+    res.redirect(url);
+  } catch (err) {
+    console.error('getAuthUrl 에러:', err);
+    res.status(500).send(`❌ 에러: ${err.message}`);
+  }
 });
 
+// Google 콜백
 app.get('/auth/google/callback', async (req, res) => {
   const { code, state: userId } = req.query;
   try {
     await handleCallback(code, userId);
     res.send(`✅ ${userId} 인증 완료! 창 닫아도 됩니다.`);
   } catch (err) {
+    console.error('handleCallback 에러:', err);
     res.status(500).send(`❌ 오류: ${err.message}`);
   }
 });
 
+// 전체 크롤링
 app.get('/classroom/crawl', async (req, res) => {
   try {
     const results = await crawlAll();
@@ -39,6 +48,7 @@ app.get('/classroom/crawl', async (req, res) => {
   }
 });
 
+// 특정 학생만 크롤링
 app.get('/classroom/crawl/:userId', async (req, res) => {
   try {
     const result = await crawlUser(req.params.userId);
@@ -48,7 +58,7 @@ app.get('/classroom/crawl/:userId', async (req, res) => {
   }
 });
 
-// 환경변수 로드 확인용 (디버깅 후 삭제)
+// 환경변수 확인용 디버그
 app.get('/debug/env', (req, res) => {
   res.json({
     CLIENT_ID_SET: !!process.env.GOOGLE_CLIENT_ID,
