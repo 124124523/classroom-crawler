@@ -1,8 +1,9 @@
+require('dotenv').config(); // ← 반드시 최상단 (모든 require보다 위)
+
 const express = require('express');
 const session = require('express-session');
 const { getAuthUrl, handleCallback } = require('./auth');
 const { crawlAll, crawlUser } = require('./classroom');
-require('dotenv').config();
 
 const app = express();
 
@@ -12,7 +13,6 @@ app.use(session({
   saveUninitialized: false,
 }));
 
-// 학생 인증 시작
 app.get('/auth/google/start', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).send('userId 파라미터 필요');
@@ -20,7 +20,6 @@ app.get('/auth/google/start', async (req, res) => {
   res.redirect(url);
 });
 
-// Google 콜백
 app.get('/auth/google/callback', async (req, res) => {
   const { code, state: userId } = req.query;
   try {
@@ -31,7 +30,6 @@ app.get('/auth/google/callback', async (req, res) => {
   }
 });
 
-// 전체 크롤링
 app.get('/classroom/crawl', async (req, res) => {
   try {
     const results = await crawlAll();
@@ -41,7 +39,6 @@ app.get('/classroom/crawl', async (req, res) => {
   }
 });
 
-// 특정 학생만 크롤링
 app.get('/classroom/crawl/:userId', async (req, res) => {
   try {
     const result = await crawlUser(req.params.userId);
@@ -51,5 +48,15 @@ app.get('/classroom/crawl/:userId', async (req, res) => {
   }
 });
 
+// 환경변수 로드 확인용 (디버깅 후 삭제)
+app.get('/debug/env', (req, res) => {
+  res.json({
+    CLIENT_ID_SET: !!process.env.GOOGLE_CLIENT_ID,
+    CALLBACK_URL: process.env.CALLBACK_URL,
+    DB_HOST: process.env.DB_HOST,
+    DB_PORT: process.env.DB_PORT,
+  });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`서버 실행 중: http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`서버 실행 중: PORT=${PORT}`));
