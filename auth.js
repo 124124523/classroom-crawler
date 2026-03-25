@@ -19,6 +19,10 @@ async function getAuthUrl(userId) {
       'https://www.googleapis.com/auth/classroom.courses.readonly',
       'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
+      // ✅ 파일 크롤링용 스코프 추가
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/documents.readonly',
+      'https://www.googleapis.com/auth/spreadsheets.readonly',
     ],
     state: userId,
   });

@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 const { getClientForUser } = require('./auth');
+const { extractAndSaveMaterials } = require('./materials');
 const pool = require('./db');
 
 async function crawlUser(userId) {
@@ -9,6 +10,8 @@ async function crawlUser(userId) {
   const { data: { courses = [] } } = await classroom.courses.list();
 
   let savedCount = 0;
+  let skippedCount = 0;
+  let materialCount = 0;
 
   for (const course of courses) {
     const { data: { courseWork = [] } } = await classroom.courses.courseWork.list({
@@ -16,26 +19,41 @@ async function crawlUser(userId) {
     }).catch(() => ({ data: { courseWork: [] } }));
 
     for (const work of courseWork) {
-      // 2026년 과제만 필터링
       if (!work.dueDate || work.dueDate.year !== 2026) continue;
 
       const dueDate = `2026-${String(work.dueDate.month).padStart(2,'0')}-${String(work.dueDate.day).padStart(2,'0')}`;
 
-      await pool.query(
-        `INSERT INTO coursework (user_id, course_id, course_name, coursework_id, title, due_date, state)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-           title = VALUES(title),
-           due_date = VALUES(due_date),
-           state = VALUES(state),
-           course_name = VALUES(course_name)`,
-        [userId, course.id, course.name, work.id, work.title, dueDate, work.state]
+      // ✅ 최적화 ③: 이미 저장된 coursework는 DB 쿼리 스킵
+      const [cwExisting] = await pool.query(
+        'SELECT coursework_id FROM coursework WHERE coursework_id = ? AND user_id = ?',
+        [work.id, userId]
       );
-      savedCount++;
+
+      if (cwExisting.length === 0) {
+        await pool.query(
+          `INSERT INTO coursework (user_id, course_id, course_name, coursework_id, title, due_date, state)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [userId, course.id, course.name, work.id, work.title, dueDate, work.state]
+        );
+        savedCount++;
+      } else {
+        skippedCount++;
+      }
+
+      // materials 추출 (내부에서 이미 추출된 파일은 자동 스킵)
+      try {
+        const matResult = await extractAndSaveMaterials(auth, userId, course.id, work);
+        materialCount += matResult.saved;
+        if (matResult.saved > 0) {
+          console.log(`  [${userId}] "${work.title}" → 파일 ${matResult.saved}개 저장, ${matResult.skipped}개 스킵`);
+        }
+      } catch (err) {
+        console.error(`  [${userId}] materials 오류 (${work.title}): ${err.message}`);
+      }
     }
   }
 
-  return `${userId} 완료 (수업 ${courses.length}개, 2026년 과제 ${savedCount}개 저장)`;
+  return `${userId} 완료 (새 과제 ${savedCount}개, 스킵 ${skippedCount}개, 새 파일 ${materialCount}개)`;
 }
 
 async function crawlAll() {
@@ -44,9 +62,12 @@ async function crawlAll() {
 
   for (const row of rows) {
     try {
+      console.log(`[crawl-all] 시작: ${row.user_id}`);
       const result = await crawlUser(row.user_id);
+      console.log(`[crawl-all] ${result}`);
       results.push({ userId: row.user_id, status: 'ok', result });
     } catch (err) {
+      console.error(`[crawl-all] 실패: ${row.user_id} - ${err.message}`);
       results.push({ userId: row.user_id, status: 'error', message: err.message });
     }
   }

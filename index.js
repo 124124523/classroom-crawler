@@ -4,6 +4,7 @@ const express = require('express');
 const session = require('express-session');
 const { getAuthUrl, handleCallback } = require('./auth');
 const { crawlAll, crawlUser } = require('./classroom');
+const pool = require('./db');
 
 const app = express();
 
@@ -53,6 +54,41 @@ app.get('/classroom/crawl/:userId', async (req, res) => {
   try {
     const result = await crawlUser(req.params.userId);
     res.json({ result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── materials 조회 라우트 (신규) ────────────────────────
+
+// 특정 학생의 모든 파일 목록 (내용 미리보기 500자)
+app.get('/materials/:userId', async (req, res) => {
+  try {
+    const userId = decodeURIComponent(req.params.userId);
+    const [rows] = await pool.query(
+      `SELECT id, coursework_id, course_id, title, type, mime_type,
+              LEFT(content, 500) AS content_preview, extracted_at
+       FROM materials
+       WHERE user_id = ?
+       ORDER BY extracted_at DESC`,
+      [userId]
+    );
+    res.json({ userId, count: rows.length, materials: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 특정 파일 전체 내용 조회
+app.get('/materials/:userId/:materialId', async (req, res) => {
+  try {
+    const userId = decodeURIComponent(req.params.userId);
+    const [rows] = await pool.query(
+      'SELECT * FROM materials WHERE id = ? AND user_id = ?',
+      [req.params.materialId, userId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
