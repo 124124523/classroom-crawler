@@ -19,9 +19,13 @@ async function crawlUser(userId) {
     }).catch(() => ({ data: { courseWork: [] } }));
 
     for (const work of courseWork) {
-      if (!work.dueDate || work.dueDate.year !== 2026) continue;
+      // 마감일이 있는데 2026년이 아니면 스킵 (2025년 이전 과제 제외)
+      // 마감일 없는 과제는 포함 (선생님 참고자료 등)
+      if (work.dueDate && work.dueDate.year !== 2026) continue;
 
-      const dueDate = `2026-${String(work.dueDate.month).padStart(2,'0')}-${String(work.dueDate.day).padStart(2,'0')}`;
+      const dueDate = work.dueDate
+        ? `2026-${String(work.dueDate.month).padStart(2,'0')}-${String(work.dueDate.day).padStart(2,'0')}`
+        : null;
 
       // ✅ 최적화 ③: 이미 저장된 coursework는 DB 쿼리 스킵
       const [cwExisting] = await pool.query(
