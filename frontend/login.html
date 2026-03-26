@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SchoolBoard — 대전대신고등학교</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    /* Animated background */
+    .bg-art {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    .bg-art circle {
+      animation: pulse 8s ease-in-out infinite;
+    }
+    .bg-art circle:nth-child(2) { animation-delay: -3s; }
+    .bg-art circle:nth-child(3) { animation-delay: -5.5s; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.04; r: 280; }
+      50%       { opacity: 0.09; r: 320; }
+    }
+
+    /* Login Card */
+    .login-wrap {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-lg);
+      padding: 40px 36px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      animation: cardIn 0.5s cubic-bezier(0.22,1,0.36,1);
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-brand .brand-icon {
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-l));
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 14px;
+      box-shadow: 0 8px 24px rgba(45,90,61,0.4);
+    }
+    .login-brand .brand-icon svg { color: var(--mint); }
+    .login-brand h1 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .login-brand p {
+      font-size: 0.8rem;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+
+    .login-form .form-group { margin-bottom: 16px; }
+    .login-form .form-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text2);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .login-form .form-input {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 0.9rem;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .login-form .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(114,201,154,0.12);
+    }
+    .login-form .form-input::placeholder { color: var(--muted); }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--primary-l), var(--accent2));
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .login-btn:hover  { opacity: 0.9; transform: translateY(-1px); }
+    .login-btn:active { transform: translateY(0); }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      background: rgba(217,112,112,0.1);
+      border: 1px solid rgba(217,112,112,0.3);
+      color: var(--red);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.83rem;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .login-footer {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .role-chip {
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      background: var(--surface2);
+      color: var(--text3);
+      border: 1px solid var(--border);
+    }
+    .role-chip.green { background: rgba(114,201,154,0.1); color: var(--accent); border-color: rgba(114,201,154,0.2); }
+    .role-chip.blue  { background: rgba(88,153,201,0.1); color: var(--blue); border-color: rgba(88,153,201,0.2); }
+
+    .help-text {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--text3);
+    }
+  </style>
+</head>
+<body>
+  <!-- Background Art -->
+  <svg class="bg-art" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
+    <circle cx="150" cy="120" r="280" fill="#2D5A3D" />
+    <circle cx="650" cy="480" r="300" fill="#1E3D28" />
+    <circle cx="700" cy="100" r="200" fill="#3B7A52" />
+  </svg>
+
+  <div class="login-wrap">
+    <div class="login-card">
+      <!-- Brand -->
+      <div class="login-brand">
+        <div class="brand-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <h1>SchoolBoard</h1>
+        <p>대전대신고등학교 학생 포털</p>
+      </div>
+
+      <!-- Error Message -->
+      <div class="login-error" id="loginError">아이디 또는 비밀번호를 확인해주세요.</div>
+
+      <!-- Form -->
+      <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="username">아이디</label>
+          <input class="form-input" type="text" id="username"
+                 placeholder="학번 또는 계정 ID" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">비밀번호</label>
+          <input class="form-input" type="password" id="password"
+                 placeholder="비밀번호 입력" autocomplete="current-password" required />
+        </div>
+        <button class="login-btn" type="submit" id="loginBtn">
+          <span id="loginBtnText">로그인</span>
+        </button>
+      </form>
+
+      <!-- Footer Info -->
+      <div class="login-footer">
+        <span class="role-chip green">학생</span>
+        <span class="role-chip blue">반장</span>
+        <span class="role-chip">관리자</span>
+      </div>
+      <p class="help-text">계정 문의: 담당 선생님께 연락하세요</p>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // Redirect if already logged in
+    (async () => {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          redirect(data.role);
+        }
+      } catch {}
+    })();
+
+    function redirect(role) {
+      const map = { student: 'student.html', leader: 'leader.html', admin: 'admin.html' };
+      location.href = map[role] || 'student.html';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn  = document.getElementById('loginBtn');
+      const txt  = document.getElementById('loginBtnText');
+      const err  = document.getElementById('loginError');
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value;
+
+      btn.disabled = true;
+      txt.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;vertical-align:middle"></span> 로그인 중...';
+      err.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast('로그인 성공!', 'success');
+          setTimeout(() => redirect(data.role), 500);
+        } else {
+          err.textContent = data.message || '아이디 또는 비밀번호를 확인해주세요.';
+          err.style.display = 'block';
+          btn.disabled = false;
+          txt.textContent = '로그인';
+        }
+      } catch {
+        err.textContent = '서버에 연결할 수 없습니다.';
+        err.style.display = 'block';
+        btn.disabled = false;
+        txt.textContent = '로그인';
+      }
+    }
+
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    // Enter key
+    document.getElementById('password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('loginForm').requestSubmit();
+    });
+  </script>
+</body>
+</html>

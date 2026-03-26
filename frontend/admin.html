@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SchoolBoard — 관리자</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .admin-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(217,112,112,0.15);
+      color: var(--red);
+      border: 1px solid rgba(217,112,112,0.25);
+      padding: 3px 10px; border-radius: 99px;
+      font-size: 0.72rem; font-weight: 600;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    @media(max-width:900px){ .stats-grid{ grid-template-columns: repeat(2,1fr); } }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .stat-card .label { font-size: 0.75rem; color: var(--text3); margin-bottom: 6px; }
+    .stat-card .value { font-size: 1.8rem; font-weight: 700; font-family: var(--font-display); }
+    .stat-card .sub   { font-size: 0.72rem; color: var(--text3); margin-top: 3px; }
+
+    /* Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--surface2);
+      color: var(--text2);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--surface2); }
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    /* Tabs */
+    .admin-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .admin-tab {
+      padding: 11px 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text3);
+      cursor: pointer;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .admin-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .admin-tab:hover:not(.active) { color: var(--text2); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* User form */
+    .user-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+      padding: 14px;
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+    }
+    @media(max-width:700px){ .user-form-row{ grid-template-columns:1fr; } }
+
+    /* Sync status */
+    .sync-log {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--accent);
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .section-page { display: none; }
+    .section-page.active { display: block; }
+
+    /* Role selector */
+    .role-select { appearance: none; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark display">SchoolBoard</div>
+      <div class="logo-sub">대전대신고등학교</div>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="avatar" id="avatarCircle" style="background:var(--red);color:#fff">A</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebarName">Admin</div>
+        <div class="user-role"><span class="admin-badge">관리자</span></div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">대시보드</div>
+      <div class="nav-item active" onclick="showSection('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        전체 현황
+      </div>
+      <div class="nav-section-label">관리</div>
+      <div class="nav-item" onclick="showSection('users')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        계정 관리
+      </div>
+      <div class="nav-item" onclick="showSection('subjects')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        과목/분반 관리
+      </div>
+      <div class="nav-item" onclick="showSection('sync')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/>
+          <polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        크롤러 동기화
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">로그아웃</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <header class="main-header">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="page-title" id="pageTitle">전체 현황</div>
+      <div class="header-right">
+        <span class="header-date" id="headerDate"></span>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- DASHBOARD -->
+      <div class="section-page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="label">전체 학생</div>
+            <div class="value" id="statUsers" style="color:var(--accent)">-</div>
+            <div class="sub">등록된 계정</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">과제 수</div>
+            <div class="value" id="statAssign" style="color:var(--yellow)">-</div>
+            <div class="sub">활성 과제</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">공지 수</div>
+            <div class="value" id="statNotice" style="color:var(--blue)">-</div>
+            <div class="sub">전체 공지</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">과목/분반</div>
+            <div class="value" id="statSubj" style="color:var(--orange)">-</div>
+            <div class="sub">운영 중</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><div class="dot"></div>최근 과제 (전체)</div>
+            </div>
+            <div id="dashAssignList"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><div class="dot" style="background:var(--blue)"></div>최근 공지 (전체)</div>
+            </div>
+            <div id="dashNoticeList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="section-page" id="page-users">
+        <!-- Add User -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div class="card-title"><div class="dot" style="background:var(--red)"></div>새 계정 추가</div>
+          </div>
+          <div class="user-form-row">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">아이디 *</label>
+              <input class="form-input" type="text" id="newUsername" placeholder="예: 20240001" />
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">이름</label>
+              <input class="form-input" type="text" id="newName" placeholder="홍길동" />
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">역할</label>
+              <select class="form-input form-select role-select" id="newRole">
+                <option value="student">학생</option>
+                <option value="leader">반장</option>
+                <option value="admin">관리자</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">비밀번호 *</label>
+              <input class="form-input" type="text" id="newPassword" placeholder="초기 비밀번호" />
+            </div>
+            <button class="btn btn-primary" onclick="addUser()" style="align-self:end;white-space:nowrap">
+              계정 추가
+            </button>
+          </div>
+        </div>
+
+        <!-- User Table -->
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>아이디</th>
+                <th>이름</th>
+                <th>역할</th>
+                <th>등록일</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)"><span class="spinner"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUBJECTS -->
+      <div class="section-page" id="page-subjects">
+        <div style="display:grid;grid-template-columns:360px 1fr;gap:20px;">
+          <!-- Add Form -->
+          <div class="card" style="align-self:start">
+            <div class="card-header">
+              <div class="card-title"><div class="dot" style="background:var(--orange)"></div>과목/분반 추가</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">과목명 *</label>
+              <input class="form-input" type="text" id="subjName" placeholder="예: 미적분" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">담당 선생님</label>
+              <input class="form-input" type="text" id="subjTeacher" placeholder="예: 김세환" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">분반명</label>
+              <input class="form-input" type="text" id="subjClass" placeholder="예: 1반 (비어두면 과목만 등록)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">반장 계정 ID</label>
+              <input class="form-input" type="text" id="subjLeader" placeholder="예: 미적분_김세환" />
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="addSubject()">
+              과목/분반 추가
+            </button>
+          </div>
+
+          <!-- Subject Table -->
+          <div class="table-wrap" style="align-self:start">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>과목</th>
+                  <th>선생님</th>
+                  <th>분반</th>
+                  <th>반장</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody id="subjTableBody">
+                <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)"><span class="spinner"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SYNC -->
+      <div class="section-page" id="page-sync">
+        <div style="max-width:600px">
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-header">
+              <div class="card-title"><div class="dot" style="background:var(--yellow)"></div>Google Classroom 동기화</div>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">
+              크롤러는 3시간마다 자동으로 실행됩니다. 아래 버튼으로 즉시 동기화할 수 있습니다.
+            </p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+              <button class="btn btn-primary" onclick="triggerSync()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/>
+                </svg>
+                즉시 동기화
+              </button>
+              <button class="btn btn-ghost" onclick="checkAuthStatus()">OAuth 상태 확인</button>
+            </div>
+            <div>
+              <div style="font-size:0.75rem;color:var(--text3);margin-bottom:6px;font-weight:600;letter-spacing:0.04em;">동기화 로그</div>
+              <div class="sync-log" id="syncLog">동기화 로그가 여기에 표시됩니다...</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><div class="dot" style="background:var(--accent)"></div>시스템 정보</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;justify-content:space-between;font-size:0.83rem;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="color:var(--text3)">마지막 동기화</span>
+                <span id="lastSync" style="color:var(--text)">-</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.83rem;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="color:var(--text3)">다음 예정 동기화</span>
+                <span style="color:var(--text)">3시간 간격 자동</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.83rem;padding:8px 0">
+                <span style="color:var(--text3)">OAuth 상태</span>
+                <span id="oauthStatus" class="badge badge-gray">확인 중...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let currentUser = null;
+let allUsers    = [];
+let allSubjects = [];
+
+(async () => {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (!res.ok) { location.href = 'login.html'; return; }
+    currentUser = await res.json();
+
+    if (currentUser.role !== 'admin') {
+      location.href = currentUser.role === 'leader' ? 'leader.html' : 'student.html';
+      return;
+    }
+
+    document.getElementById('sidebarName').textContent = currentUser.name || currentUser.username;
+    document.getElementById('avatarCircle').textContent =
+      (currentUser.name || currentUser.username || 'A')[0].toUpperCase();
+
+    setHeaderDate();
+    await loadDashboard();
+  } catch(e) {
+    console.error(e);
+    showToast('초기화 실패', 'error');
+  }
+})();
+
+function setHeaderDate() {
+  const now = new Date();
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('headerDate').textContent =
+    `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
+}
+
+// ── Dashboard ──
+async function loadDashboard() {
+  try {
+    const [uRes, aRes, nRes, sRes] = await Promise.all([
+      fetch('/api/admin/users',    { credentials: 'include' }),
+      fetch('/api/assignments',    { credentials: 'include' }),
+      fetch('/api/notices',        { credentials: 'include' }),
+      fetch('/api/subjects',       { credentials: 'include' })
+    ]);
+
+    allUsers = (await uRes.json()).users   || [];
+    const assigns = (await aRes.json()).assignments || [];
+    const notices = (await nRes.json()).notices     || [];
+    allSubjects   = (await sRes.json()).subjects    || [];
+
+    document.getElementById('statUsers').textContent  = allUsers.length;
+    document.getElementById('statAssign').textContent = assigns.length;
+    document.getElementById('statNotice').textContent = notices.length;
+    document.getElementById('statSubj').textContent   = allSubjects.length;
+
+    document.getElementById('dashAssignList').innerHTML =
+      assigns.slice(0,5).map(a => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
+          <div style="font-weight:600;color:var(--text)">${escHtml(a.title)}</div>
+          <div style="color:var(--text3);margin-top:1px">${escHtml(a.subject_name||'')} · ${a.due_date ? new Date(a.due_date).toLocaleDateString('ko-KR') : '기한없음'}</div>
+        </div>
+      `).join('') || '<div style="color:var(--muted);padding:12px 0;font-size:0.83rem">없음</div>';
+
+    document.getElementById('dashNoticeList').innerHTML =
+      notices.slice(0,5).map(n => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
+          <div style="font-weight:600;color:var(--text)">${escHtml(n.title)}</div>
+          <div style="color:var(--text3);margin-top:1px">${escHtml(n.subject_name||'')} · ${fmtDate(n.created_at)}</div>
+        </div>
+      `).join('') || '<div style="color:var(--muted);padding:12px 0;font-size:0.83rem">없음</div>';
+  } catch(e) { console.error(e); }
+}
+
+// ── Users ──
+async function loadUsers() {
+  if (allUsers.length) { renderUserTable(); return; }
+  const res = await fetch('/api/admin/users', { credentials: 'include' });
+  allUsers = (await res.json()).users || [];
+  renderUserTable();
+}
+
+function renderUserTable() {
+  const body = document.getElementById('userTableBody');
+  const roleBadge = { admin: 'badge-red', leader: 'badge-blue', student: 'badge-green' };
+  const roleLabel = { admin: '관리자', leader: '반장', student: '학생' };
+  body.innerHTML = allUsers.map(u => `
+    <tr>
+      <td><code style="font-size:0.82rem;color:var(--accent)">${escHtml(u.username)}</code></td>
+      <td>${escHtml(u.name || '-')}</td>
+      <td><span class="badge ${roleBadge[u.role]||'badge-gray'}">${roleLabel[u.role]||u.role}</span></td>
+      <td style="color:var(--text3)">${fmtDate(u.created_at)}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="resetPw(${u.id}, '${escHtml(u.username)}')">비번 초기화</button>
+        ${u.id !== currentUser.id ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteUser(${u.id})">삭제</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function addUser() {
+  const username = document.getElementById('newUsername').value.trim();
+  const name     = document.getElementById('newName').value.trim();
+  const role     = document.getElementById('newRole').value;
+  const password = document.getElementById('newPassword').value;
+  if (!username || !password) { showToast('아이디와 비밀번호를 입력하세요.', 'error'); return; }
+
+  try {
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, name, role, password })
+    });
+    if (!res.ok) { const d = await res.json(); showToast(d.message || '실패', 'error'); return; }
+    showToast('계정이 추가되었습니다.', 'success');
+    ['newUsername','newName','newPassword'].forEach(id => document.getElementById(id).value = '');
+    allUsers = [];
+    await loadUsers();
+    await loadDashboard();
+  } catch { showToast('추가 실패', 'error'); }
+}
+
+async function resetPw(id, username) {
+  const pw = prompt(`[${username}] 새 비밀번호 입력:`);
+  if (!pw) return;
+  try {
+    await fetch(`/api/admin/users/${id}/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ password: pw })
+    });
+    showToast('비밀번호가 변경되었습니다.', 'success');
+  } catch { showToast('변경 실패', 'error'); }
+}
+
+async function deleteUser(id) {
+  if (!confirm('이 계정을 삭제하시겠습니까?')) return;
+  await fetch(`/api/admin/users/${id}`, { method: 'DELETE', credentials: 'include' });
+  showToast('삭제되었습니다.', 'success');
+  allUsers = [];
+  await loadUsers();
+  await loadDashboard();
+}
+
+// ── Subjects ──
+async function loadSubjects() {
+  const res = await fetch('/api/subjects', { credentials: 'include' });
+  allSubjects = (await res.json()).subjects || [];
+  renderSubjTable();
+}
+
+function renderSubjTable() {
+  const body = document.getElementById('subjTableBody');
+  if (!allSubjects.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--muted)">없음</td></tr>';
+    return;
+  }
+  body.innerHTML = allSubjects.map(s => `
+    <tr>
+      <td style="font-weight:600">${escHtml(s.subject_name || s.name)}</td>
+      <td style="color:var(--text2)">${escHtml(s.teacher_name || '-')}</td>
+      <td>${escHtml(s.class_name || '-')}</td>
+      <td style="color:var(--text3);font-size:0.78rem">${escHtml(s.leader_username || '-')}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteSubject(${s.id})">삭제</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function addSubject() {
+  const name    = document.getElementById('subjName').value.trim();
+  const teacher = document.getElementById('subjTeacher').value.trim();
+  const cls     = document.getElementById('subjClass').value.trim();
+  const leader  = document.getElementById('subjLeader').value.trim();
+  if (!name) { showToast('과목명을 입력하세요.', 'error'); return; }
+
+  try {
+    await fetch('/api/subjects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, teacher_name: teacher, class_name: cls, leader_username: leader })
+    });
+    showToast('과목이 추가되었습니다.', 'success');
+    ['subjName','subjTeacher','subjClass','subjLeader'].forEach(id => document.getElementById(id).value = '');
+    await loadSubjects();
+    await loadDashboard();
+  } catch { showToast('추가 실패', 'error'); }
+}
+
+async function deleteSubject(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  await fetch(`/api/subjects/${id}`, { method: 'DELETE', credentials: 'include' });
+  showToast('삭제되었습니다.', 'success');
+  await loadSubjects();
+}
+
+// ── Sync ──
+async function triggerSync() {
+  const log = document.getElementById('syncLog');
+  log.textContent = '동기화 시작...\n';
+  try {
+    const res = await fetch('/api/classroom/sync', { method: 'POST', credentials: 'include' });
+    const data = await res.json();
+    log.textContent += data.message || JSON.stringify(data, null, 2);
+    document.getElementById('lastSync').textContent = new Date().toLocaleString('ko-KR');
+    showToast('동기화 완료', 'success');
+  } catch(e) {
+    log.textContent += '오류: ' + e.message;
+    showToast('동기화 실패', 'error');
+  }
+}
+
+async function checkAuthStatus() {
+  try {
+    const res  = await fetch('/api/classroom/auth-status', { credentials: 'include' });
+    const data = await res.json();
+    const badge = document.getElementById('oauthStatus');
+    if (data.authenticated) {
+      badge.className = 'badge badge-green';
+      badge.textContent = '인증됨';
+    } else {
+      badge.className = 'badge badge-red';
+      badge.textContent = '미인증';
+    }
+  } catch {}
+}
+
+// ── Navigation ──
+function showSection(name) {
+  document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
+  const titles = { dashboard:'전체 현황', users:'계정 관리', subjects:'과목/분반 관리', sync:'크롤러 동기화' };
+  document.getElementById('pageTitle').textContent = titles[name] || name;
+
+  if (name === 'users')    loadUsers();
+  if (name === 'subjects') loadSubjects();
+  if (name === 'sync')     checkAuthStatus();
+}
+
+// ── Utils ──
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtDate(str) {
+  if (!str) return '-';
+  const d = new Date(str);
+  return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
+}
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+async function logout() {
+  await fetch('/api/logout', { method:'POST', credentials:'include' });
+  location.href = 'login.html';
+}
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+</script>
+</body>
+</html>

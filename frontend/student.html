@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SchoolBoard — 학생</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Assignment Board ── */
+    .board-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .board-scroll-wrap {
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .assignment-board {
+      display: flex;
+      gap: 16px;
+      min-width: max-content;
+    }
+
+    .subject-col {
+      width: 220px;
+      flex-shrink: 0;
+    }
+    .subject-col-header {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .subject-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .subject-count {
+      font-size: 0.72rem;
+      color: var(--text3);
+      background: var(--surface3);
+      padding: 2px 7px;
+      border-radius: 99px;
+    }
+    .subject-cards {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 80px;
+    }
+
+    .assign-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.18s;
+      position: relative;
+      overflow: hidden;
+    }
+    .assign-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 2px 0 0 2px;
+    }
+    .assign-card.type-진로::before { background: var(--blue); }
+    .assign-card.completed {
+      opacity: 0.5;
+    }
+    .assign-card.completed::before { background: var(--muted); }
+    .assign-card:hover {
+      border-color: var(--border2);
+      background: var(--surface2);
+      transform: translateY(-1px);
+    }
+    .assign-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .assign-title {
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      flex: 1;
+    }
+    .assign-card.completed .assign-title {
+      text-decoration: line-through;
+      color: var(--text3);
+    }
+    .check-btn {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--border2);
+      background: transparent;
+      flex-shrink: 0;
+      transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .check-btn.checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .check-btn.checked::after {
+      content: '✓';
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .assign-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .assign-due {
+      font-size: 0.72rem;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .assign-due.urgent { color: var(--red); font-weight: 600; }
+    .assign-due.soon   { color: var(--orange); }
+
+    /* ── Notice Board ── */
+    .notice-list { display: flex; flex-direction: column; gap: 1px; }
+    .notice-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 16px;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+    }
+    .notice-item:hover {
+      background: var(--surface2);
+      border-color: var(--border);
+    }
+    .notice-type-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .notice-info { flex: 1; min-width: 0; }
+    .notice-title {
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .notice-meta {
+      font-size: 0.73rem;
+      color: var(--text3);
+      margin-top: 2px;
+      display: flex;
+      gap: 8px;
+    }
+    .notice-date { margin-left: auto; font-size: 0.75rem; color: var(--text3); flex-shrink: 0; }
+    .notice-new {
+      font-size: 0.65rem;
+      background: var(--red);
+      color: #fff;
+      padding: 1px 5px;
+      border-radius: 99px;
+      font-weight: 700;
+    }
+
+    /* ── Timetable ── */
+    .timetable-grid {
+      display: grid;
+      grid-template-columns: 44px repeat(5, 1fr);
+      gap: 3px;
+    }
+    .tt-cell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 0.75rem;
+    }
+    .tt-cell.header {
+      background: var(--surface2);
+      color: var(--text2);
+      font-weight: 600;
+      font-size: 0.72rem;
+    }
+    .tt-cell.period {
+      color: var(--text3);
+      font-size: 0.72rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tt-cell.subject {
+      color: var(--text);
+      font-weight: 500;
+      font-size: 0.78rem;
+      line-height: 1.3;
+    }
+    .tt-cell.subject.today {
+      background: rgba(114,201,154,0.1);
+      border-color: rgba(114,201,154,0.3);
+      color: var(--accent);
+    }
+    .tt-cell.empty { color: var(--muted); font-size: 0.7rem; }
+
+    /* ── Meals ── */
+    .meal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .meal-header {
+      background: linear-gradient(135deg, var(--primary-d), var(--primary));
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .meal-header h3 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--mint);
+    }
+    .meal-date { font-size: 0.75rem; color: rgba(168,230,195,0.7); }
+    .meal-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .meal-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text3);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .meal-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: rgba(114,201,154,0.05);
+    }
+    .meal-content { padding: 16px 18px; }
+    .meal-menu { font-size: 0.83rem; color: var(--text2); line-height: 2; }
+    .meal-menu span { display: block; }
+    .meal-cal {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Personal Events ── */
+    .event-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .event-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .event-date-badge {
+      text-align: center;
+      min-width: 38px;
+      flex-shrink: 0;
+    }
+    .event-date-badge .day { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+    .event-date-badge .mon { font-size: 0.68rem; color: var(--text3); }
+    .event-info { flex: 1; }
+    .event-title { font-size: 0.85rem; font-weight: 500; }
+    .event-time  { font-size: 0.73rem; color: var(--text3); }
+    .event-imgs  { display: flex; gap: 4px; }
+    .event-img-thumb {
+      width: 36px; height: 36px;
+      border-radius: 5px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    /* ── Grid Layouts ── */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1024px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Section Header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title .icon-wrap {
+      width: 28px; height: 28px;
+      background: var(--surface2);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent);
+    }
+
+    /* ── Detail Panel (Notice / Assignment) ── */
+    .detail-panel {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 640px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+      animation: modalIn 0.25s ease;
+    }
+    .detail-header {
+      padding: 22px 26px 16px;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: var(--surface);
+      z-index: 2;
+    }
+    .detail-body { padding: 20px 26px; }
+    .detail-title { font-size: 1.1rem; font-weight: 700; line-height: 1.45; }
+    .detail-meta  { font-size: 0.78rem; color: var(--text3); margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .detail-content { font-size: 0.88rem; color: var(--text2); line-height: 1.8; white-space: pre-wrap; }
+    .detail-images {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .detail-images img {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .detail-images img:hover { opacity: 0.85; }
+
+    /* ── Comments ── */
+    .comments-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+    .comments-title { font-size: 0.85rem; font-weight: 600; color: var(--text2); margin-bottom: 12px; }
+    .comment-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .comment-item {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+    }
+    .comment-author { font-size: 0.78rem; font-weight: 600; color: var(--accent); }
+    .comment-text   { font-size: 0.83rem; color: var(--text2); margin-top: 3px; }
+    .comment-time   { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
+    .comment-input-wrap {
+      display: flex; gap: 8px;
+    }
+    .comment-input {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 0.84rem;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+    }
+    .comment-input:focus { border-color: var(--accent); }
+    .comment-submit {
+      padding: 9px 16px;
+      background: var(--primary-l);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .comment-submit:hover { background: var(--accent2); }
+
+    /* ── Page section visibility ── */
+    .section-page { display: none; }
+    .section-page.active { display: block; }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .stat-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      flex: 1;
+      min-width: 100px;
+    }
+    .stat-chip .s-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: var(--font-display);
+    }
+    .stat-chip .s-lbl {
+      font-size: 0.75rem;
+      color: var(--text3);
+      margin-top: 1px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark display">SchoolBoard</div>
+      <div class="logo-sub">대전대신고등학교</div>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="avatar" id="avatarCircle">?</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebarName">로딩 중...</div>
+        <div class="user-role">학생</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">학습</div>
+      <div class="nav-item active" onclick="showSection('assignments')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        수행평가
+        <span class="nav-badge" id="assignBadge" style="display:none">0</span>
+      </div>
+      <div class="nav-item" onclick="showSection('notices')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        공지사항
+        <span class="nav-badge" id="noticeBadge" style="display:none">0</span>
+      </div>
+
+      <div class="nav-section-label">개인</div>
+      <div class="nav-item" onclick="showSection('events')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        개인 일정
+      </div>
+      <div class="nav-item" onclick="showSection('timetable')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        나의 시간표
+      </div>
+      <div class="nav-item" onclick="showSection('meals')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+        오늘의 학식
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">로그아웃</button>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main-content">
+    <header class="main-header">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="page-title" id="pageTitle">수행평가</div>
+      <div class="header-right">
+        <span class="header-date" id="headerDate"></span>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- ========== SECTION: ASSIGNMENTS ========== -->
+      <div class="section-page active" id="page-assignments">
+        <div class="board-controls">
+          <div class="section-title">
+            <div class="icon-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+            </div>
+            수행평가 보드
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div class="filter-tabs" id="typeFilter">
+              <button class="filter-tab active" data-val="">전체</button>
+              <button class="filter-tab" data-val="일반">일반</button>
+              <button class="filter-tab" data-val="진로">진로</button>
+            </div>
+            <div class="filter-tabs" id="statusFilter">
+              <button class="filter-tab active" data-val="">모두</button>
+              <button class="filter-tab" data-val="pending">미완료</button>
+              <button class="filter-tab" data-val="done">완료</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-bar" id="assignStats"></div>
+
+        <!-- Board -->
+        <div class="board-scroll-wrap">
+          <div class="assignment-board" id="assignmentBoard">
+            <div style="padding:48px;color:var(--muted);font-size:0.85rem;">
+              <span class="spinner"></span> 과제 불러오는 중...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SECTION: NOTICES ========== -->
+      <div class="section-page" id="page-notices">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </div>
+            공지사항
+          </div>
+          <div style="display:flex;gap:8px;">
+            <div class="filter-tabs" id="noticeSubjectFilter">
+              <button class="filter-tab active" data-val="">전체</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="notice-list" id="noticeList">
+          <div style="padding:48px;text-align:center;color:var(--muted);">
+            <span class="spinner"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SECTION: EVENTS ========== -->
+      <div class="section-page" id="page-events">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            개인 일정
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openEventModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            일정 추가
+          </button>
+        </div>
+
+        <div class="event-list" id="eventList">
+          <div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+      <!-- ========== SECTION: TIMETABLE ========== -->
+      <div class="section-page" id="page-timetable">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+            </div>
+            나의 시간표
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="timetable-grid" id="timetableGrid">
+            <div style="padding:40px;color:var(--muted);font-size:0.85rem;grid-column:1/-1;text-align:center;"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SECTION: MEALS ========== -->
+      <div class="section-page" id="page-meals">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+              </svg>
+            </div>
+            오늘의 학식
+          </div>
+        </div>
+
+        <div style="max-width: 480px;" id="mealWrap">
+          <div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ========== MODALS ========== -->
+
+<!-- Notice Detail Modal -->
+<div class="modal-backdrop" id="noticeModal" style="display:none" onclick="closeModal('noticeModal')">
+  <div class="detail-panel" onclick="event.stopPropagation()">
+    <div class="detail-header">
+      <div>
+        <div class="detail-title" id="noticeDetailTitle"></div>
+        <div class="detail-meta" id="noticeDetailMeta"></div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('noticeModal')">✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-content" id="noticeDetailContent"></div>
+      <div class="detail-images" id="noticeDetailImages"></div>
+      <div class="comments-section">
+        <div class="comments-title">댓글</div>
+        <div class="comment-list" id="noticeCommentList"></div>
+        <div class="comment-input-wrap">
+          <input class="comment-input" type="text" id="noticeCommentInput" placeholder="댓글 입력..." />
+          <button class="comment-submit" onclick="submitComment('notice')">등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Assignment Detail Modal -->
+<div class="modal-backdrop" id="assignModal" style="display:none" onclick="closeModal('assignModal')">
+  <div class="detail-panel" onclick="event.stopPropagation()">
+    <div class="detail-header">
+      <div>
+        <div class="detail-title" id="assignDetailTitle"></div>
+        <div class="detail-meta" id="assignDetailMeta"></div>
+      </div>
+      <button class="btn-icon" onclick="closeModal('assignModal')">✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-content" id="assignDetailContent"></div>
+      <div class="detail-images" id="assignDetailImages"></div>
+      <div class="comments-section">
+        <div class="comments-title">댓글</div>
+        <div class="comment-list" id="assignCommentList"></div>
+        <div class="comment-input-wrap">
+          <input class="comment-input" type="text" id="assignCommentInput" placeholder="댓글 입력..." />
+          <button class="comment-submit" onclick="submitComment('assignment')">등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Event Modal -->
+<div class="modal-backdrop" id="eventModal" style="display:none" onclick="closeModal('eventModal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">개인 일정 추가</div>
+      <button class="btn-icon" onclick="closeModal('eventModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">일정 제목</label>
+        <input class="form-input" type="text" id="eventTitle" placeholder="일정 이름 입력" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label class="form-label">날짜</label>
+          <input class="form-input" type="date" id="eventDate" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">시간 (선택)</label>
+          <input class="form-input" type="time" id="eventTime" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">메모</label>
+        <textarea class="form-input form-textarea" id="eventMemo" placeholder="메모 (선택사항)"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">이미지 첨부</label>
+        <div class="upload-zone" id="eventUploadZone" onclick="document.getElementById('eventFileInput').click()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+          </svg>
+          <p>클릭하거나 파일을 드래그하세요</p>
+          <p style="font-size:0.72rem;margin-top:4px;color:var(--muted);">JPG, PNG, GIF (최대 5MB)</p>
+          <input type="file" id="eventFileInput" accept="image/*" multiple style="display:none" onchange="handleFileSelect(event)" />
+        </div>
+        <div class="upload-preview" id="uploadPreview"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('eventModal')">취소</button>
+      <button class="btn btn-primary" onclick="saveEvent()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ── State ──
+let currentUser   = null;
+let assignments   = [];
+let notices       = [];
+let subjects      = [];
+let events        = [];
+let currentNotice = null;
+let currentAssign = null;
+let uploadedFiles = [];
+let filterType   = '';
+let filterStatus = '';
+let filterSubject = '';
+
+// ── Init ──
+(async () => {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (!res.ok) { location.href = 'login.html'; return; }
+    currentUser = await res.json();
+
+    if (currentUser.role === 'admin')  { location.href = 'admin.html';  return; }
+    if (currentUser.role === 'leader') { location.href = 'leader.html'; return; }
+
+    document.getElementById('sidebarName').textContent = currentUser.name || currentUser.username;
+    document.getElementById('avatarCircle').textContent =
+      (currentUser.name || currentUser.username || '?')[0].toUpperCase();
+
+    setHeaderDate();
+    await Promise.all([loadAssignments(), loadNotices(), loadSubjects(), loadEvents(), loadMeals(), loadTimetable()]);
+  } catch(e) {
+    console.error(e);
+    showToast('데이터 로드 실패', 'error');
+  }
+})();
+
+function setHeaderDate() {
+  const now = new Date();
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('headerDate').textContent =
+    `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
+}
+
+// ── Navigation ──
+function showSection(name) {
+  document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+
+  const titles = {
+    assignments: '수행평가',
+    notices: '공지사항',
+    events: '개인 일정',
+    timetable: '나의 시간표',
+    meals: '오늘의 학식'
+  };
+  document.getElementById('pageTitle').textContent = titles[name] || name;
+}
+
+// ── Assignments ──
+async function loadAssignments() {
+  try {
+    const res = await fetch('/api/assignments', { credentials: 'include' });
+    const data = await res.json();
+    assignments = data.assignments || data || [];
+    renderAssignBoard();
+  } catch(e) { console.error('assignments load fail', e); }
+}
+
+function renderAssignBoard() {
+  const board = document.getElementById('assignmentBoard');
+  board.innerHTML = '';
+
+  const filtered = assignments.filter(a => {
+    const tOk = !filterType   || a.type === filterType;
+    const sOk = !filterStatus || (filterStatus === 'done' ? a.completed : !a.completed);
+    return tOk && sOk;
+  });
+
+  // Group by subject
+  const bySubject = {};
+  filtered.forEach(a => {
+    const key = a.subject_name || '기타';
+    if (!bySubject[key]) bySubject[key] = [];
+    bySubject[key].push(a);
+  });
+
+  if (Object.keys(bySubject).length === 0) {
+    board.innerHTML = '<div class="empty-state"><p>표시할 과제가 없습니다.</p></div>';
+    return;
+  }
+
+  // Stats
+  const total = assignments.length;
+  const done  = assignments.filter(a => a.completed).length;
+  const urgent = assignments.filter(a => !a.completed && getDaysLeft(a.due_date) <= 2).length;
+  document.getElementById('assignStats').innerHTML = `
+    <div class="stat-chip"><div class="s-val">${total}</div><div class="s-lbl">전체 과제</div></div>
+    <div class="stat-chip"><div class="s-val" style="color:var(--red)">${total - done}</div><div class="s-lbl">미완료</div></div>
+    <div class="stat-chip"><div class="s-val" style="color:var(--orange)">${urgent}</div><div class="s-lbl">긴급 (2일 이내)</div></div>
+    <div class="stat-chip"><div class="s-val" style="color:var(--accent2)">${done}</div><div class="s-lbl">완료</div></div>
+  `;
+
+  // Badge
+  const badge = document.getElementById('assignBadge');
+  if (total - done > 0) {
+    badge.textContent = total - done;
+    badge.style.display = '';
+  }
+
+  Object.entries(bySubject).forEach(([subj, cards]) => {
+    const col = document.createElement('div');
+    col.className = 'subject-col';
+    col.innerHTML = `
+      <div class="subject-col-header">
+        <span class="subject-name">${subj}</span>
+        <span class="subject-count">${cards.length}</span>
+      </div>
+      <div class="subject-cards" id="col-${encodeURIComponent(subj)}"></div>
+    `;
+    board.appendChild(col);
+    const container = col.querySelector('.subject-cards');
+    cards.forEach(a => container.appendChild(makeAssignCard(a)));
+  });
+}
+
+function makeAssignCard(a) {
+  const el = document.createElement('div');
+  const days = getDaysLeft(a.due_date);
+  let urgency = '';
+  if (!a.completed) {
+    if (days <= 1)  urgency = 'urgent';
+    else if (days <= 3) urgency = 'soon';
+  }
+  el.className = `assign-card type-${a.type || '일반'} ${a.completed ? 'completed' : ''}`;
+  el.innerHTML = `
+    <div class="assign-card-top">
+      <div class="assign-title">${escHtml(a.title)}</div>
+      <button class="check-btn ${a.completed ? 'checked' : ''}"
+              onclick="toggleComplete(event,${a.id})" title="완료 표시"></button>
+    </div>
+    <div class="assign-meta">
+      ${a.type ? `<span class="badge ${a.type === '진로' ? 'badge-blue' : 'badge-green'}">${a.type}</span>` : ''}
+      <span class="assign-due ${urgency}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        ${formatDue(a.due_date, days)}
+      </span>
+    </div>
+  `;
+  el.addEventListener('click', e => {
+    if (e.target.classList.contains('check-btn')) return;
+    openAssignDetail(a.id);
+  });
+  return el;
+}
+
+function getDaysLeft(due) {
+  if (!due) return 9999;
+  const d = new Date(due);
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  return Math.ceil((d - now) / 86400000);
+}
+
+function formatDue(due, days) {
+  if (!due) return '기한 없음';
+  const d = new Date(due);
+  const mm = d.getMonth()+1, dd = d.getDate();
+  if (days < 0)  return `${mm}/${dd} (마감)`;
+  if (days === 0) return '오늘 마감';
+  if (days === 1) return '내일 마감';
+  if (days <= 7)  return `${days}일 후`;
+  return `${mm}/${dd}`;
+}
+
+async function toggleComplete(e, id) {
+  e.stopPropagation();
+  const btn = e.currentTarget;
+  const a = assignments.find(x => x.id === id);
+  if (!a) return;
+
+  const newVal = !a.completed;
+  try {
+    await fetch(`/api/timetable/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ assignment_id: id, completed: newVal })
+    });
+    a.completed = newVal;
+    renderAssignBoard();
+    showToast(newVal ? '완료 처리했습니다.' : '미완료로 변경했습니다.', 'success');
+  } catch {
+    showToast('업데이트 실패', 'error');
+  }
+}
+
+async function openAssignDetail(id) {
+  const a = assignments.find(x => x.id === id);
+  if (!a) return;
+  currentAssign = a;
+
+  document.getElementById('assignDetailTitle').textContent = a.title;
+  const days = getDaysLeft(a.due_date);
+  document.getElementById('assignDetailMeta').innerHTML = `
+    <span>${a.subject_name || ''}</span>
+    <span>${a.class_name || ''}</span>
+    <span>${a.type || ''}</span>
+    <span class="${days <= 2 && !a.completed ? 'assign-due urgent' : ''}">마감: ${a.due_date ? new Date(a.due_date).toLocaleDateString('ko-KR') : '없음'}</span>
+  `;
+  document.getElementById('assignDetailContent').textContent = a.description || '내용 없음';
+
+  const imgs = document.getElementById('assignDetailImages');
+  imgs.innerHTML = '';
+  (a.images || []).forEach(url => {
+    const img = document.createElement('img'); img.src = url;
+    img.onclick = () => window.open(url, '_blank');
+    imgs.appendChild(img);
+  });
+
+  document.getElementById('assignModal').style.display = 'flex';
+  loadComments('assignment', id, 'assignCommentList');
+}
+
+// Filter handlers
+document.getElementById('typeFilter').addEventListener('click', e => {
+  const t = e.target.closest('.filter-tab');
+  if (!t) return;
+  document.querySelectorAll('#typeFilter .filter-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  filterType = t.dataset.val;
+  renderAssignBoard();
+});
+document.getElementById('statusFilter').addEventListener('click', e => {
+  const t = e.target.closest('.filter-tab');
+  if (!t) return;
+  document.querySelectorAll('#statusFilter .filter-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  filterStatus = t.dataset.val;
+  renderAssignBoard();
+});
+
+// ── Notices ──
+async function loadNotices() {
+  try {
+    const res = await fetch('/api/notices', { credentials: 'include' });
+    const data = await res.json();
+    notices = data.notices || data || [];
+    renderNotices();
+  } catch(e) { console.error(e); }
+}
+
+function renderNotices() {
+  const list = document.getElementById('noticeList');
+  const filtered = filterSubject
+    ? notices.filter(n => n.subject_name === filterSubject)
+    : notices;
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-state"><p>공지가 없습니다.</p></div>';
+    return;
+  }
+
+  const badge = document.getElementById('noticeBadge');
+  const recent = notices.filter(n => {
+    const d = new Date(n.created_at);
+    return (Date.now() - d) < 86400000 * 3;
+  }).length;
+  if (recent > 0) { badge.textContent = recent; badge.style.display = ''; }
+
+  list.innerHTML = filtered.map((n,i) => {
+    const isNew = (Date.now() - new Date(n.created_at)) < 86400000 * 3;
+    const colors = ['#72C99A','#5899C9','#D4A843','#D97070','#9B72C9'];
+    const c = colors[i % colors.length];
+    return `
+      <div class="notice-item" onclick="openNoticeDetail(${n.id})">
+        <div class="notice-type-dot" style="background:${c}"></div>
+        <div class="notice-info">
+          <div class="notice-title">${escHtml(n.title)}</div>
+          <div class="notice-meta">
+            <span>${escHtml(n.subject_name || '전체')}</span>
+            <span>${n.class_name || ''}</span>
+          </div>
+        </div>
+        ${isNew ? '<span class="notice-new">NEW</span>' : ''}
+        <span class="notice-date">${fmtDate(n.created_at)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+async function openNoticeDetail(id) {
+  const n = notices.find(x => x.id === id);
+  if (!n) return;
+  currentNotice = n;
+
+  document.getElementById('noticeDetailTitle').textContent = n.title;
+  document.getElementById('noticeDetailMeta').innerHTML = `
+    <span>${n.subject_name || '전체'}</span>
+    <span>${n.class_name || ''}</span>
+    <span>${fmtDate(n.created_at)}</span>
+  `;
+  document.getElementById('noticeDetailContent').textContent = n.content || '';
+
+  const imgs = document.getElementById('noticeDetailImages');
+  imgs.innerHTML = '';
+  (n.images || []).forEach(url => {
+    const img = document.createElement('img'); img.src = url;
+    img.onclick = () => window.open(url, '_blank');
+    imgs.appendChild(img);
+  });
+
+  document.getElementById('noticeModal').style.display = 'flex';
+  loadComments('notice', id, 'noticeCommentList');
+}
+
+// ── Comments ──
+async function loadComments(type, id, listId) {
+  const list = document.getElementById(listId);
+  list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0">로딩 중...</div>';
+  try {
+    const res = await fetch(`/api/comments/${type}/${id}`, { credentials: 'include' });
+    const data = await res.json();
+    const comments = data.comments || data || [];
+    if (!comments.length) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:4px 0">아직 댓글이 없습니다.</div>';
+      return;
+    }
+    list.innerHTML = comments.map(c => `
+      <div class="comment-item">
+        <div class="comment-author">${escHtml(c.user_name || c.username || '익명')}</div>
+        <div class="comment-text">${escHtml(c.content)}</div>
+        <div class="comment-time">${fmtDateTime(c.created_at)}</div>
+      </div>
+    `).join('');
+  } catch { list.innerHTML = ''; }
+}
+
+async function submitComment(type) {
+  const inputId   = type === 'notice' ? 'noticeCommentInput' : 'assignCommentInput';
+  const listId    = type === 'notice' ? 'noticeCommentList'  : 'assignCommentList';
+  const refId     = type === 'notice' ? currentNotice?.id    : currentAssign?.id;
+  const input     = document.getElementById(inputId);
+  const content   = input.value.trim();
+  if (!content || !refId) return;
+
+  try {
+    await fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ type, ref_id: refId, content })
+    });
+    input.value = '';
+    loadComments(type, refId, listId);
+    showToast('댓글이 등록되었습니다.', 'success');
+  } catch { showToast('댓글 등록 실패', 'error'); }
+}
+
+// ── Subjects (for filter) ──
+async function loadSubjects() {
+  try {
+    const res = await fetch('/api/subjects', { credentials: 'include' });
+    const data = await res.json();
+    subjects = data.subjects || data || [];
+    const f = document.getElementById('noticeSubjectFilter');
+    subjects.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-tab';
+      btn.dataset.val = s.name;
+      btn.textContent = s.name;
+      f.appendChild(btn);
+    });
+    f.addEventListener('click', e => {
+      const t = e.target.closest('.filter-tab');
+      if (!t) return;
+      f.querySelectorAll('.filter-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      filterSubject = t.dataset.val;
+      renderNotices();
+    });
+  } catch {}
+}
+
+// ── Events ──
+async function loadEvents() {
+  try {
+    const res = await fetch('/api/timetable/personal', { credentials: 'include' });
+    const data = await res.json();
+    events = data.events || data || [];
+    renderEvents();
+  } catch(e) { console.error(e); }
+}
+
+function renderEvents() {
+  const list = document.getElementById('eventList');
+  if (!events.length) {
+    list.innerHTML = '<div class="empty-state"><p>등록된 개인 일정이 없습니다.<br>일정 추가 버튼으로 추가해보세요!</p></div>';
+    return;
+  }
+  list.innerHTML = events.map(ev => {
+    const d = new Date(ev.event_date || ev.date);
+    return `
+      <div class="event-item">
+        <div class="event-date-badge">
+          <div class="day">${d.getDate()}</div>
+          <div class="mon">${d.getMonth()+1}월</div>
+        </div>
+        <div class="event-info">
+          <div class="event-title">${escHtml(ev.title)}</div>
+          <div class="event-time">${ev.event_time || ''} ${ev.memo ? '· ' + escHtml(ev.memo) : ''}</div>
+        </div>
+        ${(ev.images||[]).length ? `
+          <div class="event-imgs">
+            ${(ev.images||[]).slice(0,3).map(url =>
+              `<img class="event-img-thumb" src="${url}" onclick="window.open('${url}','_blank')" />`
+            ).join('')}
+          </div>
+        ` : ''}
+        <button class="btn-icon" onclick="deleteEvent(${ev.id})" title="삭제">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/>
+          </svg>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function openEventModal() {
+  document.getElementById('eventTitle').value = '';
+  document.getElementById('eventDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('eventTime').value = '';
+  document.getElementById('eventMemo').value = '';
+  document.getElementById('uploadPreview').innerHTML = '';
+  uploadedFiles = [];
+  document.getElementById('eventModal').style.display = 'flex';
+}
+
+function handleFileSelect(e) {
+  const files = Array.from(e.target.files);
+  const preview = document.getElementById('uploadPreview');
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      uploadedFiles.push({ file, dataUrl: ev.target.result });
+      const thumb = document.createElement('div');
+      thumb.className = 'upload-thumb';
+      thumb.innerHTML = `
+        <img src="${ev.target.result}" />
+        <button class="remove-btn" onclick="removeThumb(this)">✕</button>
+      `;
+      preview.appendChild(thumb);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removeThumb(btn) {
+  const thumb = btn.parentElement;
+  const idx = Array.from(thumb.parentElement.children).indexOf(thumb);
+  uploadedFiles.splice(idx, 1);
+  thumb.remove();
+}
+
+async function saveEvent() {
+  const title = document.getElementById('eventTitle').value.trim();
+  const date  = document.getElementById('eventDate').value;
+  const time  = document.getElementById('eventTime').value;
+  const memo  = document.getElementById('eventMemo').value.trim();
+  if (!title || !date) { showToast('제목과 날짜를 입력하세요.', 'error'); return; }
+
+  let imageUrls = [];
+  if (uploadedFiles.length > 0) {
+    showToast('이미지 업로드 중...', 'info');
+    const form = new FormData();
+    uploadedFiles.forEach(f => form.append('images', f.file));
+    try {
+      const res = await fetch('/api/upload/multiple', { method: 'POST', credentials: 'include', body: form });
+      const data = await res.json();
+      imageUrls = data.urls || [];
+    } catch { showToast('이미지 업로드 실패', 'error'); return; }
+  }
+
+  try {
+    await fetch('/api/timetable/personal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ title, event_date: date, event_time: time || null, memo, images: imageUrls })
+    });
+    closeModal('eventModal');
+    showToast('일정이 추가되었습니다.', 'success');
+    await loadEvents();
+  } catch { showToast('저장 실패', 'error'); }
+}
+
+async function deleteEvent(id) {
+  if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+  try {
+    await fetch(`/api/timetable/personal/${id}`, { method: 'DELETE', credentials: 'include' });
+    showToast('삭제되었습니다.', 'success');
+    await loadEvents();
+  } catch { showToast('삭제 실패', 'error'); }
+}
+
+// ── Timetable ──
+async function loadTimetable() {
+  try {
+    const res = await fetch('/api/timetable', { credentials: 'include' });
+    const data = await res.json();
+    const tt = data.timetable || data || [];
+    renderTimetable(tt);
+  } catch {}
+}
+
+function renderTimetable(tt) {
+  const grid = document.getElementById('timetableGrid');
+  const days = ['월','화','수','목','금'];
+  const todayIdx = new Date().getDay() - 1; // 0=Mon
+
+  let html = `<div class="tt-cell header"></div>`;
+  days.forEach((d,i) => {
+    html += `<div class="tt-cell header ${i === todayIdx ? 'today' : ''}">${d}</div>`;
+  });
+
+  const maxPeriod = tt.length ? Math.max(...tt.map(t => t.period || 0), 7) : 7;
+  for (let p = 1; p <= maxPeriod; p++) {
+    html += `<div class="tt-cell period">${p}</div>`;
+    for (let d = 1; d <= 5; d++) {
+      const cell = tt.find(t => t.period === p && t.day_of_week === d);
+      const isToday = (d - 1) === todayIdx;
+      html += cell
+        ? `<div class="tt-cell subject ${isToday ? 'today' : ''}">${escHtml(cell.subject_name || '')}</div>`
+        : `<div class="tt-cell empty ${isToday ? 'today' : ''}">—</div>`;
+    }
+  }
+
+  grid.innerHTML = html;
+}
+
+// ── Meals ──
+async function loadMeals() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const res = await fetch(`/api/meals?date=${today}`, { credentials: 'include' });
+    const data = await res.json();
+    const meals = data.meals || data || {};
+    renderMeals(meals, today);
+  } catch(e) { console.error(e); }
+}
+
+function renderMeals(meals, date) {
+  const wrap = document.getElementById('mealWrap');
+  const d = new Date(date);
+  const dateStr = `${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]})`;
+
+  const types = [
+    { key: 'breakfast', label: '조식' },
+    { key: 'lunch',     label: '중식' },
+    { key: 'dinner',    label: '석식' }
+  ];
+
+  wrap.innerHTML = `
+    <div class="meal-card">
+      <div class="meal-header">
+        <h3>오늘의 급식</h3>
+        <span class="meal-date">${dateStr}</span>
+      </div>
+      <div class="meal-tabs">
+        ${types.map((t,i) => `
+          <button class="meal-tab ${i===1 ? 'active' : ''}" onclick="switchMealTab(this, '${t.key}')">${t.label}</button>
+        `).join('')}
+      </div>
+      ${types.map(t => `
+        <div class="meal-content" id="meal-${t.key}" style="${t.key === 'lunch' ? '' : 'display:none'}">
+          ${renderMealMenu(meals[t.key])}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderMealMenu(meal) {
+  if (!meal || !meal.menu) {
+    return '<div style="color:var(--muted);font-size:0.83rem;padding:8px 0">급식 정보가 없습니다.</div>';
+  }
+  const items = Array.isArray(meal.menu) ? meal.menu : meal.menu.split('\n');
+  return `
+    <div class="meal-menu">${items.map(i => `<span>${escHtml(i.trim())}</span>`).join('')}</div>
+    ${meal.calories ? `<div class="meal-cal">🔥 ${meal.calories} kcal</div>` : ''}
+  `;
+}
+
+function switchMealTab(btn, type) {
+  btn.closest('.meal-card').querySelectorAll('.meal-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  btn.closest('.meal-card').querySelectorAll('.meal-content').forEach(c => c.style.display = 'none');
+  document.getElementById(`meal-${type}`).style.display = '';
+}
+
+// ── Modal ──
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+// ── Auth ──
+async function logout() {
+  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+  location.href = 'login.html';
+}
+
+// ── Drag & Drop ──
+const zone = document.getElementById('eventUploadZone');
+if (zone) {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    handleFileSelect({ target: { files } });
+  });
+}
+
+// ── Sidebar toggle (mobile) ──
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ── Utilities ──
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function fmtDateTime(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// Enter for comments
+document.getElementById('noticeCommentInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitComment('notice');
+});
+document.getElementById('assignCommentInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitComment('assignment');
+});
+</script>
+</body>
+</html>

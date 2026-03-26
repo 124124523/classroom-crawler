@@ -2,7 +2,6 @@ const { google } = require('googleapis');
 const { getClientForUser } = require('./auth');
 const pool = require('./db');
 
-// 기준일 계산: 오늘로부터 2개월 전
 function getTwoMonthsAgo() {
   const d = new Date();
   d.setMonth(d.getMonth() - 2);
@@ -10,26 +9,20 @@ function getTwoMonthsAgo() {
   return d;
 }
 
-// dueDate 객체 → Date 변환
 function toDate({ year, month, day }) {
   return new Date(year, month - 1, day);
 }
 
-// 제출 상태가 미완료인지 확인
 async function isIncomplete(classroom, courseId, workId) {
   try {
     const { data: { studentSubmissions = [] } } = await classroom.courses.courseWork.studentSubmissions.list({
-      courseId,
-      courseWorkId: workId,
-      userId: 'me',
+      courseId, courseWorkId: workId, userId: 'me',
     });
-
     if (studentSubmissions.length === 0) return true;
-
     const state = studentSubmissions[0].state;
     return state !== 'TURNED_IN' && state !== 'RETURNED';
   } catch {
-    return true; // 오류 시 미완료로 간주
+    return true;
   }
 }
 
@@ -40,16 +33,14 @@ async function crawlUser(userId) {
   const { data: { courses = [] } } = await classroom.courses.list();
 
   const twoMonthsAgo = getTwoMonthsAgo();
-  let savedCount = 0;
-  let skippedCount = 0;
-  let filteredCount = 0;
+  let savedCount = 0, skippedCount = 0, filteredCount = 0;
 
   for (const course of courses) {
     const { data: { courseWork = [] } } = await classroom.courses.courseWork.list({
       courseId: course.id,
     }).catch(() => ({ data: { courseWork: [] } }));
 
-    // ✅ 마감일 없는 과제 제거 후 JS에서 최신순 정렬
+    // JS에서 최신순 정렬 (정확도 보장)
     const sorted = courseWork
       .filter(w => w.dueDate)
       .sort((a, b) => toDate(b.dueDate) - toDate(a.dueDate));
@@ -57,30 +48,27 @@ async function crawlUser(userId) {
     for (const work of sorted) {
       const due = toDate(work.dueDate);
 
-      // ✅ 2개월 이전 과제 도달 시 즉시 중단 (이후는 전부 더 오래됨이 보장됨)
+      // 2개월 이전 도달 시 중단
       if (due < twoMonthsAgo) {
-        console.log(`  [${userId}] "${course.name}" → ${due.toLocaleDateString()} 이하 과제 도달, 중단`);
+        console.log(`  [${userId}] "${course.name}" → ${due.toLocaleDateString('ko-KR')} 이하, 중단`);
         break;
       }
 
-      // 제출 완료된 과제 제외 (여기서부터만 API 추가 호출)
+      // 제출 완료 과제 제외
       const incomplete = await isIncomplete(classroom, course.id, work.id);
-      if (!incomplete) {
-        filteredCount++;
-        continue;
-      }
+      if (!incomplete) { filteredCount++; continue; }
 
       const dueDate = `${work.dueDate.year}-${String(work.dueDate.month).padStart(2,'0')}-${String(work.dueDate.day).padStart(2,'0')}`;
 
       const [cwExisting] = await pool.query(
-        'SELECT coursework_id FROM coursework WHERE coursework_id = ? AND user_id = ?',
+        'SELECT coursework_id FROM coursework WHERE coursework_id=? AND user_id=?',
         [work.id, userId]
       );
 
       if (cwExisting.length === 0) {
         await pool.query(
           `INSERT INTO coursework (user_id, course_id, course_name, coursework_id, title, due_date, state)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?,?,?,?,?,?,?)`,
           [userId, course.id, course.name, work.id, work.title, dueDate, work.state]
         );
         savedCount++;
