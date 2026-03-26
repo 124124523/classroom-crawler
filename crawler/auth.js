@@ -99,16 +99,23 @@ async function batchUpsertCourseWork(items, userId) {
 async function crawlForUser(userId) {
   const auth      = await getClientForUser(userId);
   const classroom = google.classroom({ version: 'v1', auth });
-  const today     = getTodayKST();
 
-  const courseRes = await classroom.courses.list({
-    studentId:    'me',
-    courseStates: ['ACTIVE'],
-    pageSize:     50,
-  });
+  // 1개월 전 날짜 (KST 기준) — 이보다 오래된 마감 과제는 스킵
+  const cutoff = new Date(Date.now() + 9*60*60*1000 - 30*24*60*60*1000)
+    .toISOString().slice(0, 10);
 
-  const courses = courseRes.data.courses || [];
-  console.log(`  [crawler] ${userId}: 수업 ${courses.length}개`);
+  // ACTIVE + ARCHIVED 모두 가져오기
+  // → 보관된 수업에도 현재 유효한 과제가 있을 수 있음
+  const [activeRes, archivedRes] = await Promise.all([
+    classroom.courses.list({ studentId: 'me', courseStates: ['ACTIVE'],   pageSize: 50 }),
+    classroom.courses.list({ studentId: 'me', courseStates: ['ARCHIVED'], pageSize: 50 }),
+  ]);
+
+  const courses = [
+    ...(activeRes.data.courses  || []),
+    ...(archivedRes.data.courses || []),
+  ];
+  console.log(`  [crawler] ${userId}: 수업 ${courses.length}개 (활성+보관)`);
 
   let upserted = 0, skipped = 0;
 
@@ -116,9 +123,10 @@ async function crawlForUser(userId) {
   await Promise.all(courses.map(async (course) => {
     try {
       const cwRes = await classroom.courses.courseWork.list({
-        courseId: course.id,
-        orderBy:  'dueDate asc',
-        pageSize: 50,
+        courseId:         course.id,
+        courseWorkStates: ['PUBLISHED'], // 게시된 과제만 (DRAFT 제외)
+        orderBy:          'dueDate asc',
+        pageSize:         50,
       });
 
       const toUpsert = [];
@@ -126,11 +134,13 @@ async function crawlForUser(userId) {
       for (const cw of (cwRes.data.courseWork || [])) {
         const { date: dueDate, time: dueTime } = parseDueDate(cw.dueDate, cw.dueTime);
 
-        // ── 증분1: 마감일 없는 과제 스킵 ────────────────
+        // 마감일 없는 과제 스킵
         if (!dueDate) { skipped++; continue; }
 
-        // ── 증분2: 오늘 이전 마감 과제 스킵 (이미 지난 과제) ─
-        if (dueDate < today) { skipped++; continue; }
+        // 1개월 이전 마감 과제 스킵
+        // → 제출 여부와 무관하게 마감일 기준으로만 판단
+        // → 마감일이 아직 안 지났거나 1개월 이내인 과제는 전부 포함
+        if (dueDate < cutoff) { skipped++; continue; }
 
         toUpsert.push({
           coursework_id: cw.id,
@@ -145,7 +155,7 @@ async function crawlForUser(userId) {
         });
       }
 
-      // ── 배치 upsert (수업 1개당 DB 쿼리 1번으로 축소) ──
+      // 배치 upsert — 수업 1개당 DB 쿼리 1번
       await batchUpsertCourseWork(toUpsert, userId);
       upserted += toUpsert.length;
 
