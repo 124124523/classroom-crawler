@@ -228,9 +228,21 @@ async function syncCourseworkToAssignments() {
   for (const cw of courseworks) {
     try {
       const [existing] = await pool.query(
-        'SELECT id FROM assignments WHERE gclassroom_id = ?', [cw.coursework_id]
+        'SELECT id, class_id FROM assignments WHERE gclassroom_id = ?', [cw.coursework_id]
       );
-      if (existing.length > 0) { skipped++; continue; }
+      if (existing.length > 0) {
+        // 이미 있어도 class_id가 다르면 재매핑 (잘못 매핑된 경우 자동 수정)
+        if (existing[0].class_id !== classId) {
+          await pool.query(
+            'UPDATE assignments SET class_id = ? WHERE gclassroom_id = ?',
+            [classId, cw.coursework_id]
+          );
+          console.log(`  [sync] 🔄 재매핑: "${cw.course_name}" class_id ${existing[0].class_id} → ${classId}`);
+        } else {
+          skipped++;
+        }
+        continue;
+      }
 
       const classId = await findClassId(cw.course_name);
       if (!classId) { failed++; continue; }
