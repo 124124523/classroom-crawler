@@ -38,17 +38,10 @@ async function getClientForUser(userId) {
 }
 
 // ── 마감일 파싱 ───────────────────────────────────────
-function parseDueDate(dueDate, dueTime) {
-  if (!dueDate) return { date: null, time: null };
+function parseDueDate(dueDate) {
+  if (!dueDate) return null;
   const { year, month, day } = dueDate;
-  const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-  let timeStr = null;
-  if (dueTime) {
-    const h = String(dueTime.hours   || 0).padStart(2,'0');
-    const m = String(dueTime.minutes || 0).padStart(2,'0');
-    timeStr = `${h}:${m}`;
-  }
-  return { date: dateStr, time: timeStr };
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 
 // ── 오늘 날짜 (KST) ───────────────────────────────────
@@ -63,7 +56,6 @@ function getTodayKST() {
 async function batchUpsertCourseWork(items, userId) {
   if (!items.length) return;
 
-  // mysql2는 VALUES ? 에 2차원 배열 전달로 배치 INSERT 가능
   const values = items.map(item => [
     item.coursework_id,
     item.course_id,
@@ -71,7 +63,6 @@ async function batchUpsertCourseWork(items, userId) {
     item.title,
     item.description,
     item.due_date,
-    item.due_time,
     item.state,
     item.link,
     userId,
@@ -80,14 +71,13 @@ async function batchUpsertCourseWork(items, userId) {
   await pool.query(
     `INSERT INTO coursework
        (coursework_id, course_id, course_name, title, description,
-        due_date, due_time, state, link, fetched_by)
+        due_date, state, link, fetched_by)
      VALUES ?
      ON DUPLICATE KEY UPDATE
        course_name = VALUES(course_name),
        title       = VALUES(title),
        description = VALUES(description),
        due_date    = VALUES(due_date),
-       due_time    = VALUES(due_time),
        state       = VALUES(state),
        link        = VALUES(link),
        fetched_by  = VALUES(fetched_by)`,
@@ -132,14 +122,12 @@ async function crawlForUser(userId) {
       const toUpsert = [];
 
       for (const cw of (cwRes.data.courseWork || [])) {
-        const { date: dueDate, time: dueTime } = parseDueDate(cw.dueDate, cw.dueTime);
+        const dueDate = parseDueDate(cw.dueDate);
 
         // 마감일 없는 과제 스킵
         if (!dueDate) { skipped++; continue; }
 
         // 1개월 이전 마감 과제 스킵
-        // → 제출 여부와 무관하게 마감일 기준으로만 판단
-        // → 마감일이 아직 안 지났거나 1개월 이내인 과제는 전부 포함
         if (dueDate < cutoff) { skipped++; continue; }
 
         toUpsert.push({
@@ -149,7 +137,6 @@ async function crawlForUser(userId) {
           title:         cw.title,
           description:   cw.description || null,
           due_date:      dueDate,
-          due_time:      dueTime,
           state:         cw.state || 'PUBLISHED',
           link:          cw.alternateLink || null,
         });
