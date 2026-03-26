@@ -43,8 +43,16 @@ app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
+// ── Google OAuth 콜백 alias ────────────────────────────
+// CALLBACK_URL 환경변수가 /auth/google/callback 으로 설정돼 있어서
+// /api/classroom/callback 으로 내부 포워딩
+app.get('/auth/google/callback', (req, res) => {
+  // query string 그대로 유지해서 /api/classroom/callback 으로 리다이렉트
+  const qs = new URLSearchParams(req.query).toString();
+  res.redirect(`/api/classroom/callback?${qs}`);
+});
+
 // ── 크롤러 + sync 파이프라인 ───────────────────────────
-// 흐름: Google Classroom API → coursework 테이블 → assignments 테이블
 let crawlAll       = null;
 let syncCoursework = null;
 
@@ -95,6 +103,5 @@ app.get('/{*path}', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ 서버 실행 중: PORT=${PORT}`);
-  // 서버 시작 시 1회 파이프라인 실행
   runPipeline();
 });
