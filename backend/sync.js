@@ -135,3 +135,4 @@ async function syncCourseworkToAssignments() {
 }
 
 module.exports = { syncCourseworkToAssignments, findClassId };
+
