@@ -67,7 +67,7 @@ console.log('[scheduler] 3시간 주기 sync 스케줄러 등록 완료');
 // =====================================================
 // SPA 폴백: 정의되지 않은 경로는 login.html로
 // =====================================================
-app.get('*', (req, res) => {
+app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/login.html'));
 });
 
