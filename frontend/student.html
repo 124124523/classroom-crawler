@@ -1182,7 +1182,7 @@ function renderEvents() {
     return;
   }
   list.innerHTML = events.map(ev => {
-    const d = new Date(ev.event_date || ev.date);
+    const d = new Date(ev.due_date || ev.created_at);
     return `
       <div class="event-item">
         <div class="event-date-badge">
@@ -1191,7 +1191,7 @@ function renderEvents() {
         </div>
         <div class="event-info">
           <div class="event-title">${escHtml(ev.title)}</div>
-          <div class="event-time">${ev.event_time || ''} ${ev.memo ? '· ' + escHtml(ev.memo) : ''}</div>
+          <div class="event-time">${ev.description ? escHtml(ev.description) : ''}</div>
         </div>
         ${(ev.images||[]).length ? `
           <div class="event-imgs">
@@ -1271,7 +1271,7 @@ async function saveEvent() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ title, event_date: date, event_time: time || null, memo, images: imageUrls })
+      body: JSON.stringify({ title, due_date: date, description: memo || null, images: imageUrls })
     });
     closeModal('eventModal');
     showToast('일정이 추가되었습니다.', 'success');
@@ -1300,27 +1300,48 @@ async function loadTimetable() {
 
 function renderTimetable(tt) {
   const grid = document.getElementById('timetableGrid');
-  const days = ['월','화','수','목','금'];
-  const todayIdx = new Date().getDay() - 1; // 0=Mon
 
-  let html = `<div class="tt-cell header"></div>`;
-  days.forEach((d,i) => {
-    html += `<div class="tt-cell header ${i === todayIdx ? 'today' : ''}">${d}</div>`;
-  });
-
-  const maxPeriod = tt.length ? Math.max(...tt.map(t => t.period || 0), 7) : 7;
-  for (let p = 1; p <= maxPeriod; p++) {
-    html += `<div class="tt-cell period">${p}</div>`;
-    for (let d = 1; d <= 5; d++) {
-      const cell = tt.find(t => t.period === p && t.day_of_week === d);
-      const isToday = (d - 1) === todayIdx;
-      html += cell
-        ? `<div class="tt-cell subject ${isToday ? 'today' : ''}">${escHtml(cell.subject_name || '')}</div>`
-        : `<div class="tt-cell empty ${isToday ? 'today' : ''}">—</div>`;
-    }
+  if (!tt.length) {
+    grid.style.display = 'block';
+    grid.innerHTML = '<div class="empty-state"><p>수강 중인 과목이 없습니다.</p></div>';
+    return;
   }
 
-  grid.innerHTML = html;
+  const 일반 = tt.filter(t => (t.category || '일반') === '일반');
+  const 진로 = tt.filter(t => t.category === '진로');
+
+  const makeCard = (t) => `
+    <div style="
+      background:var(--surface2);border:1px solid var(--border);
+      border-radius:var(--radius-sm);padding:10px 14px;
+      display:flex;align-items:center;justify-content:space-between;
+    ">
+      <div>
+        <div style="font-size:0.88rem;font-weight:600;color:var(--text)">${escHtml(t.subject_name)}</div>
+        <div style="font-size:0.75rem;color:var(--text3);margin-top:2px">${escHtml(t.class_code)}반 · ${escHtml(t.teacher || '')}</div>
+      </div>
+      <span class="badge ${t.category === '진로' ? 'badge-blue' : 'badge-green'}">${t.category || '일반'}</span>
+    </div>
+  `;
+
+  grid.style.display = 'flex';
+  grid.style.flexDirection = 'column';
+  grid.style.gap = '20px';
+
+  grid.innerHTML = `
+    ${일반.length ? `
+      <div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">일반 과목</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${일반.map(makeCard).join('')}</div>
+      </div>
+    ` : ''}
+    ${진로.length ? `
+      <div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">진로 과목</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${진로.map(makeCard).join('')}</div>
+      </div>
+    ` : ''}
+  `;
 }
 
 // ── Meals ──

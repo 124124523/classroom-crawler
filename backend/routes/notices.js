@@ -1,104 +1,159 @@
+// backend/routes/notices.js
 const express = require('express');
-const router = express.Router();
-const pool = require('../db');
+const router  = express.Router();
+const db      = require('../db');
 
 function requireLogin(req, res, next) {
-  if (!req.session?.userId) return res.status(401).json({ error: '로그인 필요' });
-  next();
-}
-function requireLeaderOrAdmin(req, res, next) {
-  if (!['admin', 'leader'].includes(req.session?.userRole))
-    return res.status(403).json({ error: '권한 없음' });
+  if (!req.session?.user) return res.status(401).json({ message: '로그인이 필요합니다.' });
   next();
 }
 
-// GET /api/notices - 공지 목록 (전체 + 내 분반 공지)
-router.get('/', requireLogin, async (req, res) => {
-  const userId = req.session.userId;
-  try {
-    // 내가 속한 분반 id 목록
-    const [enrollments] = await pool.query(
-      'SELECT class_id FROM enrollments WHERE user_id = ?', [userId]
-    );
-    const classIds = enrollments.map(e => e.class_id);
+function parseImages(rows) {
+  return rows.map(row => {
+    let images = [];
+    if (row.image_urls || row.images) {
+      const raw = row.image_urls || row.images;
+      try {
+        const p = JSON.parse(raw);
+        images = Array.isArray(p) ? p : [raw];
+      } catch { images = [raw]; }
+    }
+    return { ...row, images };
+  });
+}
 
-    const [notices] = await pool.query(`
-      SELECT n.id, n.title, n.content, n.writer, n.class_id,
-             n.image_urls, n.created_at,
-             u.name AS writer_name,
-             s.name AS subject_name, c.class_code
-      FROM notices n
-      JOIN users u ON n.writer = u.id
-      LEFT JOIN classes  c ON n.class_id  = c.id
-      LEFT JOIN subjects s ON c.subject_id = s.id
+const BASE_SELECT = `
+  SELECT n.*,
+    s.name AS subject_name,
+    c.class_code, c.teacher,
+    IFNULL(CONCAT(s.name,' ',c.class_code),'전체공지') AS class_label
+  FROM notices n
+  LEFT JOIN classes  c ON n.class_id  = c.id
+  LEFT JOIN subjects s ON c.subject_id = s.id
+`;
+
+// ================================================================
+// GET /api/notices
+// 학생: 내 분반 공지 + 전체공지
+// 반장(?mine=true): 내가 작성한 공지
+// 관리자: 전체
+// ================================================================
+router.get('/', requireLogin, (req, res) => {
+  const user = req.session.user;
+  let sql, params;
+
+  if (user.role === 'admin') {
+    sql    = BASE_SELECT + ' ORDER BY n.created_at DESC';
+    params = [];
+
+  } else if (user.role === 'leader' && req.query.mine === 'true') {
+    sql    = BASE_SELECT + ' WHERE n.writer = ? ORDER BY n.created_at DESC';
+    params = [user.id];
+
+  } else {
+    // 학생 — 전체공지(class_id IS NULL) + 내 분반 공지
+    sql = BASE_SELECT + `
       WHERE n.class_id IS NULL
-         OR n.class_id IN (${classIds.length ? classIds.map(() => '?').join(',') : 'NULL'})
-      ORDER BY n.created_at DESC
-    `, classIds);
-
-    res.json(notices.map(n => ({
-      ...n,
-      imageUrls: n.image_urls ? JSON.parse(n.image_urls) : [],
-    })));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+         OR n.class_id IN (
+           SELECT class_id FROM enrollments WHERE user_id = ?
+         )
+      ORDER BY n.created_at DESC`;
+    params = [user.id];
   }
+
+  db.query(sql, params, (err, rows) => {
+    if (err) {
+      console.error('[notices] GET 오류:', err.message);
+      return res.status(500).json({ message: '서버 오류' });
+    }
+    res.json({ notices: parseImages(rows) });
+  });
 });
 
-// GET /api/notices/:id - 공지 상세
-router.get('/:id', requireLogin, async (req, res) => {
-  try {
-    const [rows] = await pool.query(`
-      SELECT n.*, u.name AS writer_name,
-             s.name AS subject_name, c.class_code
-      FROM notices n
-      JOIN users u ON n.writer = u.id
-      LEFT JOIN classes  c ON n.class_id  = c.id
-      LEFT JOIN subjects s ON c.subject_id = s.id
-      WHERE n.id = ?
-    `, [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ error: '없음' });
-    const n = rows[0];
-    res.json({ ...n, imageUrls: n.image_urls ? JSON.parse(n.image_urls) : [] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// ================================================================
+// GET /api/notices/:id
+// ================================================================
+router.get('/:id', requireLogin, (req, res) => {
+  db.query(
+    BASE_SELECT + ' WHERE n.id = ?',
+    [req.params.id],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: '서버 오류' });
+      if (!rows.length) return res.status(404).json({ message: '공지를 찾을 수 없습니다.' });
+      res.json({ notice: parseImages(rows)[0] });
+    }
+  );
 });
 
-// POST /api/notices - 공지 작성 (리더/어드민)
-router.post('/', requireLogin, requireLeaderOrAdmin, async (req, res) => {
-  const writer = req.session.userId;
-  const { title, content, classId, imageUrls } = req.body;
-  if (!title || !content) return res.status(400).json({ error: 'title, content 필요' });
+// ================================================================
+// POST /api/notices
+// ================================================================
+router.post('/', requireLogin, (req, res) => {
+  const user = req.session.user;
+  if (user.role === 'student') return res.status(403).json({ message: '권한 없음' });
 
-  try {
-    const [result] = await pool.query(
-      `INSERT INTO notices (title, content, writer, class_id, image_urls)
-       VALUES (?,?,?,?,?)`,
-      [title, content, writer, classId || null,
-       imageUrls ? JSON.stringify(imageUrls) : null]
+  const { title, content, class_id, images } = req.body;
+  if (!title || !content) return res.status(400).json({ message: '제목과 내용은 필수입니다.' });
+
+  const imagesJson = images?.length ? JSON.stringify(images) : null;
+
+  db.query(
+    'INSERT INTO notices (title, content, writer, class_id, image_urls) VALUES (?, ?, ?, ?, ?)',
+    [title, content, user.id, class_id || null, imagesJson],
+    (err) => {
+      if (err) {
+        console.error('[notices] POST 오류:', err.message);
+        return res.status(500).json({ message: '서버 오류' });
+      }
+      res.json({ message: '공지가 등록되었습니다.' });
+    }
+  );
+});
+
+// ================================================================
+// PUT /api/notices/:id
+// ================================================================
+router.put('/:id', requireLogin, (req, res) => {
+  const user = req.session.user;
+  const { title, content, class_id, images } = req.body;
+  const imagesJson = images?.length ? JSON.stringify(images) : null;
+
+  db.query('SELECT writer FROM notices WHERE id = ?', [req.params.id], (err, rows) => {
+    if (err) return res.status(500).json({ message: '서버 오류' });
+    if (!rows.length) return res.status(404).json({ message: '공지를 찾을 수 없습니다.' });
+    if (user.role !== 'admin' && rows[0].writer !== user.id) {
+      return res.status(403).json({ message: '수정 권한이 없습니다.' });
+    }
+
+    db.query(
+      'UPDATE notices SET title=?, content=?, class_id=?, image_urls=? WHERE id=?',
+      [title, content, class_id || null, imagesJson, req.params.id],
+      (err2) => {
+        if (err2) return res.status(500).json({ message: '서버 오류' });
+        res.json({ message: '수정되었습니다.' });
+      }
     );
-    res.json({ id: result.insertId, message: '공지 등록 완료' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  });
 });
 
-// DELETE /api/notices/:id - 공지 삭제 (본인 or 어드민)
-router.delete('/:id', requireLogin, async (req, res) => {
-  const userId = req.session.userId;
-  const role   = req.session.userRole;
-  try {
-    const [rows] = await pool.query('SELECT writer FROM notices WHERE id=?', [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ error: '없음' });
-    if (rows[0].writer !== userId && role !== 'admin')
-      return res.status(403).json({ error: '권한 없음' });
+// ================================================================
+// DELETE /api/notices/:id
+// ================================================================
+router.delete('/:id', requireLogin, (req, res) => {
+  const user = req.session.user;
 
-    await pool.query('DELETE FROM notices WHERE id=?', [req.params.id]);
-    res.json({ message: '삭제 완료' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  db.query('SELECT writer FROM notices WHERE id = ?', [req.params.id], (err, rows) => {
+    if (err) return res.status(500).json({ message: '서버 오류' });
+    if (!rows.length) return res.status(404).json({ message: '공지를 찾을 수 없습니다.' });
+    if (user.role !== 'admin' && rows[0].writer !== user.id) {
+      return res.status(403).json({ message: '삭제 권한이 없습니다.' });
+    }
+
+    db.query('DELETE FROM notices WHERE id = ?', [req.params.id], (err2) => {
+      if (err2) return res.status(500).json({ message: '서버 오류' });
+      res.json({ message: '삭제되었습니다.' });
+    });
+  });
 });
 
 module.exports = router;

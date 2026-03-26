@@ -483,13 +483,13 @@ function renderUserTable() {
   const roleLabel = { admin: '관리자', leader: '반장', student: '학생' };
   body.innerHTML = allUsers.map(u => `
     <tr>
-      <td><code style="font-size:0.82rem;color:var(--accent)">${escHtml(u.username)}</code></td>
+      <td><code style="font-size:0.82rem;color:var(--accent)">${escHtml(u.id)}</code></td>
       <td>${escHtml(u.name || '-')}</td>
       <td><span class="badge ${roleBadge[u.role]||'badge-gray'}">${roleLabel[u.role]||u.role}</span></td>
-      <td style="color:var(--text3)">${fmtDate(u.created_at)}</td>
+      <td style="color:var(--text3)">-</td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="resetPw(${u.id}, '${escHtml(u.username)}')">비번 초기화</button>
-        ${u.id !== currentUser.id ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteUser(${u.id})">삭제</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="resetPw('${escHtml(u.id)}', '${escHtml(u.id)}')">비번 초기화</button>
+        ${u.id !== currentUser.id ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteUser('${escHtml(u.id)}')">삭제</button>` : ''}
       </td>
     </tr>
   `).join('');
@@ -522,7 +522,7 @@ async function resetPw(id, username) {
   const pw = prompt(`[${username}] 새 비밀번호 입력:`);
   if (!pw) return;
   try {
-    await fetch(`/api/admin/users/${id}/password`, {
+    await fetch(`/api/admin/users/${encodeURIComponent(id)}/password`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -534,7 +534,7 @@ async function resetPw(id, username) {
 
 async function deleteUser(id) {
   if (!confirm('이 계정을 삭제하시겠습니까?')) return;
-  await fetch(`/api/admin/users/${id}`, { method: 'DELETE', credentials: 'include' });
+  await fetch(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
   showToast('삭제되었습니다.', 'success');
   allUsers = [];
   await loadUsers();

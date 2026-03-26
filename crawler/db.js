@@ -1,4 +1,6 @@
-require('dotenv').config({ path: '../.env' }); // 루트 .env 참조
+// crawler/db.js
+// Railway는 .env 파일 없이 Variables로 직접 주입 → path 옵션 제거
+require('dotenv').config();
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
