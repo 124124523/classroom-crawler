@@ -19,7 +19,7 @@ app.use(session({
   cookie:            { maxAge: 1000 * 60 * 60 * 24 }, // 24시간
 }));
 
-// ── API 라우트 (/api/* 접두사) ──────────────────────────
+// ── API 라우트 ──────────────────────────────────────────
 app.use('/api/login',       require('./routes/login'));
 app.use('/api/notices',     require('./routes/notices'));
 app.use('/api/comments',    require('./routes/comments'));
@@ -43,29 +43,50 @@ app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// ── sync cron ─────────────────────────────────────────
-let syncCoursework;
+// ── 크롤러 + sync 파이프라인 ───────────────────────────
+// 흐름: Google Classroom API → coursework 테이블 → assignments 테이블
+let crawlAll       = null;
+let syncCoursework = null;
+
 try {
+  crawlAll       = require('../crawler/auth').crawlAll;
   syncCoursework = require('./sync').syncCourseworkToAssignments;
-} catch {
-  syncCoursework = null;
+} catch (e) {
+  console.warn('[pipeline] 크롤러/sync 로드 실패:', e.message);
 }
 
-async function runSync() {
-  if (!syncCoursework) return;
-  console.log(`[sync] 시작: ${new Date().toLocaleString('ko-KR')}`);
-  try {
-    const r = await syncCoursework();
-    console.log(`[sync] 완료: 추가 ${r.inserted}개, 스킵 ${r.skipped}개, 실패 ${r.failed}개`);
-  } catch (e) {
-    console.error(`[sync] 오류: ${e.message}`);
+async function runPipeline() {
+  const ts = new Date().toLocaleString('ko-KR');
+  console.log(`\n[pipeline] ===== 시작: ${ts} =====`);
+
+  // Step 1: Google Classroom → coursework 테이블
+  if (crawlAll) {
+    try {
+      const cr = await crawlAll();
+      console.log(`[pipeline] 크롤링 완료: upsert ${cr.upserted}개`);
+    } catch (e) {
+      console.error('[pipeline] 크롤링 오류:', e.message);
+    }
   }
+
+  // Step 2: coursework → assignments 테이블
+  if (syncCoursework) {
+    try {
+      const sr = await syncCoursework();
+      console.log(`[pipeline] sync 완료: 추가 ${sr.inserted}개, 스킵 ${sr.skipped}개, 실패 ${sr.failed}개`);
+    } catch (e) {
+      console.error('[pipeline] sync 오류:', e.message);
+    }
+  }
+
+  console.log(`[pipeline] ===== 완료 =====\n`);
 }
 
-cron.schedule('0 */3 * * *', runSync, { timezone: 'Asia/Seoul' });
-console.log('[scheduler] 3시간 주기 sync 등록 완료');
+// 3시간마다 실행 (한국 시간)
+cron.schedule('0 */3 * * *', runPipeline, { timezone: 'Asia/Seoul' });
+console.log('[scheduler] 3시간 주기 파이프라인 등록 완료');
 
-// ── SPA 폴백 (Express 5) ──────────────────────────────
+// ── SPA 폴백 ──────────────────────────────────────────
 app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/login.html'));
 });
@@ -74,5 +95,6 @@ app.get('/{*path}', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ 서버 실행 중: PORT=${PORT}`);
-  runSync();
+  // 서버 시작 시 1회 파이프라인 실행
+  runPipeline();
 });

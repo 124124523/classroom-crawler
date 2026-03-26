@@ -18,56 +18,64 @@ const CLASS_SELECT = `
 `;
 
 // GET /api/subjects
-router.get('/', requireLogin, (req, res) => {
+router.get('/', requireLogin, async (req, res) => {
   const user = req.session.user;
 
-  if (user.role === 'student') {
-    db.query(
-      CLASS_SELECT + ' JOIN enrollments e ON e.class_id = cl.id WHERE e.user_id = ? ORDER BY s.id, cl.class_code',
-      [user.id],
-      (err, rows) => {
-        if (err) return res.status(500).json({ message: '서버 오류' });
-        res.json({ subjects: rows });
-      }
-    );
-  } else {
-    db.query(CLASS_SELECT + ' ORDER BY s.id, cl.class_code', (err, rows) => {
-      if (err) return res.status(500).json({ message: '서버 오류' });
-      res.json({ subjects: rows });
-    });
+  try {
+    let rows;
+    if (user.role === 'student') {
+      [rows] = await db.query(
+        CLASS_SELECT + ' JOIN enrollments e ON e.class_id = cl.id WHERE e.user_id = ? ORDER BY s.id, cl.class_code',
+        [user.id]
+      );
+    } else {
+      [rows] = await db.query(CLASS_SELECT + ' ORDER BY s.id, cl.class_code');
+    }
+    res.json({ subjects: rows });
+  } catch (err) {
+    console.error('[subjects] GET 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
   }
 });
 
 // GET /api/subjects/my-classes — 반장 담당 분반
-router.get('/my-classes', requireLogin, (req, res) => {
-  db.query(
-    CLASS_SELECT + ' JOIN enrollments e ON e.class_id = cl.id WHERE e.user_id = ? ORDER BY s.id, cl.class_code',
-    [req.session.user.id],
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: '서버 오류' });
-      res.json({ classes: rows });
-    }
-  );
+router.get('/my-classes', requireLogin, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      CLASS_SELECT + ' JOIN enrollments e ON e.class_id = cl.id WHERE e.user_id = ? ORDER BY s.id, cl.class_code',
+      [req.session.user.id]
+    );
+    res.json({ classes: rows });
+  } catch (err) {
+    console.error('[subjects] GET /my-classes 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
 });
 
-// GET /api/subjects/all — 관리자용 전체
-router.get('/all', requireLogin, (req, res) => {
-  db.query('SELECT * FROM subjects ORDER BY id ASC', (err, rows) => {
-    if (err) return res.status(500).json({ message: '서버 오류' });
+// GET /api/subjects/all — 관리자용 전체 과목
+router.get('/all', requireLogin, async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM subjects ORDER BY id ASC');
     res.json(rows);
-  });
+  } catch (err) {
+    console.error('[subjects] GET /all 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
 });
 
 // GET /api/subjects/classes/all — 관리자용 전체 분반
-router.get('/classes/all', requireLogin, (req, res) => {
-  db.query(CLASS_SELECT + ' ORDER BY s.id, cl.class_code', (err, rows) => {
-    if (err) return res.status(500).json({ message: '서버 오류' });
+router.get('/classes/all', requireLogin, async (req, res) => {
+  try {
+    const [rows] = await db.query(CLASS_SELECT + ' ORDER BY s.id, cl.class_code');
     res.json(rows);
-  });
+  } catch (err) {
+    console.error('[subjects] GET /classes/all 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
 });
 
 // POST /api/subjects — 과목/분반 추가 (관리자)
-router.post('/', requireLogin, (req, res) => {
+router.post('/', requireLogin, async (req, res) => {
   if (req.session.user.role !== 'admin') {
     return res.status(403).json({ message: '관리자 권한이 필요합니다.' });
   }
@@ -75,61 +83,55 @@ router.post('/', requireLogin, (req, res) => {
   const { name, teacher_name, class_name, leader_username } = req.body;
   if (!name) return res.status(400).json({ message: '과목명은 필수입니다.' });
 
-  // subjects 테이블에 과목 추가 (중복이면 기존 id 사용)
-  db.query(
-    'SELECT id FROM subjects WHERE name = ?',
-    [name],
-    (err, existing) => {
-      if (err) return res.status(500).json({ message: '서버 오류' });
+  try {
+    // 과목 중복 확인
+    const [existing] = await db.query('SELECT id FROM subjects WHERE name = ?', [name]);
 
-      const insertClass = (subjId) => {
-        if (!class_name) return res.json({ message: '과목이 추가되었습니다.' });
-
-        db.query(
-          'INSERT INTO classes (subject_id, class_code, teacher) VALUES (?, ?, ?)',
-          [subjId, class_name, teacher_name || null],
-          (err2, result) => {
-            if (err2) return res.status(500).json({ message: '서버 오류' });
-
-            // 반장 계정이 있으면 enrollments에도 추가
-            if (leader_username) {
-              db.query(
-                'INSERT IGNORE INTO enrollments (user_id, class_id) VALUES (?, ?)',
-                [leader_username, result.insertId],
-                () => {} // 실패해도 무시
-              );
-            }
-            res.json({ message: '과목/분반이 추가되었습니다.' });
-          }
-        );
-      };
-
-      if (existing.length > 0) {
-        insertClass(existing[0].id);
-      } else {
-        db.query(
-          'INSERT INTO subjects (name) VALUES (?)',
-          [name],
-          (err2, result) => {
-            if (err2) return res.status(500).json({ message: '서버 오류' });
-            insertClass(result.insertId);
-          }
-        );
-      }
+    let subjId;
+    if (existing.length > 0) {
+      subjId = existing[0].id;
+    } else {
+      const [result] = await db.query('INSERT INTO subjects (name) VALUES (?)', [name]);
+      subjId = result.insertId;
     }
-  );
+
+    if (!class_name) {
+      return res.json({ message: '과목이 추가되었습니다.' });
+    }
+
+    const [clsResult] = await db.query(
+      'INSERT INTO classes (subject_id, class_code, teacher) VALUES (?, ?, ?)',
+      [subjId, class_name, teacher_name || null]
+    );
+
+    // 반장 계정이 있으면 enrollments에도 추가
+    if (leader_username) {
+      await db.query(
+        'INSERT IGNORE INTO enrollments (user_id, class_id) VALUES (?, ?)',
+        [leader_username, clsResult.insertId]
+      ).catch(() => {}); // 실패해도 무시
+    }
+
+    res.json({ message: '과목/분반이 추가되었습니다.' });
+  } catch (err) {
+    console.error('[subjects] POST 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
 });
 
 // DELETE /api/subjects/:id — 분반 삭제 (관리자)
-router.delete('/:id', requireLogin, (req, res) => {
+router.delete('/:id', requireLogin, async (req, res) => {
   if (req.session.user.role !== 'admin') {
     return res.status(403).json({ message: '관리자 권한이 필요합니다.' });
   }
 
-  db.query('DELETE FROM classes WHERE id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json({ message: '서버 오류' });
+  try {
+    await db.query('DELETE FROM classes WHERE id = ?', [req.params.id]);
     res.json({ message: '삭제되었습니다.' });
-  });
+  } catch (err) {
+    console.error('[subjects] DELETE 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
 });
 
 module.exports = router;

@@ -1,3 +1,5 @@
+// backend/sync.js
+// coursework 테이블 → assignments 테이블 동기화
 const pool = require('./db');
 
 // 과목명 유사도 체크
@@ -22,7 +24,7 @@ function extractClassCode(courseName) {
   return null;
 }
 
-// 선생님 이름 매칭 (풀네임 / 성 줄임)
+// 선생님 이름 매칭
 function teacherMatch(courseName, teacherStr) {
   if (!teacherStr) return false;
   const c = courseName.replace(/\s/g, '');
@@ -92,14 +94,16 @@ async function syncCourseworkToAssignments() {
   console.log('[sync] coursework → assignments 동기화 시작');
 
   const [courseworks] = await pool.query(`
-    SELECT coursework_id, course_name, title, due_date
-    FROM coursework WHERE due_date IS NOT NULL
+    SELECT coursework_id, course_name, title, description, due_date, link
+    FROM coursework
+    WHERE due_date IS NOT NULL AND state = 'PUBLISHED'
   `);
 
   let inserted = 0, skipped = 0, failed = 0;
 
   for (const cw of courseworks) {
     try {
+      // 이미 sync된 항목 스킵
       const [existing] = await pool.query(
         'SELECT id FROM assignments WHERE gclassroom_id = ?', [cw.coursework_id]
       );
@@ -108,10 +112,16 @@ async function syncCourseworkToAssignments() {
       const classId = await findClassId(cw.course_name);
       if (!classId) { failed++; continue; }
 
+      // content에 설명 + 링크 포함
+      const content = [
+        cw.description || '',
+        cw.link ? `\n\n🔗 Google Classroom: ${cw.link}` : '',
+      ].join('').trim();
+
       await pool.query(
         `INSERT INTO assignments (title, content, writer, class_id, deadline, gclassroom_id)
-         VALUES (?, '', 'classroom_bot', ?, ?, ?)`,
-        [cw.title, classId, cw.due_date, cw.coursework_id]
+         VALUES (?, ?, 'classroom_bot', ?, ?, ?)`,
+        [cw.title, content, classId, cw.due_date, cw.coursework_id]
       );
       inserted++;
     } catch (err) {
