@@ -2,22 +2,20 @@ const { google } = require('googleapis');
 const { getClientForUser } = require('./auth');
 const pool = require('./db');
 
-// 필터 ①②: 마감일이 있고, 2개월 전 이후(미래 포함)인지 확인
-function isTargetWork(dueDate) {
-  if (!dueDate) return false; // 마감일 없으면 제외
-
-  const { year, month, day } = dueDate;
-  const due = new Date(year, month - 1, day);
-
-  const now = new Date();
-  const twoMonthsAgo = new Date(now);
-  twoMonthsAgo.setMonth(now.getMonth() - 2);
-
-  return due >= twoMonthsAgo; // 2개월 전 이후면 포함 (미래도 포함)
+// 기준일 계산: 오늘로부터 2개월 전
+function getTwoMonthsAgo() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 2);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-// 필터 ③: 학생 제출 상태가 미완료인지 확인
-// 제출 상태: NEW(미시작), CREATED(임시저장), TURNED_IN(제출완료), RETURNED(반환됨), RECLAIMED_BY_STUDENT(회수)
+// dueDate 객체 → Date 변환
+function toDate({ year, month, day }) {
+  return new Date(year, month - 1, day);
+}
+
+// 제출 상태가 미완료인지 확인
 async function isIncomplete(classroom, courseId, workId) {
   try {
     const { data: { studentSubmissions = [] } } = await classroom.courses.courseWork.studentSubmissions.list({
@@ -26,13 +24,12 @@ async function isIncomplete(classroom, courseId, workId) {
       userId: 'me',
     });
 
-    if (studentSubmissions.length === 0) return true; // 제출 정보 없으면 미완료로 간주
+    if (studentSubmissions.length === 0) return true;
 
     const state = studentSubmissions[0].state;
-    // TURNED_IN(제출완료), RETURNED(반환/채점완료)은 완료로 간주 → 제외
     return state !== 'TURNED_IN' && state !== 'RETURNED';
   } catch {
-    return true; // 오류 시 미완료로 간주하여 포함
+    return true; // 오류 시 미완료로 간주
   }
 }
 
@@ -42,6 +39,7 @@ async function crawlUser(userId) {
 
   const { data: { courses = [] } } = await classroom.courses.list();
 
+  const twoMonthsAgo = getTwoMonthsAgo();
   let savedCount = 0;
   let skippedCount = 0;
   let filteredCount = 0;
@@ -51,14 +49,21 @@ async function crawlUser(userId) {
       courseId: course.id,
     }).catch(() => ({ data: { courseWork: [] } }));
 
-    for (const work of courseWork) {
-      // 필터 ①②: 마감일 없거나 2개월 이전 과제 제외
-      if (!isTargetWork(work.dueDate)) {
-        filteredCount++;
-        continue;
+    // ✅ 마감일 없는 과제 제거 후 JS에서 최신순 정렬
+    const sorted = courseWork
+      .filter(w => w.dueDate)
+      .sort((a, b) => toDate(b.dueDate) - toDate(a.dueDate));
+
+    for (const work of sorted) {
+      const due = toDate(work.dueDate);
+
+      // ✅ 2개월 이전 과제 도달 시 즉시 중단 (이후는 전부 더 오래됨이 보장됨)
+      if (due < twoMonthsAgo) {
+        console.log(`  [${userId}] "${course.name}" → ${due.toLocaleDateString()} 이하 과제 도달, 중단`);
+        break;
       }
 
-      // 필터 ③: 이미 제출 완료된 과제 제외
+      // 제출 완료된 과제 제외 (여기서부터만 API 추가 호출)
       const incomplete = await isIncomplete(classroom, course.id, work.id);
       if (!incomplete) {
         filteredCount++;
