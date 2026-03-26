@@ -601,13 +601,31 @@ async function triggerSync() {
   log.textContent = '동기화 시작...\n';
   try {
     const res = await fetch('/api/classroom/sync', { method: 'POST', credentials: 'include' });
-    const data = await res.json();
+
+    // 응답이 JSON이 아닐 경우 (503 등) 대비
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // JSON 파싱 실패 = 서버 오류 (503 Service Unavailable 등)
+      log.textContent += '서버 오류 (HTTP ' + res.status + ')\n' + text.slice(0, 200);
+      showToast('서버가 응답하지 않습니다. 잠시 후 다시 시도하세요.', 'error');
+      return;
+    }
+
+    if (!res.ok) {
+      log.textContent += '오류: ' + (data.message || '알 수 없는 오류');
+      showToast('동기화 실패', 'error');
+      return;
+    }
+
     log.textContent += data.message || JSON.stringify(data, null, 2);
     document.getElementById('lastSync').textContent = new Date().toLocaleString('ko-KR');
     showToast('동기화 완료', 'success');
   } catch(e) {
-    log.textContent += '오류: ' + e.message;
-    showToast('동기화 실패', 'error');
+    log.textContent += '네트워크 오류: ' + e.message;
+    showToast('서버에 연결할 수 없습니다.', 'error');
   }
 }
 
