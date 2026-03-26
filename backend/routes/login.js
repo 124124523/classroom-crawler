@@ -1,43 +1,62 @@
+// backend/routes/login.js
 const express = require('express');
-const router = express.Router();
-const pool = require('../db');
+const router  = express.Router();
+const db      = require('../db');
 
 // POST /api/login
 router.post('/', async (req, res) => {
   const { id, password } = req.body;
-  if (!id || !password) return res.status(400).json({ error: 'id, password 필요' });
+
+  if (!id || !password) {
+    return res.status(400).json({ success: false, message: '아이디와 비밀번호를 입력하세요.' });
+  }
 
   try {
-    const [rows] = await pool.query(
+    // DB의 users.id = 아이디, password = 평문 1234
+    const [rows] = await db.query(
       'SELECT id, name, role FROM users WHERE id = ? AND password = ?',
       [id, password]
     );
-    if (rows.length === 0) return res.status(401).json({ error: '아이디 또는 비밀번호 오류' });
 
-    req.session.userId   = rows[0].id;
-    req.session.userName = rows[0].name;
-    req.session.userRole = rows[0].role;
+    if (rows.length === 0) {
+      return res.status(401).json({ success: false, message: '아이디 또는 비밀번호가 틀렸습니다.' });
+    }
 
-    res.json({ id: rows[0].id, name: rows[0].name, role: rows[0].role });
+    const user = rows[0];
+
+    // 세션에 저장 (student.html의 /api/me 에서 사용)
+    req.session.user = {
+      id:   user.id,
+      name: user.name,
+      role: user.role,
+    };
+
+    return res.json({
+      success: true,
+      id:   user.id,
+      name: user.name,
+      role: user.role,
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[login] DB 오류:', err.message);
+    return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
   }
 });
 
 // POST /api/logout
 router.post('/logout', (req, res) => {
-  req.session.destroy();
-  res.json({ message: '로그아웃 완료' });
+  req.session.destroy(() => {
+    res.json({ success: true });
+  });
 });
 
-// GET /api/me
+// GET /api/me — 현재 로그인 유저 확인
 router.get('/me', (req, res) => {
-  if (!req.session?.userId) return res.status(401).json({ error: '로그인 필요' });
-  res.json({
-    id:   req.session.userId,
-    name: req.session.userName,
-    role: req.session.userRole,
-  });
+  if (!req.session?.user) {
+    return res.status(401).json({ message: '로그인이 필요합니다.' });
+  }
+  res.json(req.session.user);
 });
 
 module.exports = router;

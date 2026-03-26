@@ -17,7 +17,7 @@ const subjectsRouter    = require('./routes/subjects');
 const mealsRouter       = require('./routes/meals');
 const uploadRouter      = require('./routes/upload');
 const classroomRouter   = require('./routes/classroom');
-const adminRouter       = require('./routes/admin');   // ← 추가
+const adminRouter       = require('./routes/admin');
 
 const app = express();
 
@@ -31,7 +31,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'schoolboard-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 24 }, // 24시간
+  cookie: { maxAge: 1000 * 60 * 60 * 24 },
 }));
 
 // =====================================================
@@ -46,7 +46,26 @@ app.use('/api/subjects',    subjectsRouter);
 app.use('/api/meals',       mealsRouter);
 app.use('/api/upload',      uploadRouter);
 app.use('/api/classroom',   classroomRouter);
-app.use('/api/admin',       adminRouter);             // ← 추가
+app.use('/api/admin',       adminRouter);
+
+// =====================================================
+// 로그인 세션 확인 / 로그아웃
+// =====================================================
+
+// GET /api/me — 현재 로그인 유저 정보
+app.get('/api/me', (req, res) => {
+  if (!req.session?.user) {
+    return res.status(401).json({ message: '로그인이 필요합니다.' });
+  }
+  res.json(req.session.user);
+});
+
+// POST /api/logout — 세션 삭제
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.json({ success: true });
+  });
+});
 
 // =====================================================
 // sync를 cron으로 3시간마다 실행
@@ -65,7 +84,7 @@ cron.schedule('0 */3 * * *', runSync, { timezone: 'Asia/Seoul' });
 console.log('[scheduler] 3시간 주기 sync 스케줄러 등록 완료');
 
 // =====================================================
-// SPA 폴백: 정의되지 않은 경로는 login.html로
+// SPA 폴백 — Express 5는 /{*path} 사용
 // =====================================================
 app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/login.html'));
@@ -77,5 +96,5 @@ app.get('/{*path}', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ 서버 실행 중: PORT=${PORT}`);
-  runSync(); // 서버 시작 시 즉시 1회 sync
+  runSync();
 });
