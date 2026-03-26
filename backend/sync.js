@@ -191,6 +191,15 @@ async function findClassId(courseName) {
     );
   } else if (bestMatch) {
     console.log(`  [sync] ✅ "${courseName}" → ${bestMatch.subject_name} ${bestMatch.class_code}반 (${topCandidates[0].reasons.join(', ')})`);
+  } else if (matchedSubject) {
+    // ── 폴백: 과목명만 1점이지만 해당 과목 분반이 DB에 1개뿐이면 자동 매칭 ──
+    const subjClasses = classes.filter(c => c.subject_name === matchedSubject);
+    if (subjClasses.length === 1) {
+      const only = subjClasses[0];
+      console.log(`  [sync] ✅ "${courseName}" → ${only.subject_name} ${only.class_code}반 (단일분반 폴백)`);
+      return only.id;
+    }
+    console.warn(`  [sync] ❌ "${courseName}" → 매칭 실패 (과목:${matchedSubject||'?'} 선생님:${matchedTeacher||'?'} 분반:${matchedClass||'?'})`);
   } else {
     console.warn(`  [sync] ❌ "${courseName}" → 매칭 실패 (과목:${matchedSubject||'?'} 선생님:${matchedTeacher||'?'} 분반:${matchedClass||'?'})`);
   }
