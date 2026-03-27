@@ -185,6 +185,13 @@
         </svg>
         분반 커버리지
       </div>
+      <div class="nav-item" onclick="showSection('notices')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        전체 공지
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -438,6 +445,53 @@
         </div>
       </div>
 
+      <!-- NOTICES -->
+      <div class="section-page" id="page-notices">
+
+        <!-- 작성 폼 -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="dot" style="background:var(--blue)"></div>
+              전체 공지 작성
+            </div>
+            <span class="badge badge-blue">class_id = NULL · 전체 학생 수신</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">제목 *</label>
+            <input class="form-input" type="text" id="noticeTitle" placeholder="공지 제목을 입력하세요" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">내용 *</label>
+            <textarea class="form-input form-textarea" id="noticeContent" style="min-height:120px" placeholder="공지 내용을 입력하세요"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+            <button class="btn btn-ghost" onclick="clearNoticeForm()">초기화</button>
+            <button class="btn btn-primary" id="noticeSaveBtn" onclick="saveNotice()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+              </svg>
+              공지 등록
+            </button>
+          </div>
+        </div>
+
+        <!-- 공지 목록 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="dot" style="background:var(--blue)"></div>
+              등록된 전체 공지
+            </div>
+            <span class="badge badge-gray" id="noticeCountBadge">0건</span>
+          </div>
+          <div id="noticeAdminList">
+            <div style="text-align:center;padding:32px;color:var(--muted)"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -681,13 +735,14 @@ function showSection(name) {
   document.getElementById(`page-${name}`).classList.add('active');
   if (event && event.currentTarget) event.currentTarget.classList.add('active');
 
-  const titles = { dashboard:'전체 현황', users:'계정 관리', subjects:'과목/분반 관리', sync:'크롤러 동기화', coverage:'분반 커버리지' };
+  const titles = { dashboard:'전체 현황', users:'계정 관리', subjects:'과목/분반 관리', sync:'크롤러 동기화', coverage:'분반 커버리지', notices:'전체 공지' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
   if (name === 'users')    loadUsers();
   if (name === 'subjects') loadSubjects();
   if (name === 'sync')     checkAuthStatus();
   if (name === 'coverage') loadCoverage();
+  if (name === 'notices')  loadAdminNotices();
 }
 
 // ── Utils ──
@@ -792,6 +847,120 @@ async function loadCoverage() {
   } catch(e) {
     summary.innerHTML = '<span style="color:var(--red)">오류: ' + e.message + '</span>';
   }
+}
+
+// ── Notices (전체 공지) ──
+let adminNotices = [];
+let editingNoticeId = null;
+
+async function loadAdminNotices() {
+  const list = document.getElementById('noticeAdminList');
+  list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted)"><span class="spinner"></span></div>';
+  try {
+    const res = await fetch('/api/notices', { credentials: 'include' });
+    const data = await res.json();
+    // 전체공지(class_id=null)만 필터
+    adminNotices = (data.notices || []).filter(n => n.class_id === null || n.class_id === undefined);
+    renderAdminNotices();
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--red);padding:20px">로드 실패: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+function renderAdminNotices() {
+  const list = document.getElementById('noticeAdminList');
+  document.getElementById('noticeCountBadge').textContent = adminNotices.length + '건';
+
+  if (!adminNotices.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:24px;text-align:center">등록된 전체 공지가 없습니다.</div>';
+    return;
+  }
+
+  list.innerHTML = adminNotices.map(n => `
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:4px">${escHtml(n.title)}</div>
+        <div style="font-size:0.8rem;color:var(--text3);white-space:pre-wrap;line-height:1.7;max-height:60px;overflow:hidden;text-overflow:ellipsis">${escHtml(n.content || '')}</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px">${fmtDate(n.created_at)} · 작성자: ${escHtml(n.writer || '-')}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="startEditNotice(${n.id})">수정</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAdminNotice(${n.id})">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function startEditNotice(id) {
+  const n = adminNotices.find(x => x.id === id);
+  if (!n) return;
+  editingNoticeId = id;
+  document.getElementById('noticeTitle').value   = n.title;
+  document.getElementById('noticeContent').value = n.content || '';
+  document.getElementById('noticeSaveBtn').innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+    공지 수정
+  `;
+  // 폼으로 스크롤
+  document.getElementById('noticeTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('noticeTitle').focus();
+}
+
+function clearNoticeForm() {
+  editingNoticeId = null;
+  document.getElementById('noticeTitle').value   = '';
+  document.getElementById('noticeContent').value = '';
+  document.getElementById('noticeSaveBtn').innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+      <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+    </svg>
+    공지 등록
+  `;
+}
+
+async function saveNotice() {
+  const title   = document.getElementById('noticeTitle').value.trim();
+  const content = document.getElementById('noticeContent').value.trim();
+  if (!title || !content) { showToast('제목과 내용을 모두 입력하세요.', 'error'); return; }
+
+  try {
+    if (editingNoticeId) {
+      // 수정 — class_id: null 유지
+      await fetch(`/api/notices/${editingNoticeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title, content, class_id: null })
+      });
+      showToast('공지가 수정되었습니다.', 'success');
+    } else {
+      // 신규 — class_id 미포함 → 서버에서 null 처리
+      await fetch('/api/notices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title, content })
+      });
+      showToast('전체 공지가 등록되었습니다.', 'success');
+    }
+    clearNoticeForm();
+    await loadAdminNotices();
+    await loadDashboard(); // 대시보드 공지 수 갱신
+  } catch { showToast('저장 실패', 'error'); }
+}
+
+async function deleteAdminNotice(id) {
+  if (!confirm('이 공지를 삭제하시겠습니까?')) return;
+  try {
+    await fetch(`/api/notices/${id}`, { method: 'DELETE', credentials: 'include' });
+    showToast('삭제되었습니다.', 'success');
+    await loadAdminNotices();
+    await loadDashboard();
+  } catch { showToast('삭제 실패', 'error'); }
 }
 
 async function logout() {
