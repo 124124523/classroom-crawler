@@ -74,4 +74,83 @@ router.put('/users/:id/password', requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/admin/coverage — 분반 커버리지 분석
+router.get('/coverage', requireAdmin, async (req, res) => {
+  try {
+    // 전체 분반 목록
+    const [classes] = await db.query(`
+      SELECT c.id, c.class_code, s.name AS subject_name,
+             CONCAT(s.name, ' ', c.class_code) AS label
+      FROM classes c JOIN subjects s ON c.subject_id = s.id
+    `);
+
+    // 토큰 보유 계정 → 학생 정보 → 수강 분반
+    const [tokenUsers] = await db.query(`
+      SELECT t.user_id, u.name, u.id AS student_id,
+             GROUP_CONCAT(e.class_id ORDER BY e.class_id) AS class_ids
+      FROM tokens t
+      LEFT JOIN users u ON u.id = t.user_id
+      LEFT JOIN enrollments e ON e.user_id = u.id
+      WHERE u.role = 'student'
+      GROUP BY t.user_id, u.name, u.id
+    `);
+
+    const classMap = {};
+    classes.forEach(c => { classMap[c.id] = c.label; });
+
+    const covered = new Set();
+    const tokenUserData = tokenUsers.map(u => {
+      const classIds = u.class_ids ? u.class_ids.split(',').map(Number) : [];
+      classIds.forEach(c => covered.add(c));
+      return {
+        userId: u.user_id,
+        name: u.name || u.user_id,
+        classIds,
+        classNames: classIds.map(c => classMap[c] || c),
+      };
+    });
+
+    const allClassIds = classes.map(c => c.id);
+    const uncoveredIds = allClassIds.filter(c => !covered.has(c));
+    const uncoveredLabels = uncoveredIds.map(c => classMap[c]);
+
+    // 미커버 분반을 커버할 수 있는 학생 추천
+    const [allStudents] = await db.query(`
+      SELECT u.id, u.name,
+             GROUP_CONCAT(e.class_id ORDER BY e.class_id) AS class_ids
+      FROM users u
+      LEFT JOIN enrollments e ON e.user_id = u.id
+      WHERE u.role = 'student'
+      GROUP BY u.id, u.name
+    `);
+
+    const tokenUserIds = new Set(tokenUsers.map(u => u.user_id));
+    const recommendations = allStudents
+      .filter(s => !tokenUserIds.has(s.id))
+      .map(s => {
+        const classIds = s.class_ids ? s.class_ids.split(',').map(Number) : [];
+        const newCovers = classIds.filter(c => uncoveredIds.includes(c));
+        return {
+          name: s.name,
+          count: newCovers.length,
+          classNames: newCovers.map(c => classMap[c]),
+          authLink: `/api/classroom/auth?userId=${encodeURIComponent(s.id)}`,
+        };
+      })
+      .filter(s => s.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    res.json({
+      total: allClassIds.length,
+      covered: covered.size,
+      tokenUsers: tokenUserData,
+      uncovered: uncoveredLabels,
+      recommendations,
+    });
+  } catch (err) {
+    console.error('[admin/coverage] 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
 module.exports = router;
