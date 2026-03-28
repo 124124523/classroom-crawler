@@ -39,7 +39,7 @@ router.get('/', requireLogin, async (req, res) => {
   try {
     let rows;
 
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'teacher') {
       [rows] = await db.query(BASE_SELECT + ' ORDER BY n.created_at DESC');
 
     } else if (user.role === 'leader' && req.query.mine === 'true') {
@@ -111,7 +111,7 @@ router.put('/:id', requireLogin, async (req, res) => {
   try {
     const [rows] = await db.query('SELECT writer FROM notices WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: '공지를 찾을 수 없습니다.' });
-    if (user.role !== 'admin' && rows[0].writer !== user.id) {
+    if (user.role !== 'admin' && user.role !== 'teacher' && rows[0].writer !== user.id) {
       return res.status(403).json({ message: '수정 권한이 없습니다.' });
     }
 
@@ -133,7 +133,7 @@ router.delete('/:id', requireLogin, async (req, res) => {
   try {
     const [rows] = await db.query('SELECT writer FROM notices WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: '공지를 찾을 수 없습니다.' });
-    if (user.role !== 'admin' && rows[0].writer !== user.id) {
+    if (user.role !== 'admin' && user.role !== 'teacher' && rows[0].writer !== user.id) {
       return res.status(403).json({ message: '삭제 권한이 없습니다.' });
     }
 

@@ -412,6 +412,7 @@
               <select class="form-input form-select role-select" id="newRole">
                 <option value="student">학생</option>
                 <option value="leader">반장</option>
+                <option value="teacher">선생님</option>
                 <option value="admin">관리자</option>
               </select>
             </div>
@@ -663,7 +664,9 @@ let allSubjects = [];
     currentUser = await res.json();
 
     if (currentUser.role !== 'admin') {
-      location.href = currentUser.role === 'leader' ? 'leader.html' : 'student.html';
+      if (currentUser.role === 'teacher') location.href = 'teacher.html';
+      else if (currentUser.role === 'leader') location.href = 'leader.html';
+      else location.href = 'student.html';
       return;
     }
 
@@ -734,8 +737,8 @@ async function loadUsers() {
 
 function renderUserTable() {
   const body = document.getElementById('userTableBody');
-  const roleBadge = { admin: 'badge-red', leader: 'badge-blue', student: 'badge-green' };
-  const roleLabel = { admin: '관리자', leader: '반장', student: '학생' };
+  const roleBadge = { admin: 'badge-red', teacher: 'badge-yellow', leader: 'badge-blue', student: 'badge-green' };
+  const roleLabel = { admin: '관리자', teacher: '선생님', leader: '반장', student: '학생' };
   body.innerHTML = allUsers.map(u => `
     <tr>
       <td><code style="font-size:0.82rem;color:var(--accent)">${escHtml(u.id)}</code></td>
@@ -1222,11 +1225,6 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('active');
   document.getElementById('sidebarTab').classList.remove('open');
-  document.body.style.overflow = '';
-}
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebarOverlay').classList.remove('active');
   document.body.style.overflow = '';
 }
 

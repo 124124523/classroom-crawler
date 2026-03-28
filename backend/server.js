@@ -4,6 +4,7 @@ const express = require('express');
 const session = require('express-session');
 const cron    = require('node-cron');
 const path    = require('path');
+const pool    = require('./db');
 
 const app = express();
 
@@ -41,6 +42,64 @@ app.get('/api/me', (req, res) => {
 
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
+});
+
+// ── 프로필: 비밀번호 변경 ─────────────────────────────
+app.put('/api/me/password', async (req, res) => {
+  if (!req.session?.user) return res.status(401).json({ message: '로그인이 필요합니다.' });
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password) return res.status(400).json({ message: '모든 필드를 입력하세요.' });
+  try {
+    const [rows] = await pool.query('SELECT id FROM users WHERE id = ? AND password = ?', [req.session.user.id, current_password]);
+    if (!rows.length) return res.status(401).json({ message: '현재 비밀번호가 틀렸습니다.' });
+    await pool.query('UPDATE users SET password = ? WHERE id = ?', [new_password, req.session.user.id]);
+    res.json({ message: '비밀번호가 변경되었습니다.' });
+  } catch (err) {
+    console.error('[profile/password]', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
+// ── 프로필: 아이디 변경 ───────────────────────────────
+app.put('/api/me/id', async (req, res) => {
+  if (!req.session?.user) return res.status(401).json({ message: '로그인이 필요합니다.' });
+  const { new_id, password } = req.body;
+  if (!new_id || !password) return res.status(400).json({ message: '모든 필드를 입력하세요.' });
+  const userId = req.session.user.id;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [pwRows] = await conn.query('SELECT id FROM users WHERE id = ? AND password = ?', [userId, password]);
+    if (!pwRows.length) {
+      await conn.rollback(); conn.release();
+      return res.status(401).json({ message: '비밀번호가 틀렸습니다.' });
+    }
+    const [existRows] = await conn.query('SELECT id FROM users WHERE id = ?', [new_id]);
+    if (existRows.length) {
+      await conn.rollback(); conn.release();
+      return res.status(409).json({ message: '이미 사용 중인 아이디입니다.' });
+    }
+    const updates = [
+      ['UPDATE enrollments SET user_id=? WHERE user_id=?'],
+      ['UPDATE completions SET user_id=? WHERE user_id=?'],
+      ['UPDATE personal_events SET user_id=? WHERE user_id=?'],
+      ['UPDATE timetables SET user_id=? WHERE user_id=?'],
+      ['UPDATE tokens SET user_id=? WHERE user_id=?'],
+      ['UPDATE notices SET writer=? WHERE writer=?'],
+      ['UPDATE assignments SET writer=? WHERE writer=?'],
+      ['UPDATE notice_comments SET writer=? WHERE writer=?'],
+      ['UPDATE assignment_comments SET writer=? WHERE writer=?'],
+      ['UPDATE users SET id=? WHERE id=?'],
+    ];
+    for (const [sql] of updates) await conn.query(sql, [new_id, userId]);
+    await conn.commit(); conn.release();
+    req.session.user.id = new_id;
+    res.json({ message: '아이디가 변경되었습니다.', new_id });
+  } catch (err) {
+    await conn.rollback(); conn.release();
+    console.error('[profile/id]', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
 });
 
 // ── Google OAuth 콜백 alias ────────────────────────────

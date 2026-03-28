@@ -15,1003 +15,314 @@
       gap: 12px;
       margin-bottom: 20px;
     }
-
-    .board-scroll-wrap {
-      overflow-x: auto;
-      padding-bottom: 8px;
-    }
-    .assignment-board {
-      display: flex;
-      gap: 16px;
-      min-width: max-content;
-    }
-
-    .subject-col {
-      width: 220px;
-      flex-shrink: 0;
-    }
+    .board-scroll-wrap { overflow-x: auto; padding-bottom: 8px; }
+    .assignment-board { display: flex; gap: 16px; min-width: max-content; }
+    .subject-col { width: 220px; flex-shrink: 0; }
     .subject-col-header {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm) var(--radius-sm) 0 0;
       padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .subject-name {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .subject-count {
-      font-size: 0.72rem;
-      color: var(--text3);
-      background: var(--surface3);
-      padding: 2px 7px;
-      border-radius: 99px;
-    }
+    .subject-name { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+    .subject-count { font-size: 0.72rem; color: var(--text3); background: var(--surface3); padding: 2px 7px; border-radius: 99px; }
     .subject-cards {
       background: var(--bg2);
-      border: 1px solid var(--border);
-      border-top: none;
+      border: 1px solid var(--border); border-top: none;
       border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-height: 80px;
+      padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 80px;
     }
-
     .assign-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 12px;
-      cursor: pointer;
-      transition: all 0.18s;
-      position: relative;
-      overflow: hidden;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px;
+      cursor: pointer; transition: all 0.18s; position: relative; overflow: hidden;
     }
     .assign-card::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 3px;
-      background: var(--accent);
-      border-radius: 2px 0 0 2px;
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; background: var(--accent); border-radius: 2px 0 0 2px;
     }
     .assign-card.type-진로::before { background: var(--blue); }
-    .assign-card.completed {
-      opacity: 0.5;
-    }
+    .assign-card.completed { opacity: 0.5; }
     .assign-card.completed::before { background: var(--muted); }
-    .assign-card:hover {
-      border-color: var(--border2);
-      background: var(--surface2);
-      transform: translateY(-1px);
-    }
-    .assign-card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 6px;
-      margin-bottom: 6px;
-    }
-    .assign-title {
-      font-size: 0.83rem;
-      font-weight: 600;
-      color: var(--text);
-      line-height: 1.4;
-      flex: 1;
-    }
-    .assign-card.completed .assign-title {
-      text-decoration: line-through;
-      color: var(--text3);
-    }
-    /* 완료 카드의 체크 버튼 — 복구 힌트 */
-    .assign-card.completed .check-btn::after {
-      content: '✓';
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .assign-card.completed .check-btn:hover {
-      background: var(--orange) !important;
-      border-color: var(--orange) !important;
-    }
-    .assign-card.completed .check-btn:hover::after {
-      content: '↩';
-      font-size: 12px;
-    }
+    .assign-card:hover { border-color: var(--border2); background: var(--surface2); transform: translateY(-1px); }
+    .assign-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+    .assign-title { font-size: 0.83rem; font-weight: 600; color: var(--text); line-height: 1.4; flex: 1; }
+    .assign-card.completed .assign-title { text-decoration: line-through; color: var(--text3); }
+    .assign-card.completed .check-btn::after { content: '✓'; color: #fff; font-size: 11px; font-weight: 700; }
+    .assign-card.completed .check-btn:hover { background: var(--orange) !important; border-color: var(--orange) !important; }
+    .assign-card.completed .check-btn:hover::after { content: '↩'; font-size: 12px; }
     .check-btn {
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      border: 2px solid var(--border2);
-      background: transparent;
-      flex-shrink: 0;
-      transition: all 0.15s;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
+      width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border2);
+      background: transparent; flex-shrink: 0; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
-    .check-btn.checked {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-    .check-btn.checked::after {
-      content: '✓';
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .assign-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .assign-due {
-      font-size: 0.72rem;
-      color: var(--text3);
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
+    .check-btn.checked { background: var(--accent); border-color: var(--accent); }
+    .check-btn.checked::after { content: '✓'; color: #fff; font-size: 11px; font-weight: 700; }
+    .assign-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .assign-due { font-size: 0.72rem; color: var(--text3); display: flex; align-items: center; gap: 3px; }
     .assign-due.urgent { color: var(--red); font-weight: 600; }
     .assign-due.soon   { color: var(--orange); }
 
     /* ── Notice Board ── */
     .notice-list { display: flex; flex-direction: column; gap: 1px; }
     .notice-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 13px 16px;
-      background: var(--surface);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: all 0.15s;
-      border: 1px solid transparent;
+      display: flex; align-items: center; gap: 14px;
+      padding: 13px 16px; background: var(--surface);
+      border-radius: var(--radius-sm); cursor: pointer;
+      transition: all 0.15s; border: 1px solid transparent;
     }
-    .notice-item:hover {
-      background: var(--surface2);
-      border-color: var(--border);
-    }
-    .notice-type-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+    .notice-item:hover { background: var(--surface2); border-color: var(--border); }
+    .notice-type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .notice-info { flex: 1; min-width: 0; }
-    .notice-title {
-      font-size: 0.88rem;
-      font-weight: 500;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .notice-meta {
-      font-size: 0.73rem;
-      color: var(--text3);
-      margin-top: 2px;
-      display: flex;
-      gap: 8px;
-    }
+    .notice-title { font-size: 0.88rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notice-meta { font-size: 0.73rem; color: var(--text3); margin-top: 2px; display: flex; gap: 8px; }
     .notice-date { margin-left: auto; font-size: 0.75rem; color: var(--text3); flex-shrink: 0; }
-    .notice-new {
-      font-size: 0.65rem;
-      background: var(--red);
-      color: #fff;
-      padding: 1px 5px;
-      border-radius: 99px;
-      font-weight: 700;
-    }
-
-    /* ── Timetable ── */
-    .timetable-grid {
-      display: grid;
-      grid-template-columns: 44px repeat(5, 1fr);
-      gap: 3px;
-    }
-    .tt-cell {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 8px 6px;
-      text-align: center;
-      font-size: 0.75rem;
-    }
-    .tt-cell.header {
-      background: var(--surface2);
-      color: var(--text2);
-      font-weight: 600;
-      font-size: 0.72rem;
-    }
-    .tt-cell.period {
-      color: var(--text3);
-      font-size: 0.72rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .tt-cell.subject {
-      color: var(--text);
-      font-weight: 500;
-      font-size: 0.78rem;
-      line-height: 1.3;
-    }
-    .tt-cell.subject.today {
-      background: rgba(114,201,154,0.1);
-      border-color: rgba(114,201,154,0.3);
-      color: var(--accent);
-    }
-    .tt-cell.empty { color: var(--muted); font-size: 0.7rem; }
+    .notice-new { font-size: 0.65rem; background: var(--red); color: #fff; padding: 1px 5px; border-radius: 99px; font-weight: 700; }
 
     /* ── Meals ── */
-    .meal-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .meal-header {
-      background: linear-gradient(135deg, var(--primary-d), var(--primary));
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .meal-header h3 {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      color: var(--mint);
-    }
+    .meal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .meal-header { background: linear-gradient(135deg, var(--primary-d), var(--primary)); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
+    .meal-header h3 { font-family: var(--font-display); font-size: 1rem; color: var(--mint); }
     .meal-date { font-size: 0.75rem; color: rgba(168,230,195,0.7); }
-    .meal-tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-    }
-    .meal-tab {
-      flex: 1;
-      padding: 10px;
-      text-align: center;
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text3);
-      cursor: pointer;
-      border: none;
-      background: transparent;
-      border-bottom: 2px solid transparent;
-      transition: all 0.15s;
-    }
-    .meal-tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-      background: rgba(114,201,154,0.05);
-    }
+    .meal-tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .meal-tab { flex: 1; padding: 10px; text-align: center; font-size: 0.8rem; font-weight: 500; color: var(--text3); cursor: pointer; border: none; background: transparent; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .meal-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(114,201,154,0.05); }
     .meal-content { padding: 16px 18px; }
     .meal-menu { font-size: 0.83rem; color: var(--text2); line-height: 2; }
     .meal-menu span { display: block; }
-    .meal-cal {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border);
-      font-size: 0.75rem;
-      color: var(--text3);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* ── Personal Events ── */
-    .event-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-    .event-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 11px 14px;
-      background: var(--surface2);
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-    }
-    .event-date-badge {
-      text-align: center;
-      min-width: 38px;
-      flex-shrink: 0;
-    }
-    .event-date-badge .day { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
-    .event-date-badge .mon { font-size: 0.68rem; color: var(--text3); }
-    .event-info { flex: 1; }
-    .event-title { font-size: 0.85rem; font-weight: 500; }
-    .event-time  { font-size: 0.73rem; color: var(--text3); }
-    .event-imgs  { display: flex; gap: 4px; }
-    .event-img-thumb {
-      width: 36px; height: 36px;
-      border-radius: 5px;
-      object-fit: cover;
-      border: 1px solid var(--border);
-      cursor: pointer;
-    }
+    .meal-cal { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text3); display: flex; align-items: center; gap: 6px; }
 
     /* ── Grid Layouts ── */
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    .grid-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 20px;
-    }
-    @media (max-width: 1024px) {
-      .grid-2, .grid-3 { grid-template-columns: 1fr; }
-    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
 
     /* ── Section Header ── */
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .section-title {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;
+      color: var(--text); display: flex; align-items: center; gap: 8px;
     }
     .section-title .icon-wrap {
-      width: 28px; height: 28px;
-      background: var(--surface2);
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--accent);
+      width: 28px; height: 28px; background: var(--surface2); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; color: var(--accent);
     }
 
-    /* ── Detail Panel (Notice / Assignment) ── */
+    /* ── Detail Panel ── */
     .detail-panel {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-lg);
-      width: 100%;
-      max-width: 640px;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: var(--shadow);
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius-lg); width: 100%; max-width: 640px;
+      max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow);
       animation: modalIn 0.25s ease;
     }
     .detail-header {
-      padding: 22px 26px 16px;
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0;
-      background: var(--surface);
-      z-index: 2;
+      padding: 22px 26px 16px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--surface); z-index: 2;
     }
     .detail-body { padding: 20px 26px; }
     .detail-title { font-size: 1.1rem; font-weight: 700; line-height: 1.45; }
-    .detail-meta  { font-size: 0.78rem; color: var(--text3); margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .detail-meta { font-size: 0.78rem; color: var(--text3); margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
     .detail-content { font-size: 0.88rem; color: var(--text2); line-height: 1.8; white-space: pre-wrap; }
-    .detail-images {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 8px;
-      margin-top: 16px;
-    }
-    .detail-images img {
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
+    .detail-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 16px; }
+    .detail-images img { border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: pointer; transition: opacity 0.15s; }
     .detail-images img:hover { opacity: 0.85; }
 
     /* ── Comments ── */
     .comments-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
     .comments-title { font-size: 0.85rem; font-weight: 600; color: var(--text2); margin-bottom: 12px; }
     .comment-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
-    .comment-item {
-      background: var(--surface2);
-      border-radius: var(--radius-sm);
-      padding: 10px 14px;
-    }
+    .comment-item { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 14px; }
     .comment-author { font-size: 0.78rem; font-weight: 600; color: var(--accent); }
-    .comment-text   { font-size: 0.83rem; color: var(--text2); margin-top: 3px; }
-    .comment-time   { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
-    .comment-input-wrap {
-      display: flex; gap: 8px;
-    }
-    .comment-input {
-      flex: 1;
-      padding: 9px 12px;
-      font-size: 0.84rem;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-    }
+    .comment-text { font-size: 0.83rem; color: var(--text2); margin-top: 3px; }
+    .comment-time { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
+    .comment-input-wrap { display: flex; gap: 8px; }
+    .comment-input { flex: 1; padding: 9px 12px; font-size: 0.84rem; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); }
     .comment-input:focus { border-color: var(--accent); }
-    .comment-submit {
-      padding: 9px 16px;
-      background: var(--primary-l);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 0.83rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
+    .comment-submit { padding: 9px 16px; background: var(--primary-l); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.83rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
     .comment-submit:hover { background: var(--accent2); }
 
-    /* 모달 완료 토글 버튼 */
+    /* ── Modal Complete Btn ── */
     .modal-complete-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1.5px solid var(--border2);
-      background: transparent;
-      color: var(--text3);
-      transition: all 0.18s;
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+      border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; border: 1.5px solid var(--border2); background: transparent;
+      color: var(--text3); transition: all 0.18s;
     }
-    .modal-complete-btn:hover {
-      background: var(--surface2);
-      color: var(--text);
-    }
-    .modal-complete-btn.is-done {
-      background: rgba(114,201,154,0.12);
-      border-color: var(--accent2);
-      color: var(--accent);
-    }
-    .modal-complete-btn.is-done:hover {
-      background: rgba(217,112,112,0.1);
-      border-color: var(--red);
-      color: var(--red);
-    }
+    .modal-complete-btn:hover { background: var(--surface2); color: var(--text); }
+    .modal-complete-btn.is-done { background: rgba(114,201,154,0.12); border-color: var(--accent2); color: var(--accent); }
+    .modal-complete-btn.is-done:hover { background: rgba(217,112,112,0.1); border-color: var(--red); color: var(--red); }
     .modal-complete-btn .btn-check-icon {
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      border: 2px solid currentColor;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      font-size: 10px;
-      font-weight: 700;
-      transition: all 0.15s;
+      width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 10px; font-weight: 700; transition: all 0.15s;
     }
 
-    /* ── 모바일 사이드바 오버레이 ── */
+    /* ── Sidebar overlay ── */
     .sidebar-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.55);
-      z-index: 99;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 99;
+      backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
     }
-    @media (max-width: 768px) {
-      .sidebar-overlay.active { display: block; }
-    }
+    @media (max-width: 768px) { .sidebar-overlay.active { display: block; } }
 
-    /* ── 사이드바 토글 탭 (항상 고정) ── */
+    /* ── Sidebar Tab ── */
     .sidebar-tab {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 0;
-      transform: translateY(-50%);
-      z-index: 101;
-      background: var(--primary-l);
-      color: var(--mint);
-      border: none;
-      border-radius: 0 8px 8px 0;
-      width: 22px;
-      height: 56px;
-      cursor: pointer;
+      display: none; position: fixed; top: 50%; left: 0;
+      transform: translateY(-50%); z-index: 101;
+      background: var(--primary-l); color: var(--mint); border: none;
+      border-radius: 0 8px 8px 0; width: 22px; height: 56px; cursor: pointer;
       transition: left 0.3s ease, background 0.2s;
       box-shadow: 2px 0 12px rgba(0,0,0,0.4);
-      align-items: center;
-      justify-content: center;
-      padding: 0;
+      align-items: center; justify-content: center; padding: 0;
     }
-    .sidebar-tab svg {
-      transition: transform 0.3s ease;
-      flex-shrink: 0;
-    }
-    .sidebar-tab.open {
-      left: var(--sidebar-w);
-      background: var(--surface3);
-    }
-    .sidebar-tab.open svg {
-      transform: rotate(180deg);
-    }
-    @media (max-width: 768px) {
-      .sidebar-tab { display: flex; }
-    }
+    .sidebar-tab svg { transition: transform 0.3s ease; flex-shrink: 0; }
+    .sidebar-tab.open { left: var(--sidebar-w); background: var(--surface3); }
+    .sidebar-tab.open svg { transform: rotate(180deg); }
+    @media (max-width: 768px) { .sidebar-tab { display: flex; } }
+
     .section-page { display: none; }
     .section-page.active { display: block; }
 
     /* ── Calendar ── */
-    .cal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-    .cal-month-label {
-      font-family: var(--font-display);
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .cal-nav-btn {
-      width: 34px; height: 34px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      color: var(--text2);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .cal-nav-btn:hover {
-      background: var(--surface3);
-      color: var(--text);
-    }
-    .cal-weekdays {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 3px;
-      margin-bottom: 4px;
-    }
-    .cal-weekday {
-      text-align: center;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: var(--text3);
-      padding: 6px 0;
-    }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .cal-month-label { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    .cal-nav-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text2); cursor: pointer; transition: all 0.15s; }
+    .cal-nav-btn:hover { background: var(--surface3); color: var(--text); }
+    .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 4px; }
+    .cal-weekday { text-align: center; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; color: var(--text3); padding: 6px 0; }
     .cal-weekday:first-child { color: var(--red); }
     .cal-weekday:last-child  { color: var(--blue); }
-    .cal-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 3px;
-    }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
     .cal-cell {
-      min-height: 88px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 6px;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-      position: relative;
-      overflow: hidden;
+      min-height: 88px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 6px; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden;
     }
-    .cal-cell:hover {
-      background: var(--surface2);
-      border-color: var(--border2);
-    }
-    .cal-cell.today {
-      border-color: rgba(114,201,154,0.4);
-      background: rgba(114,201,154,0.06);
-    }
-    .cal-cell.today .cal-day-num {
-      background: var(--accent);
-      color: #0D1810;
-      border-radius: 50%;
-      width: 22px; height: 22px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700;
-    }
-    .cal-cell.other-month {
-      opacity: 0.38;
-    }
-    .cal-cell.selected {
-      border-color: var(--accent2);
-      background: rgba(114,201,154,0.1);
-      box-shadow: 0 0 0 1px var(--accent2);
-    }
-    .cal-cell.sunday  .cal-day-num { color: var(--red); }
+    .cal-cell:hover { background: var(--surface2); border-color: var(--border2); }
+    .cal-cell.today { border-color: rgba(114,201,154,0.4); background: rgba(114,201,154,0.06); }
+    .cal-cell.today .cal-day-num { background: var(--accent); color: #0D1810; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .cal-cell.other-month { opacity: 0.38; }
+    .cal-cell.selected { border-color: var(--accent2); background: rgba(114,201,154,0.1); box-shadow: 0 0 0 1px var(--accent2); }
+    .cal-cell.sunday   .cal-day-num { color: var(--red); }
     .cal-cell.saturday .cal-day-num { color: var(--blue); }
-    .cal-day-num {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text2);
-      line-height: 1;
-      margin-bottom: 5px;
-    }
-    .cal-events {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .cal-event-chip {
-      font-size: 0.66rem;
-      font-weight: 500;
-      padding: 2px 5px;
-      border-radius: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.4;
-    }
-    .cal-event-chip.type-assign {
-      background: rgba(114,201,154,0.18);
-      color: var(--accent);
-    }
-    .cal-event-chip.type-assign.진로 {
-      background: rgba(88,153,201,0.18);
-      color: var(--blue);
-    }
-    .cal-event-chip.type-assign.completed {
-      background: rgba(100,130,110,0.12);
-      color: var(--muted);
-      text-decoration: line-through;
-    }
-    .cal-event-chip.type-personal {
-      background: rgba(212,147,74,0.18);
-      color: var(--orange);
-    }
-    .cal-more {
-      font-size: 0.63rem;
-      color: var(--text3);
-      padding: 1px 4px;
-    }
+    .cal-day-num { font-size: 0.8rem; font-weight: 600; color: var(--text2); line-height: 1; margin-bottom: 5px; }
+    .cal-events { display: flex; flex-direction: column; gap: 2px; }
+    .cal-event-chip { font-size: 0.66rem; font-weight: 500; padding: 2px 5px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+    .cal-event-chip.type-assign { background: rgba(114,201,154,0.18); color: var(--accent); }
+    .cal-event-chip.type-assign.진로 { background: rgba(88,153,201,0.18); color: var(--blue); }
+    .cal-event-chip.type-assign.completed { background: rgba(100,130,110,0.12); color: var(--muted); text-decoration: line-through; }
+    .cal-event-chip.type-personal { background: rgba(212,147,74,0.18); color: var(--orange); }
+    .cal-more { font-size: 0.63rem; color: var(--text3); padding: 1px 4px; }
+    .cal-cell.drop-valid { background: rgba(114,201,154,0.14) !important; border-color: rgba(114,201,154,0.5) !important; box-shadow: inset 0 0 0 2px rgba(114,201,154,0.35); }
+    .cal-cell.drop-valid:hover, .cal-cell.drop-over { background: rgba(114,201,154,0.26) !important; border-color: var(--accent) !important; box-shadow: inset 0 0 0 2px var(--accent); }
+    .cal-cell.drop-invalid { opacity: 0.28 !important; cursor: not-allowed !important; }
+    .cal-cell.drop-flash { animation: dropFlash 0.45s ease; }
+    @keyframes dropFlash { 0% { background: rgba(114,201,154,0.45); } 100% { background: var(--surface); } }
 
-    /* ── 드래그 오버 셀 상태 ── */
-    .cal-cell.drop-valid {
-      background: rgba(114,201,154,0.14) !important;
-      border-color: var(--accent) !important;
-      box-shadow: 0 0 0 2px rgba(114,201,154,0.3);
-    }
-    .cal-cell.drop-invalid {
-      background: rgba(217,112,112,0.10) !important;
-      border-color: rgba(217,112,112,0.35) !important;
-      cursor: not-allowed;
-    }
-    .cal-cell.drop-invalid .cal-day-num { color: var(--red); }
-
-    /* Calendar side panels */
-    .cal-layout {
-      display: grid;
-      grid-template-columns: 1fr 300px;
-      gap: 20px;
-      align-items: start;
-    }
-    @media (max-width: 1100px) {
-      .cal-layout { grid-template-columns: 1fr; }
-      .cal-right-col { display: none; }
-      .cal-right-col.mobile-show { display: flex; }
-    }
-    .cal-right-col {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      position: sticky;
-      top: calc(var(--header-h) + 20px);
-    }
-
-    /* ── 드래그 소스 패널 ── */
-    .cal-drag-panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-    }
-    .cal-drag-panel-title {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--text3);
-      margin-bottom: 6px;
-    }
-    .cal-drag-hint {
-      font-size: 0.73rem;
-      color: var(--muted);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .cal-drag-list {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      max-height: 260px;
-      overflow-y: auto;
-    }
-    .cal-drag-chip {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      cursor: grab;
-      transition: all 0.15s;
-      user-select: none;
-    }
-    .cal-drag-chip:hover {
-      background: var(--surface3);
-      border-color: var(--border2);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
-    }
-    .cal-drag-chip:active { cursor: grabbing; }
-    .cal-drag-chip.dragging {
-      opacity: 0.45;
-      transform: none;
-    }
-    .cal-drag-chip-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .cal-drag-chip-info { flex: 1; min-width: 0; }
-    .cal-drag-chip-title {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .cal-drag-chip-sub {
-      font-size: 0.69rem;
-      color: var(--text3);
-      margin-top: 1px;
-    }
-    .cal-drag-chip-due {
-      font-size: 0.69rem;
-      font-weight: 600;
-      flex-shrink: 0;
-      padding: 2px 6px;
-      border-radius: 99px;
-    }
-    .cal-drag-chip-due.urgent { background: rgba(217,112,112,0.15); color: var(--red); }
-    .cal-drag-chip-due.soon   { background: rgba(212,147,74,0.15);  color: var(--orange); }
-    .cal-drag-chip-due.ok     { background: rgba(114,201,154,0.12); color: var(--accent); }
-
-    /* ── 날짜 상세 패널 ── */
-    .cal-detail-panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-    }
-    .cal-detail-date {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 14px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-    .cal-detail-empty {
-      color: var(--muted);
-      font-size: 0.83rem;
-      text-align: center;
-      padding: 24px 0;
-    }
-    .cal-detail-item {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 9px 0;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .cal-detail-item:last-child { border-bottom: none; }
-    .cal-detail-item:hover { opacity: 0.8; }
-    .cal-detail-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      margin-top: 5px;
-    }
-    .cal-detail-title {
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--text);
-      line-height: 1.4;
-    }
-    .cal-detail-sub {
-      font-size: 0.72rem;
-      color: var(--text3);
-      margin-top: 2px;
-    }
-    .cal-legend {
-      display: flex;
-      gap: 14px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-    .cal-legend-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.75rem;
-      color: var(--text3);
-    }
-    .cal-legend-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-    }
-
-    /* ── 드래그&드롭 셀 상태 ── */
-    /* 드래그 중 전체 그리드 모드 */
-    .cal-grid.drag-active .cal-cell { transition: opacity 0.15s, background 0.15s, box-shadow 0.15s; }
-
-    /* 드롭 가능 (마감일 이내) */
-    .cal-cell.drop-valid {
-      background: rgba(114,201,154,0.14) !important;
-      border-color: rgba(114,201,154,0.5) !important;
-      box-shadow: inset 0 0 0 2px rgba(114,201,154,0.35);
-    }
-    .cal-cell.drop-valid:hover,
-    .cal-cell.drop-over {
-      background: rgba(114,201,154,0.26) !important;
-      border-color: var(--accent) !important;
-      box-shadow: inset 0 0 0 2px var(--accent);
-    }
-
-    /* 드롭 불가 (마감일 초과) */
-    .cal-cell.drop-invalid {
-      opacity: 0.28 !important;
-      cursor: not-allowed !important;
-    }
-
-    /* 드롭 성공 플래시 */
-    .cal-cell.drop-flash {
-      animation: dropFlash 0.45s ease;
-    }
-    @keyframes dropFlash {
-      0%   { background: rgba(114,201,154,0.45); }
-      100% { background: var(--surface); }
-    }
-
-    /* ── 모바일 사이드바 오버레이 ── */
-    .sidebar-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.55);
-      z-index: 99;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-    }
-    @media (max-width: 768px) {
-      .sidebar-overlay.active { display: block; }
-    }
-
-    /* ── 캘린더 우측 탭 패널 ── */
-    .cal-panel-tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 14px;
-    }
-    .cal-panel-tab {
-      flex: 1;
-      padding: 8px 10px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text3);
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      cursor: pointer;
-      transition: all 0.15s;
-      text-align: center;
-    }
-    .cal-panel-tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
+    .cal-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+    @media (max-width: 1100px) { .cal-layout { grid-template-columns: 1fr; } .cal-right-col { display: none; } .cal-right-col.mobile-show { display: flex; } }
+    .cal-right-col { display: flex; flex-direction: column; gap: 12px; position: sticky; top: calc(var(--header-h) + 20px); }
+    .cal-panel-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+    .cal-panel-tab { flex: 1; padding: 8px 10px; font-size: 0.78rem; font-weight: 600; color: var(--text3); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s; text-align: center; }
+    .cal-panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .cal-panel-tab:hover:not(.active) { color: var(--text2); }
     .cal-tab-content { display: none; }
     .cal-tab-content.active { display: block; }
-
-    /* 인라인 일정 추가 폼 */
-    .cal-add-form {
-      border-top: 1px solid var(--border);
-      margin-top: 14px;
-      padding-top: 14px;
-    }
-    .cal-add-form-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--text3);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    .cal-add-row {
-      display: flex;
-      gap: 6px;
-    }
-    .cal-add-input {
-      flex: 1;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      color: var(--text);
-      border-radius: var(--radius-sm);
-      padding: 7px 10px;
-      font-size: 0.82rem;
-      font-family: var(--font-body);
-    }
+    .cal-add-form { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+    .cal-add-form-title { font-size: 0.75rem; font-weight: 700; color: var(--text3); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
+    .cal-add-row { display: flex; gap: 6px; }
+    .cal-add-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 0.82rem; font-family: var(--font-body); }
     .cal-add-input:focus { outline: none; border-color: var(--accent); }
-    .cal-add-btn {
-      padding: 7px 12px;
-      background: var(--primary-l);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 0.78rem;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
+    .cal-add-btn { padding: 7px 12px; background: var(--primary-l); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
     .cal-add-btn:hover { background: var(--accent2); }
+    .cal-drag-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .cal-drag-hint { font-size: 0.73rem; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 5px; }
+    .cal-drag-list { display: flex; flex-direction: column; gap: 5px; max-height: 260px; overflow-y: auto; }
+    .cal-drag-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: grab; transition: all 0.15s; user-select: none; }
+    .cal-drag-chip:hover { background: var(--surface3); border-color: var(--border2); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .cal-drag-chip:active { cursor: grabbing; }
+    .cal-drag-chip.dragging { opacity: 0.45; transform: none; }
+    .cal-drag-chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .cal-drag-chip-info { flex: 1; min-width: 0; }
+    .cal-drag-chip-title { font-size: 0.8rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cal-drag-chip-sub { font-size: 0.69rem; color: var(--text3); margin-top: 1px; }
+    .cal-drag-chip-due { font-size: 0.69rem; font-weight: 600; flex-shrink: 0; padding: 2px 6px; border-radius: 99px; }
+    .cal-drag-chip-due.urgent { background: rgba(217,112,112,0.15); color: var(--red); }
+    .cal-drag-chip-due.soon   { background: rgba(212,147,74,0.15);  color: var(--orange); }
+    .cal-drag-chip-due.ok     { background: rgba(114,201,154,0.12); color: var(--accent); }
+    .cal-detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .cal-detail-date { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .cal-detail-empty { color: var(--muted); font-size: 0.83rem; text-align: center; padding: 24px 0; }
+    .cal-detail-item { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: opacity 0.15s; }
+    .cal-detail-item:last-child { border-bottom: none; }
+    .cal-detail-item:hover { opacity: 0.8; }
+    .cal-detail-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .cal-detail-title { font-size: 0.85rem; font-weight: 500; color: var(--text); line-height: 1.4; }
+    .cal-detail-sub { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+    .cal-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+    .cal-legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--text3); }
+    .cal-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .cal-grid.drag-active .cal-cell { transition: opacity 0.15s, background 0.15s, box-shadow 0.15s; }
 
-    /* Stats bar */
-    .stats-bar {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
+    /* ── Stats bar ── */
+    .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-chip { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 16px; flex: 1; min-width: 100px; }
+    .stat-chip .s-val { font-size: 1.5rem; font-weight: 700; color: var(--accent); font-family: var(--font-display); }
+    .stat-chip .s-lbl { font-size: 0.75rem; color: var(--text3); margin-top: 1px; }
+
+    /* ── Profile ── */
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; }
+    @media (max-width: 800px) { .profile-grid { grid-template-columns: 1fr; } }
+    .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .profile-card-header { background: var(--surface2); padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .profile-card-title { font-size: 0.92rem; font-weight: 700; color: var(--text); }
+    .profile-card-body { padding: 20px; }
+    .profile-avatar-section { display: flex; align-items: center; gap: 16px; padding: 20px; border-bottom: 1px solid var(--border); }
+    .profile-avatar-large {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--primary); display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 700; color: var(--mint); flex-shrink: 0;
     }
-    .stat-chip {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 16px;
-      flex: 1;
-      min-width: 100px;
+    .profile-info-text .profile-name { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .profile-info-text .profile-id   { font-size: 0.82rem; color: var(--text3); margin-top: 3px; }
+
+    /* Timetable upload inside profile */
+    .timetable-upload-zone {
+      border: 2px dashed var(--border2); border-radius: var(--radius);
+      padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s;
+      color: var(--text3); font-size: 0.83rem; margin-bottom: 12px;
     }
-    .stat-chip .s-val {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--accent);
-      font-family: var(--font-display);
+    .timetable-upload-zone:hover, .timetable-upload-zone.drag-over {
+      border-color: var(--accent2); background: rgba(114,201,154,0.05); color: var(--text2);
     }
-    .stat-chip .s-lbl {
-      font-size: 0.75rem;
-      color: var(--text3);
-      margin-top: 1px;
+    .timetable-upload-zone svg { margin: 0 auto 8px; opacity: 0.5; }
+    .timetable-preview { margin-top: 12px; }
+    .timetable-preview img { border-radius: var(--radius-sm); border: 1px solid var(--border); max-width: 100%; }
+    .timetable-preview .pdf-badge {
+      display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.83rem; color: var(--text2);
     }
+    .subject-list-profile { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+    .subj-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface2); border-radius: var(--radius-sm); }
+    .subj-row-name { font-size: 0.85rem; font-weight: 600; flex: 1; }
+    .subj-row-meta { font-size: 0.73rem; color: var(--text3); }
   </style>
 </head>
 <body>
 <div class="app-shell">
 
-<!-- 사이드바 항상-열기 탭 -->
+  <!-- 사이드바 탭 버튼 -->
   <button class="sidebar-tab" id="sidebarTab" onclick="toggleSidebar()" aria-label="사이드바 열기/닫기">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <polyline points="9 18 15 12 9 6"/>
     </svg>
   </button>
 
-  <!-- 모바일 사이드바 오버레이 -->
+  <!-- 모바일 오버레이 -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-  <!-- ── SIDEBAR ── -->
+  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="logo-mark display">SchoolBoard</div>
@@ -1028,14 +339,14 @@
 
     <nav class="sidebar-nav">
       <div class="nav-section-label">학습</div>
-      <div class="nav-item active" onclick="showSection('assignments')">
+      <div class="nav-item active" data-section="assignments" onclick="showSection('assignments', this)">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
         </svg>
         수행평가
         <span class="nav-badge" id="assignBadge" style="display:none">0</span>
       </div>
-      <div class="nav-item" onclick="showSection('notices')">
+      <div class="nav-item" data-section="notices" onclick="showSection('notices', this)">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -1045,37 +356,27 @@
       </div>
 
       <div class="nav-section-label">개인</div>
-      <div class="nav-item" onclick="showSection('calendar')">
+      <div class="nav-item" data-section="calendar" onclick="showSection('calendar', this)">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
           <line x1="3" y1="10" x2="21" y2="10"/>
-          <line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/>
         </svg>
         캘린더
       </div>
-      <div class="nav-item" onclick="showSection('events')">>
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-        개인 일정
-      </div>
-      <div class="nav-item" onclick="showSection('timetable')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-        </svg>
-        나의 시간표
-      </div>
-      <div class="nav-item" onclick="showSection('meals')">
+      <div class="nav-item" data-section="meals" onclick="showSection('meals', this)">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-          <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/>
-          <line x1="14" y1="1" x2="14" y2="4"/>
+          <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
         </svg>
         오늘의 학식
+      </div>
+      <div class="nav-item" data-section="profile" onclick="showSection('profile', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        프로필
       </div>
     </nav>
 
@@ -1084,7 +385,7 @@
     </div>
   </aside>
 
-  <!-- ── MAIN ── -->
+  <!-- MAIN -->
   <div class="main-content">
     <header class="main-header">
       <button class="hamburger" onclick="toggleSidebar()">
@@ -1098,7 +399,7 @@
 
     <main class="page-content">
 
-      <!-- ========== SECTION: ASSIGNMENTS ========== -->
+      <!-- ========== ASSIGNMENTS ========== -->
       <div class="section-page active" id="page-assignments">
         <div class="board-controls">
           <div class="section-title">
@@ -1121,21 +422,15 @@
             </div>
           </div>
         </div>
-
-        <!-- Stats -->
         <div class="stats-bar" id="assignStats"></div>
-
-        <!-- Board -->
         <div class="board-scroll-wrap">
           <div class="assignment-board" id="assignmentBoard">
-            <div style="padding:48px;color:var(--muted);font-size:0.85rem;">
-              <span class="spinner"></span> 과제 불러오는 중...
-            </div>
+            <div style="padding:48px;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span> 과제 불러오는 중...</div>
           </div>
         </div>
       </div>
 
-      <!-- ========== SECTION: NOTICES ========== -->
+      <!-- ========== NOTICES ========== -->
       <div class="section-page" id="page-notices">
         <div class="section-header">
           <div class="section-title">
@@ -1153,15 +448,12 @@
             </div>
           </div>
         </div>
-
         <div class="notice-list" id="noticeList">
-          <div style="padding:48px;text-align:center;color:var(--muted);">
-            <span class="spinner"></span>
-          </div>
+          <div style="padding:48px;text-align:center;color:var(--muted);"><span class="spinner"></span></div>
         </div>
       </div>
 
-      <!-- ========== SECTION: CALENDAR ========== -->
+      <!-- ========== CALENDAR ========== -->
       <div class="section-page" id="page-calendar">
         <div class="section-header">
           <div class="section-title">
@@ -1175,149 +467,66 @@
             캘린더
           </div>
           <div class="cal-legend">
-            <div class="cal-legend-item">
-              <div class="cal-legend-dot" style="background:var(--accent)"></div>
-              수행평가 (일반)
-            </div>
-            <div class="cal-legend-item">
-              <div class="cal-legend-dot" style="background:var(--blue)"></div>
-              수행평가 (진로)
-            </div>
-            <div class="cal-legend-item">
-              <div class="cal-legend-dot" style="background:var(--orange)"></div>
-              개인 일정
-            </div>
+            <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent)"></div> 수행평가 (일반)</div>
+            <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blue)"></div> 수행평가 (진로)</div>
+            <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--orange)"></div> 개인 일정</div>
           </div>
         </div>
 
         <div class="cal-layout">
-          <!-- 달력 본체 -->
           <div>
             <div class="cal-header">
               <button class="cal-nav-btn" onclick="calMove(-1)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polyline points="15 18 9 12 15 6"/>
-                </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
               <div class="cal-month-label" id="calMonthLabel"></div>
               <button class="cal-nav-btn" onclick="calMove(1)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>
-
             <div class="cal-weekdays">
-              <div class="cal-weekday">일</div>
-              <div class="cal-weekday">월</div>
-              <div class="cal-weekday">화</div>
-              <div class="cal-weekday">수</div>
-              <div class="cal-weekday">목</div>
-              <div class="cal-weekday">금</div>
+              <div class="cal-weekday">일</div><div class="cal-weekday">월</div><div class="cal-weekday">화</div>
+              <div class="cal-weekday">수</div><div class="cal-weekday">목</div><div class="cal-weekday">금</div>
               <div class="cal-weekday">토</div>
             </div>
             <div class="cal-grid" id="calGrid"></div>
           </div>
 
-          <!-- 우측: 탭 패널 (수행평가 / 날짜 상세) -->
           <div class="cal-right-col" id="calRightCol">
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
-
-              <!-- 탭 헤더 -->
               <div class="cal-panel-tabs">
-                <button class="cal-panel-tab active" id="tabBtnAssign" onclick="switchCalTab('assign')">
-                  수행평가
-                </button>
-                <button class="cal-panel-tab" id="tabBtnDate" onclick="switchCalTab('date')">
-                  날짜 상세
-                </button>
+                <button class="cal-panel-tab active" id="tabBtnAssign" onclick="switchCalTab('assign')">수행평가</button>
+                <button class="cal-panel-tab" id="tabBtnDate" onclick="switchCalTab('date')">날짜 상세</button>
               </div>
-
-              <!-- 수행평가 탭 -->
               <div class="cal-tab-content active" id="calTabAssign">
                 <div class="cal-drag-hint">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/>
-                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/>
                   </svg>
                   카드를 날짜로 드래그해 공부 계획 등록
                 </div>
                 <div class="cal-drag-list" id="calDragSource">
-                  <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">
-                    <span class="spinner"></span>
-                  </div>
+                  <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0"><span class="spinner"></span></div>
                 </div>
               </div>
-
-              <!-- 날짜 상세 탭 -->
               <div class="cal-tab-content" id="calTabDate">
                 <div class="cal-detail-date" id="calDetailDate">날짜를 선택하세요</div>
-                <div id="calDetailList">
-                  <div class="cal-detail-empty">날짜를 클릭하면<br>일정이 표시됩니다.</div>
-                </div>
-                <!-- 인라인 일정 추가 폼 (날짜 선택 후 표시) -->
+                <div id="calDetailList"><div class="cal-detail-empty">날짜를 클릭하면<br>일정이 표시됩니다.</div></div>
                 <div class="cal-add-form" id="calAddForm" style="display:none">
                   <div class="cal-add-form-title">일정 추가</div>
                   <div class="cal-add-row">
                     <input class="cal-add-input" type="text" id="calAddTitle" placeholder="일정 제목 입력..." />
                     <button class="cal-add-btn" onclick="calAddEvent()">추가</button>
                   </div>
-                  <input class="cal-add-input" type="text" id="calAddMemo"
-                    placeholder="메모 (선택사항)" style="width:100%;margin-top:6px"/>
+                  <input class="cal-add-input" type="text" id="calAddMemo" placeholder="메모 (선택사항)" style="width:100%;margin-top:6px"/>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ========== SECTION: EVENTS ========== -->
-      <div class="section-page" id="page-events">
-        <div class="section-header">
-          <div class="section-title">
-            <div class="icon-wrap">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            </div>
-            개인 일정
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="openEventModal()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            일정 추가
-          </button>
-        </div>
-
-        <div class="event-list" id="eventList">
-          <div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>
-        </div>
-      </div>
-
-      <!-- ========== SECTION: TIMETABLE ========== -->
-      <div class="section-page" id="page-timetable">
-        <div class="section-header">
-          <div class="section-title">
-            <div class="icon-wrap">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-              </svg>
-            </div>
-            나의 시간표
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="timetable-grid" id="timetableGrid">
-            <div style="padding:40px;color:var(--muted);font-size:0.85rem;grid-column:1/-1;text-align:center;"><span class="spinner"></span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ========== SECTION: MEALS ========== -->
+      <!-- ========== MEALS ========== -->
       <div class="section-page" id="page-meals">
         <div class="section-header">
           <div class="section-title">
@@ -1329,9 +538,121 @@
             오늘의 학식
           </div>
         </div>
-
         <div style="max-width: 480px;" id="mealWrap">
           <div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+      <!-- ========== PROFILE ========== -->
+      <div class="section-page" id="page-profile">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="icon-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            프로필
+          </div>
+        </div>
+
+        <!-- 상단: 아바타 + 기본 정보 -->
+        <div class="card" style="margin-bottom:20px;padding:20px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="profile-avatar-large" id="profileAvatarLarge">?</div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:700;color:var(--text)" id="profileDisplayName">-</div>
+              <div style="font-size:0.82rem;color:var(--text3);margin-top:3px">아이디: <code id="profileDisplayId" style="color:var(--accent)">-</code></div>
+              <div style="font-size:0.78rem;color:var(--muted);margin-top:2px">역할: 학생</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-grid">
+          <!-- 수강 과목 -->
+          <div class="profile-card">
+            <div class="profile-card-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              <div class="profile-card-title">수강 과목</div>
+            </div>
+            <div class="profile-card-body">
+              <div class="subject-list-profile" id="profileSubjectList">
+                <div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:16px"><span class="spinner"></span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 시간표 -->
+          <div class="profile-card">
+            <div class="profile-card-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <div class="profile-card-title">나의 시간표</div>
+            </div>
+            <div class="profile-card-body">
+              <div class="timetable-upload-zone" id="ttUploadZone" onclick="document.getElementById('ttFileInput').click()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                </svg>
+                <p>클릭하여 시간표 업로드</p>
+                <p style="font-size:0.72rem;margin-top:4px;color:var(--muted)">이미지 또는 PDF (최대 20MB)</p>
+                <input type="file" id="ttFileInput" accept="image/*,.pdf" style="display:none" onchange="uploadTimetable(event)" />
+              </div>
+              <div class="timetable-preview" id="ttPreview"></div>
+            </div>
+          </div>
+
+          <!-- 아이디 변경 -->
+          <div class="profile-card">
+            <div class="profile-card-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+              <div class="profile-card-title" style="color:var(--blue)">아이디 변경</div>
+            </div>
+            <div class="profile-card-body">
+              <div class="form-group">
+                <label class="form-label">새 아이디</label>
+                <input class="form-input" type="text" id="newIdInput" placeholder="새 아이디 입력" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">현재 비밀번호 확인</label>
+                <input class="form-input" type="password" id="idChangePwInput" placeholder="비밀번호 입력" />
+              </div>
+              <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,#3B6B99,var(--blue))" onclick="changeId()">아이디 변경</button>
+            </div>
+          </div>
+
+          <!-- 비밀번호 변경 -->
+          <div class="profile-card">
+            <div class="profile-card-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <div class="profile-card-title" style="color:var(--orange)">비밀번호 변경</div>
+            </div>
+            <div class="profile-card-body">
+              <div class="form-group">
+                <label class="form-label">현재 비밀번호</label>
+                <input class="form-input" type="password" id="curPwInput" placeholder="현재 비밀번호" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">새 비밀번호</label>
+                <input class="form-input" type="password" id="newPwInput" placeholder="새 비밀번호" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">새 비밀번호 확인</label>
+                <input class="form-input" type="password" id="newPwConfirmInput" placeholder="새 비밀번호 다시 입력" />
+              </div>
+              <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,var(--orange),#B8732A)" onclick="changePassword()">비밀번호 변경</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1340,8 +661,6 @@
 </div>
 
 <!-- ========== MODALS ========== -->
-
-<!-- Notice Detail Modal -->
 <div class="modal-backdrop" id="noticeModal" style="display:none" onclick="closeModal('noticeModal')">
   <div class="detail-panel" onclick="event.stopPropagation()">
     <div class="detail-header">
@@ -1366,7 +685,6 @@
   </div>
 </div>
 
-<!-- Assignment Detail Modal -->
 <div class="modal-backdrop" id="assignModal" style="display:none" onclick="closeModal('assignModal')">
   <div class="detail-panel" onclick="event.stopPropagation()">
     <div class="detail-header">
@@ -1397,53 +715,6 @@
   </div>
 </div>
 
-<!-- Add Event Modal -->
-<div class="modal-backdrop" id="eventModal" style="display:none" onclick="closeModal('eventModal')">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <div class="modal-title">개인 일정 추가</div>
-      <button class="btn-icon" onclick="closeModal('eventModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">일정 제목</label>
-        <input class="form-input" type="text" id="eventTitle" placeholder="일정 이름 입력" />
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="form-group">
-          <label class="form-label">날짜</label>
-          <input class="form-input" type="date" id="eventDate" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">시간 (선택)</label>
-          <input class="form-input" type="time" id="eventTime" />
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">메모</label>
-        <textarea class="form-input form-textarea" id="eventMemo" placeholder="메모 (선택사항)"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">이미지 첨부</label>
-        <div class="upload-zone" id="eventUploadZone" onclick="document.getElementById('eventFileInput').click()">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
-            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-          </svg>
-          <p>클릭하거나 파일을 드래그하세요</p>
-          <p style="font-size:0.72rem;margin-top:4px;color:var(--muted);">JPG, PNG, GIF (최대 5MB)</p>
-          <input type="file" id="eventFileInput" accept="image/*" multiple style="display:none" onchange="handleFileSelect(event)" />
-        </div>
-        <div class="upload-preview" id="uploadPreview"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('eventModal')">취소</button>
-      <button class="btn btn-primary" onclick="saveEvent()">저장</button>
-    </div>
-  </div>
-</div>
-
 <div id="toast-container"></div>
 
 <script>
@@ -1455,10 +726,19 @@ let subjects      = [];
 let events        = [];
 let currentNotice = null;
 let currentAssign = null;
-let uploadedFiles = [];
-let filterType   = '';
-let filterStatus = 'pending';
+let filterType    = '';
+let filterStatus  = 'pending';
 let filterSubject = '';
+
+// 읽음 상태 관리 (localStorage)
+function getReadSet(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); } catch { return new Set(); }
+}
+function saveReadSet(key, set) {
+  try { localStorage.setItem(key, JSON.stringify([...set])); } catch {}
+}
+let readAssignIds  = getReadSet('readAssignIds');
+let readNoticeIds  = getReadSet('readNoticeIds');
 
 // ── Init ──
 (async () => {
@@ -1467,15 +747,21 @@ let filterSubject = '';
     if (!res.ok) { location.href = 'login.html'; return; }
     currentUser = await res.json();
 
-    if (currentUser.role === 'admin')  { location.href = 'admin.html';  return; }
-    if (currentUser.role === 'leader') { location.href = 'leader.html'; return; }
+    if (currentUser.role === 'admin')    { location.href = 'admin.html';   return; }
+    if (currentUser.role === 'teacher')  { location.href = 'teacher.html'; return; }
+    if (currentUser.role === 'leader')   { location.href = 'leader.html';  return; }
 
-    document.getElementById('sidebarName').textContent = currentUser.name || currentUser.username;
-    document.getElementById('avatarCircle').textContent =
-      (currentUser.name || currentUser.username || '?')[0].toUpperCase();
+    const displayName = currentUser.name || currentUser.id;
+    document.getElementById('sidebarName').textContent     = displayName;
+    document.getElementById('avatarCircle').textContent    = displayName[0].toUpperCase();
+    document.getElementById('profileAvatarLarge').textContent = displayName[0].toUpperCase();
+    document.getElementById('profileDisplayName').textContent = displayName;
+    document.getElementById('profileDisplayId').textContent   = currentUser.id;
 
     setHeaderDate();
-    await Promise.all([loadAssignments(), loadNotices(), loadSubjects(), loadEvents(), loadMeals(), loadTimetable()]);
+    await Promise.all([loadAssignments(), loadNotices(), loadSubjects(), loadEvents(), loadMeals()]);
+    loadTimetablePreview();
+    loadProfileSubjects();
   } catch(e) {
     console.error(e);
     showToast('데이터 로드 실패', 'error');
@@ -1490,25 +776,30 @@ function setHeaderDate() {
 }
 
 // ── Navigation ──
-function showSection(name) {
+function showSection(name, el) {
   document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`page-${name}`).classList.add('active');
-  event.currentTarget.classList.add('active');
+  // el이 직접 전달되거나, 이벤트 currentTarget으로 찾기
+  const navEl = el || (typeof event !== 'undefined' && event.currentTarget);
+  if (navEl) navEl.classList.add('active');
 
-  const titles = {
-    assignments: '수행평가',
-    notices: '공지사항',
-    calendar: '캘린더',
-    events: '개인 일정',
-    timetable: '나의 시간표',
-    meals: '오늘의 학식'
-  };
+  const titles = { assignments:'수행평가', notices:'공지사항', calendar:'캘린더', meals:'오늘의 학식', profile:'프로필' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
-  // 모바일에서 네비 클릭 시 사이드바 자동 닫기
-  if (window.innerWidth <= 768) closeSidebar();
+  // 뱃지 읽음 처리
+  if (name === 'assignments') {
+    assignments.forEach(a => readAssignIds.add(a.id));
+    saveReadSet('readAssignIds', readAssignIds);
+    document.getElementById('assignBadge').style.display = 'none';
+  }
+  if (name === 'notices') {
+    notices.forEach(n => readNoticeIds.add(n.id));
+    saveReadSet('readNoticeIds', readNoticeIds);
+    document.getElementById('noticeBadge').style.display = 'none';
+  }
 
+  if (window.innerWidth <= 768) closeSidebar();
   if (name === 'calendar') renderCalendar();
 }
 
@@ -1519,23 +810,28 @@ async function loadAssignments() {
     const data = await res.json();
     assignments = data.assignments || data || [];
     renderAssignBoard();
+    updateAssignBadge();
   } catch(e) { console.error('assignments load fail', e); }
+}
+
+function updateAssignBadge() {
+  const newItems = assignments.filter(a => !readAssignIds.has(a.id));
+  const badge = document.getElementById('assignBadge');
+  if (newItems.length > 0) { badge.textContent = newItems.length; badge.style.display = ''; }
+  else badge.style.display = 'none';
 }
 
 function renderAssignBoard() {
   const board = document.getElementById('assignmentBoard');
   board.innerHTML = '';
 
-  // 마감 3일 이상 지난 과제는 보드에서 제외
   const todayAssigns = assignments.filter(a => getDaysLeft(a.due_date) >= -3);
-
   const filtered = todayAssigns.filter(a => {
     const tOk = !filterType   || a.type === filterType;
     const sOk = !filterStatus || (filterStatus === 'done' ? a.completed : !a.completed);
     return tOk && sOk;
   });
 
-  // Group by subject
   const bySubject = {};
   filtered.forEach(a => {
     const key = a.subject_name || '기타';
@@ -1545,10 +841,23 @@ function renderAssignBoard() {
 
   if (Object.keys(bySubject).length === 0) {
     board.innerHTML = '<div class="empty-state"><p>표시할 과제가 없습니다.</p></div>';
-    return;
+  } else {
+    Object.entries(bySubject).forEach(([subj, cards]) => {
+      const col = document.createElement('div');
+      col.className = 'subject-col';
+      col.innerHTML = `
+        <div class="subject-col-header">
+          <span class="subject-name">${subj}</span>
+          <span class="subject-count">${cards.length}</span>
+        </div>
+        <div class="subject-cards"></div>
+      `;
+      const container = col.querySelector('.subject-cards');
+      cards.forEach(a => container.appendChild(makeAssignCard(a)));
+      board.appendChild(col);
+    });
   }
 
-  // Stats — 전체(원본) 기준
   const total  = todayAssigns.length;
   const done   = todayAssigns.filter(a => a.completed).length;
   const urgent = todayAssigns.filter(a => !a.completed && getDaysLeft(a.due_date) <= 2).length;
@@ -1558,31 +867,6 @@ function renderAssignBoard() {
     <div class="stat-chip"><div class="s-val" style="color:var(--orange)">${urgent}</div><div class="s-lbl">긴급 (2일 이내)</div></div>
     <div class="stat-chip"><div class="s-val" style="color:var(--accent2)">${done}</div><div class="s-lbl">완료</div></div>
   `;
-
-  // Badge
-  const badge = document.getElementById('assignBadge');
-  const pendingCount = todayAssigns.filter(a => !a.completed).length;
-  if (pendingCount > 0) {
-    badge.textContent = pendingCount;
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
-  }
-
-  Object.entries(bySubject).forEach(([subj, cards]) => {
-    const col = document.createElement('div');
-    col.className = 'subject-col';
-    col.innerHTML = `
-      <div class="subject-col-header">
-        <span class="subject-name">${subj}</span>
-        <span class="subject-count">${cards.length}</span>
-      </div>
-      <div class="subject-cards" id="col-${encodeURIComponent(subj)}"></div>
-    `;
-    board.appendChild(col);
-    const container = col.querySelector('.subject-cards');
-    cards.forEach(a => container.appendChild(makeAssignCard(a)));
-  });
 }
 
 function makeAssignCard(a) {
@@ -1590,15 +874,14 @@ function makeAssignCard(a) {
   const days = getDaysLeft(a.due_date);
   let urgency = '';
   if (!a.completed) {
-    if (days <= 1)  urgency = 'urgent';
+    if (days <= 1) urgency = 'urgent';
     else if (days <= 3) urgency = 'soon';
   }
   el.className = `assign-card type-${a.type || '일반'} ${a.completed ? 'completed' : ''}`;
   el.innerHTML = `
     <div class="assign-card-top">
       <div class="assign-title">${escHtml(a.title)}</div>
-      <button class="check-btn ${a.completed ? 'checked' : ''}"
-              onclick="toggleComplete(event,${a.id})" title="완료 표시"></button>
+      <button class="check-btn ${a.completed ? 'checked' : ''}" onclick="toggleComplete(event,${a.id})" title="완료 표시"></button>
     </div>
     <div class="assign-meta">
       ${a.type ? `<span class="badge ${a.type === '진로' ? 'badge-blue' : 'badge-green'}">${a.type}</span>` : ''}
@@ -1610,25 +893,18 @@ function makeAssignCard(a) {
       </span>
     </div>
   `;
-  el.addEventListener('click', e => {
-    if (e.target.classList.contains('check-btn')) return;
-    openAssignDetail(a.id);
-  });
+  el.addEventListener('click', e => { if (e.target.classList.contains('check-btn')) return; openAssignDetail(a.id); });
   return el;
 }
 
 function getDaysLeft(due) {
   if (!due) return 9999;
-  const d = new Date(due);
-  const now = new Date();
-  now.setHours(0,0,0,0);
+  const d = new Date(due); const now = new Date(); now.setHours(0,0,0,0);
   return Math.ceil((d - now) / 86400000);
 }
-
 function formatDue(due, days) {
   if (!due) return '기한 없음';
-  const d = new Date(due);
-  const mm = d.getMonth()+1, dd = d.getDate();
+  const d = new Date(due); const mm = d.getMonth()+1, dd = d.getDate();
   if (days < 0)  return `${mm}/${dd} (마감)`;
   if (days === 0) return '오늘 마감';
   if (days === 1) return '내일 마감';
@@ -1638,113 +914,64 @@ function formatDue(due, days) {
 
 async function toggleComplete(e, id) {
   e.stopPropagation();
-  const btn = e.currentTarget;
-  const a = assignments.find(x => x.id === id);
-  if (!a) return;
-
+  const a = assignments.find(x => x.id === id); if (!a) return;
   const newVal = !a.completed;
   try {
-    await fetch(`/api/timetable/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ assignment_id: id, completed: newVal })
-    });
+    await fetch('/api/timetable/complete', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: id, completed: newVal }) });
     a.completed = newVal;
     renderAssignBoard();
     showToast(newVal ? '완료 처리했습니다.' : '미완료로 변경했습니다.', 'success');
-  } catch {
-    showToast('업데이트 실패', 'error');
-  }
+  } catch { showToast('업데이트 실패', 'error'); }
 }
 
 async function openAssignDetail(id) {
-  const a = assignments.find(x => x.id === id);
-  if (!a) return;
+  const a = assignments.find(x => x.id === id); if (!a) return;
   currentAssign = a;
-
   document.getElementById('assignDetailTitle').textContent = a.title;
   const days = getDaysLeft(a.due_date);
   document.getElementById('assignDetailMeta').innerHTML = `
-    <span>${a.subject_name || ''}</span>
-    <span>${a.class_name || ''}</span>
-    <span>${a.type || ''}</span>
+    <span>${a.subject_name || ''}</span><span>${a.type || ''}</span>
     <span class="${days <= 2 && !a.completed ? 'assign-due urgent' : ''}">마감: ${a.due_date ? new Date(a.due_date).toLocaleDateString('ko-KR') : '없음'}</span>
   `;
   document.getElementById('assignDetailContent').textContent = a.description || '내용 없음';
-
-  const imgs = document.getElementById('assignDetailImages');
-  imgs.innerHTML = '';
-  (a.images || []).forEach(url => {
-    const img = document.createElement('img'); img.src = url;
-    img.onclick = () => window.open(url, '_blank');
-    imgs.appendChild(img);
-  });
-
+  const imgs = document.getElementById('assignDetailImages'); imgs.innerHTML = '';
+  (a.images || []).forEach(url => { const img = document.createElement('img'); img.src = url; img.onclick = () => window.open(url,'_blank'); imgs.appendChild(img); });
   updateModalCompleteBtn(a.completed);
-
   document.getElementById('assignModal').style.display = 'flex';
   loadComments('assignment', id, 'assignCommentList');
 }
 
 function updateModalCompleteBtn(isDone) {
-  const btn   = document.getElementById('modalCompleteBtn');
-  const icon  = document.getElementById('modalCheckIcon');
+  const btn = document.getElementById('modalCompleteBtn');
+  const icon = document.getElementById('modalCheckIcon');
   const label = document.getElementById('modalCompleteLabel');
-  if (isDone) {
-    btn.classList.add('is-done');
-    icon.textContent  = '✓';
-    label.textContent = '완료됨';
-    btn.title = '클릭하면 미완료로 변경';
-  } else {
-    btn.classList.remove('is-done');
-    icon.textContent  = '';
-    label.textContent = '완료로 표시';
-    btn.title = '클릭하면 완료로 표시';
-  }
+  if (isDone) { btn.classList.add('is-done'); icon.textContent = '✓'; label.textContent = '완료됨'; }
+  else        { btn.classList.remove('is-done'); icon.textContent = ''; label.textContent = '완료로 표시'; }
 }
 
 async function modalToggleComplete() {
   if (!currentAssign) return;
   const newVal = !currentAssign.completed;
   try {
-    await fetch('/api/timetable/complete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ assignment_id: currentAssign.id, completed: newVal })
-    });
+    await fetch('/api/timetable/complete', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: currentAssign.id, completed: newVal }) });
     currentAssign.completed = newVal;
-    // assignments 배열도 동기화
-    const a = assignments.find(x => x.id === currentAssign.id);
-    if (a) a.completed = newVal;
-
+    const a = assignments.find(x => x.id === currentAssign.id); if (a) a.completed = newVal;
     updateModalCompleteBtn(newVal);
     showToast(newVal ? '완료 처리했습니다.' : '미완료로 변경했습니다.', 'success');
-    renderAssignBoard(); // 보드 즉시 반영
-    // 캘린더가 열려있으면 갱신
+    renderAssignBoard();
     if (document.getElementById('page-calendar').classList.contains('active')) renderCalendar();
-  } catch {
-    showToast('업데이트 실패', 'error');
-  }
+  } catch { showToast('업데이트 실패', 'error'); }
 }
 
-// Filter handlers
 document.getElementById('typeFilter').addEventListener('click', e => {
-  const t = e.target.closest('.filter-tab');
-  if (!t) return;
+  const t = e.target.closest('.filter-tab'); if (!t) return;
   document.querySelectorAll('#typeFilter .filter-tab').forEach(x => x.classList.remove('active'));
-  t.classList.add('active');
-  filterType = t.dataset.val;
-  renderAssignBoard();
+  t.classList.add('active'); filterType = t.dataset.val; renderAssignBoard();
 });
 document.getElementById('statusFilter').addEventListener('click', e => {
-  const t = e.target.closest('.filter-tab');
-  if (!t) return;
+  const t = e.target.closest('.filter-tab'); if (!t) return;
   document.querySelectorAll('#statusFilter .filter-tab').forEach(x => x.classList.remove('active'));
-  t.classList.add('active');
-  filterStatus = t.dataset.val;
-  renderAssignBoard();
+  t.classList.add('active'); filterStatus = t.dataset.val; renderAssignBoard();
 });
 
 // ── Notices ──
@@ -1754,40 +981,31 @@ async function loadNotices() {
     const data = await res.json();
     notices = data.notices || data || [];
     renderNotices();
+    updateNoticeBadge();
   } catch(e) { console.error(e); }
+}
+
+function updateNoticeBadge() {
+  const newItems = notices.filter(n => !readNoticeIds.has(n.id));
+  const badge = document.getElementById('noticeBadge');
+  if (newItems.length > 0) { badge.textContent = newItems.length; badge.style.display = ''; }
+  else badge.style.display = 'none';
 }
 
 function renderNotices() {
   const list = document.getElementById('noticeList');
-  const filtered = filterSubject
-    ? notices.filter(n => n.subject_name === filterSubject)
-    : notices;
-
-  if (!filtered.length) {
-    list.innerHTML = '<div class="empty-state"><p>공지가 없습니다.</p></div>';
-    return;
-  }
-
-  const badge = document.getElementById('noticeBadge');
-  const recent = notices.filter(n => {
-    const d = new Date(n.created_at);
-    return (Date.now() - d) < 86400000 * 3;
-  }).length;
-  if (recent > 0) { badge.textContent = recent; badge.style.display = ''; }
-
-  list.innerHTML = filtered.map((n,i) => {
-    const isNew = (Date.now() - new Date(n.created_at)) < 86400000 * 3;
-    const colors = ['#72C99A','#5899C9','#D4A843','#D97070','#9B72C9'];
+  const filtered = filterSubject ? notices.filter(n => n.subject_name === filterSubject) : notices;
+  if (!filtered.length) { list.innerHTML = '<div class="empty-state"><p>공지가 없습니다.</p></div>'; return; }
+  const colors = ['#72C99A','#5899C9','#D4A843','#D97070','#9B72C9'];
+  list.innerHTML = filtered.map((n, i) => {
+    const isNew = !readNoticeIds.has(n.id);
     const c = colors[i % colors.length];
     return `
       <div class="notice-item" onclick="openNoticeDetail(${n.id})">
         <div class="notice-type-dot" style="background:${c}"></div>
         <div class="notice-info">
           <div class="notice-title">${escHtml(n.title)}</div>
-          <div class="notice-meta">
-            <span>${escHtml(n.subject_name || '전체')}</span>
-            <span>${n.class_name || ''}</span>
-          </div>
+          <div class="notice-meta"><span>${escHtml(n.subject_name || '전체')}</span><span>${n.class_code || ''}</span></div>
         </div>
         ${isNew ? '<span class="notice-new">NEW</span>' : ''}
         <span class="notice-date">${fmtDate(n.created_at)}</span>
@@ -1797,26 +1015,16 @@ function renderNotices() {
 }
 
 async function openNoticeDetail(id) {
-  const n = notices.find(x => x.id === id);
-  if (!n) return;
+  const n = notices.find(x => x.id === id); if (!n) return;
   currentNotice = n;
-
+  // 개별 읽음 처리
+  readNoticeIds.add(id); saveReadSet('readNoticeIds', readNoticeIds);
+  updateNoticeBadge(); renderNotices();
   document.getElementById('noticeDetailTitle').textContent = n.title;
-  document.getElementById('noticeDetailMeta').innerHTML = `
-    <span>${n.subject_name || '전체'}</span>
-    <span>${n.class_name || ''}</span>
-    <span>${fmtDate(n.created_at)}</span>
-  `;
+  document.getElementById('noticeDetailMeta').innerHTML = `<span>${n.subject_name || '전체'}</span><span>${fmtDate(n.created_at)}</span>`;
   document.getElementById('noticeDetailContent').textContent = n.content || '';
-
-  const imgs = document.getElementById('noticeDetailImages');
-  imgs.innerHTML = '';
-  (n.images || []).forEach(url => {
-    const img = document.createElement('img'); img.src = url;
-    img.onclick = () => window.open(url, '_blank');
-    imgs.appendChild(img);
-  });
-
+  const imgs = document.getElementById('noticeDetailImages'); imgs.innerHTML = '';
+  (n.images || []).forEach(url => { const img = document.createElement('img'); img.src = url; img.onclick = () => window.open(url,'_blank'); imgs.appendChild(img); });
   document.getElementById('noticeModal').style.display = 'flex';
   loadComments('notice', id, 'noticeCommentList');
 }
@@ -1829,10 +1037,7 @@ async function loadComments(type, id, listId) {
     const res = await fetch(`/api/comments/${type}/${id}`, { credentials: 'include' });
     const data = await res.json();
     const comments = data.comments || data || [];
-    if (!comments.length) {
-      list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:4px 0">아직 댓글이 없습니다.</div>';
-      return;
-    }
+    if (!comments.length) { list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:4px 0">아직 댓글이 없습니다.</div>'; return; }
     list.innerHTML = comments.map(c => `
       <div class="comment-item">
         <div class="comment-author">${escHtml(c.user_name || c.username || '익명')}</div>
@@ -1844,23 +1049,15 @@ async function loadComments(type, id, listId) {
 }
 
 async function submitComment(type) {
-  const inputId   = type === 'notice' ? 'noticeCommentInput' : 'assignCommentInput';
-  const listId    = type === 'notice' ? 'noticeCommentList'  : 'assignCommentList';
-  const refId     = type === 'notice' ? currentNotice?.id    : currentAssign?.id;
-  const input     = document.getElementById(inputId);
-  const content   = input.value.trim();
+  const inputId = type === 'notice' ? 'noticeCommentInput' : 'assignCommentInput';
+  const listId  = type === 'notice' ? 'noticeCommentList'  : 'assignCommentList';
+  const refId   = type === 'notice' ? currentNotice?.id    : currentAssign?.id;
+  const input   = document.getElementById(inputId);
+  const content = input.value.trim();
   if (!content || !refId) return;
-
   try {
-    await fetch('/api/comments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ type, ref_id: refId, content })
-    });
-    input.value = '';
-    loadComments(type, refId, listId);
-    showToast('댓글이 등록되었습니다.', 'success');
+    await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ type, ref_id: refId, content }) });
+    input.value = ''; loadComments(type, refId, listId); showToast('댓글이 등록되었습니다.', 'success');
   } catch { showToast('댓글 등록 실패', 'error'); }
 }
 
@@ -1872,19 +1069,13 @@ async function loadSubjects() {
     subjects = data.subjects || data || [];
     const f = document.getElementById('noticeSubjectFilter');
     subjects.forEach(s => {
-      const btn = document.createElement('button');
-      btn.className = 'filter-tab';
-      btn.dataset.val = s.name;
-      btn.textContent = s.name;
+      const btn = document.createElement('button'); btn.className = 'filter-tab'; btn.dataset.val = s.subject_name; btn.textContent = s.subject_name;
       f.appendChild(btn);
     });
     f.addEventListener('click', e => {
-      const t = e.target.closest('.filter-tab');
-      if (!t) return;
+      const t = e.target.closest('.filter-tab'); if (!t) return;
       f.querySelectorAll('.filter-tab').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      filterSubject = t.dataset.val;
-      renderNotices();
+      t.classList.add('active'); filterSubject = t.dataset.val; renderNotices();
     });
   } catch {}
 }
@@ -1895,121 +1086,7 @@ async function loadEvents() {
     const res = await fetch('/api/timetable/personal', { credentials: 'include' });
     const data = await res.json();
     events = data.events || data || [];
-    renderEvents();
   } catch(e) { console.error(e); }
-}
-
-function renderEvents() {
-  const list = document.getElementById('eventList');
-  if (!events.length) {
-    list.innerHTML = '<div class="empty-state"><p>등록된 개인 일정이 없습니다.<br>일정 추가 버튼으로 추가해보세요!</p></div>';
-    return;
-  }
-  list.innerHTML = events.map(ev => {
-    const d = new Date(ev.due_date || ev.created_at);
-    return `
-      <div class="event-item">
-        <div class="event-date-badge">
-          <div class="day">${d.getDate()}</div>
-          <div class="mon">${d.getMonth()+1}월</div>
-        </div>
-        <div class="event-info">
-          <div class="event-title">${escHtml(ev.title)}</div>
-          <div class="event-time">${ev.description ? escHtml(ev.description) : ''}</div>
-        </div>
-        ${(ev.images||[]).length ? `
-          <div class="event-imgs">
-            ${(ev.images||[]).slice(0,3).map(url =>
-              `<img class="event-img-thumb" src="${url}" onclick="window.open('${url}','_blank')" />`
-            ).join('')}
-          </div>
-        ` : ''}
-        <button class="btn-icon" onclick="deleteEvent(${ev.id})" title="삭제">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <path d="M10 11v6"/><path d="M14 11v6"/>
-          </svg>
-        </button>
-      </div>
-    `;
-  }).join('');
-}
-
-function openEventModal() {
-  document.getElementById('eventTitle').value = '';
-  document.getElementById('eventDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('eventTime').value = '';
-  document.getElementById('eventMemo').value = '';
-  document.getElementById('uploadPreview').innerHTML = '';
-  uploadedFiles = [];
-  document.getElementById('eventModal').style.display = 'flex';
-}
-
-function handleFileSelect(e) {
-  const files = Array.from(e.target.files);
-  const preview = document.getElementById('uploadPreview');
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      uploadedFiles.push({ file, dataUrl: ev.target.result });
-      const thumb = document.createElement('div');
-      thumb.className = 'upload-thumb';
-      thumb.innerHTML = `
-        <img src="${ev.target.result}" />
-        <button class="remove-btn" onclick="removeThumb(this)">✕</button>
-      `;
-      preview.appendChild(thumb);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function removeThumb(btn) {
-  const thumb = btn.parentElement;
-  const idx = Array.from(thumb.parentElement.children).indexOf(thumb);
-  uploadedFiles.splice(idx, 1);
-  thumb.remove();
-}
-
-async function saveEvent() {
-  const title = document.getElementById('eventTitle').value.trim();
-  const date  = document.getElementById('eventDate').value;
-  const time  = document.getElementById('eventTime').value;
-  const memo  = document.getElementById('eventMemo').value.trim();
-  if (!title || !date) { showToast('제목과 날짜를 입력하세요.', 'error'); return; }
-
-  let imageUrls = [];
-  if (uploadedFiles.length > 0) {
-    showToast('이미지 업로드 중...', 'info');
-    const form = new FormData();
-    uploadedFiles.forEach(f => form.append('images', f.file));
-    try {
-      const res = await fetch('/api/upload/multiple', { method: 'POST', credentials: 'include', body: form });
-      const data = await res.json();
-      imageUrls = data.urls || [];
-    } catch { showToast('이미지 업로드 실패', 'error'); return; }
-  }
-
-  try {
-    await fetch('/api/timetable/personal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ title, due_date: date, description: memo || null, images: imageUrls })
-    });
-    closeModal('eventModal');
-    showToast('일정이 추가되었습니다.', 'success');
-    await loadEvents();
-  } catch { showToast('저장 실패', 'error'); }
-}
-
-async function deleteEvent(id) {
-  if (!confirm('이 일정을 삭제하시겠습니까?')) return;
-  try {
-    await fetch(`/api/timetable/personal/${id}`, { method: 'DELETE', credentials: 'include' });
-    showToast('삭제되었습니다.', 'success');
-    await loadEvents();
-  } catch { showToast('삭제 실패', 'error'); }
 }
 
 // ── Calendar ──
@@ -2024,116 +1101,80 @@ function calMove(dir) {
   if (calMonth > 11) { calMonth = 0;  calYear++; }
   renderCalendar();
 }
-
 function switchCalTab(tab) {
   document.getElementById('calTabAssign').classList.toggle('active', tab === 'assign');
   document.getElementById('calTabDate').classList.toggle('active',   tab === 'date');
   document.getElementById('tabBtnAssign').classList.toggle('active', tab === 'assign');
   document.getElementById('tabBtnDate').classList.toggle('active',   tab === 'date');
 }
-
 async function calAddEvent() {
   const title = document.getElementById('calAddTitle').value.trim();
   const memo  = document.getElementById('calAddMemo').value.trim();
   if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
   if (!calSelectedDate) return;
-
   try {
-    await fetch('/api/timetable/personal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ title, description: memo || null, due_date: calSelectedDate })
-    });
-    document.getElementById('calAddTitle').value = '';
-    document.getElementById('calAddMemo').value  = '';
+    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, description: memo||null, due_date: calSelectedDate }) });
+    document.getElementById('calAddTitle').value = ''; document.getElementById('calAddMemo').value = '';
     showToast('일정이 추가되었습니다.', 'success');
-    await loadEvents();
-    renderCalendar();
-    // 선택 날짜 상세 갱신
-    const evMap = buildCalEvMap();
-    const parts = calSelectedDate.split('-');
-    const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
-    renderCalDetailPanel(calSelectedDate, d, evMap[calSelectedDate] || []);
+    await loadEvents(); renderCalendar();
+    const evMap = buildCalEvMap(); const parts = calSelectedDate.split('-');
+    renderCalDetailPanel(calSelectedDate, new Date(+parts[0], +parts[1]-1, +parts[2]), evMap[calSelectedDate]||[]);
   } catch { showToast('추가 실패', 'error'); }
 }
-
 async function calDeleteEvent(id) {
   if (!confirm('이 일정을 삭제하시겠습니까?')) return;
   try {
-    await fetch(`/api/timetable/personal/${id}`, { method: 'DELETE', credentials: 'include' });
+    await fetch(`/api/timetable/personal/${id}`, { method:'DELETE', credentials:'include' });
     showToast('삭제되었습니다.', 'success');
-    await loadEvents();
-    renderCalendar();
+    await loadEvents(); renderCalendar();
     if (calSelectedDate) {
-      const evMap = buildCalEvMap();
-      const parts = calSelectedDate.split('-');
-      const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
-      renderCalDetailPanel(calSelectedDate, d, evMap[calSelectedDate] || []);
+      const evMap = buildCalEvMap(); const parts = calSelectedDate.split('-');
+      renderCalDetailPanel(calSelectedDate, new Date(+parts[0], +parts[1]-1, +parts[2]), evMap[calSelectedDate]||[]);
     }
   } catch { showToast('삭제 실패', 'error'); }
 }
-
-// 개인 일정 인라인 수정
-function calStartEdit(id, currentTitle, currentDesc) {
-  const row = document.getElementById(`cal-ev-row-${id}`);
-  if (!row) return;
-  row.innerHTML = `
-    <div style="flex:1;display:flex;flex-direction:column;gap:5px">
-      <input id="cal-edit-title-${id}" class="cal-add-input"
-             value="${escHtml(currentTitle)}" style="width:100%" />
-      <input id="cal-edit-memo-${id}" class="cal-add-input"
-             value="${escHtml(currentDesc || '')}" placeholder="메모" style="width:100%" />
-      <div style="display:flex;gap:6px;margin-top:2px">
-        <button class="cal-add-btn" onclick="calSaveEdit(${id})">저장</button>
-        <button class="btn btn-ghost btn-sm" onclick="calCancelEdit(${id}, '${escHtml(currentTitle)}', '${escHtml(currentDesc || '')}')">취소</button>
-      </div>
-    </div>
-  `;
-}
-
 async function calSaveEdit(id) {
   const title = document.getElementById(`cal-edit-title-${id}`)?.value.trim();
   const memo  = document.getElementById(`cal-edit-memo-${id}`)?.value.trim();
   if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
   try {
-    // personal_events에 PUT 엔드포인트가 없으므로 삭제 후 재등록
-    const ev = events.find(e => e.id === id);
-    if (!ev) return;
-    await fetch(`/api/timetable/personal/${id}`, { method: 'DELETE', credentials: 'include' });
-    await fetch('/api/timetable/personal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ title, description: memo || null, due_date: ev.due_date })
-    });
+    const ev = events.find(e => e.id === id); if (!ev) return;
+    await fetch(`/api/timetable/personal/${id}`, { method:'DELETE', credentials:'include' });
+    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, description: memo||null, due_date: ev.due_date }) });
     showToast('수정되었습니다.', 'success');
-    await loadEvents();
-    renderCalendar();
+    await loadEvents(); renderCalendar();
     if (calSelectedDate) {
-      const evMap = buildCalEvMap();
-      const parts = calSelectedDate.split('-');
-      const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
-      renderCalDetailPanel(calSelectedDate, d, evMap[calSelectedDate] || []);
+      const evMap = buildCalEvMap(); const parts = calSelectedDate.split('-');
+      renderCalDetailPanel(calSelectedDate, new Date(+parts[0], +parts[1]-1, +parts[2]), evMap[calSelectedDate]||[]);
     }
   } catch { showToast('수정 실패', 'error'); }
 }
-
+function calStartEdit(id, currentTitle, currentDesc) {
+  const row = document.getElementById(`cal-ev-row-${id}`); if (!row) return;
+  row.innerHTML = `
+    <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+      <input id="cal-edit-title-${id}" class="cal-add-input" value="${escHtml(currentTitle)}" style="width:100%" />
+      <input id="cal-edit-memo-${id}"  class="cal-add-input" value="${escHtml(currentDesc||'')}" placeholder="메모" style="width:100%" />
+      <div style="display:flex;gap:6px;margin-top:2px">
+        <button class="cal-add-btn" onclick="calSaveEdit(${id})">저장</button>
+        <button class="btn btn-ghost btn-sm" onclick="calCancelEdit(${id},'${escHtml(currentTitle)}','${escHtml(currentDesc||'')}')">취소</button>
+      </div>
+    </div>
+  `;
+}
 function calCancelEdit(id, title, desc) {
-  const row = document.getElementById(`cal-ev-row-${id}`);
-  if (!row) return;
+  const row = document.getElementById(`cal-ev-row-${id}`); if (!row) return;
   row.innerHTML = personalEvRowInner(id, title, desc);
 }
-
 function personalEvRowInner(id, title, desc) {
   return `
     <div class="cal-detail-dot" style="background:var(--orange);margin-top:5px;flex-shrink:0"></div>
-    <div class="cal-detail-info" style="flex:1">
+    <div style="flex:1">
       <div class="cal-detail-title">${escHtml(title)}</div>
       <div class="cal-detail-sub">개인 일정${desc ? ' · ' + escHtml(desc) : ''}</div>
     </div>
     <div style="display:flex;gap:3px;flex-shrink:0">
-      <button class="btn-icon" onclick="calStartEdit(${id}, '${escHtml(title)}', '${escHtml(desc || '')}')" title="수정">
+      <button class="btn-icon" onclick="calStartEdit(${id},'${escHtml(title)}','${escHtml(desc||'')}')" title="수정">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -2141,261 +1182,141 @@ function personalEvRowInner(id, title, desc) {
       </button>
       <button class="btn-icon" style="color:var(--red)" onclick="calDeleteEvent(${id})" title="삭제">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
           <path d="M10 11v6"/><path d="M14 11v6"/>
         </svg>
       </button>
     </div>
   `;
 }
-
-// 이벤트 맵 빌더 (renderCalendar와 상세 갱신에서 공유)
 function buildCalEvMap() {
   const evMap = {};
-  // 완료 과제는 캘린더에서 제외
   assignments.filter(a => !a.completed).forEach(a => {
     if (!a.due_date) return;
-    const key = a.due_date.slice(0, 10);
+    const key = a.due_date.slice(0,10);
     if (!evMap[key]) evMap[key] = [];
-    evMap[key].push({ kind: 'assign', item: a });
+    evMap[key].push({ kind:'assign', item:a });
   });
   events.forEach(ev => {
     if (!ev.due_date) return;
-    const key = ev.due_date.slice(0, 10);
+    const key = ev.due_date.slice(0,10);
     if (!evMap[key]) evMap[key] = [];
-    evMap[key].push({ kind: 'personal', item: ev });
+    evMap[key].push({ kind:'personal', item:ev });
   });
   return evMap;
 }
-
-// 드래그 소스 패널 렌더링
 function renderCalDragSource() {
-  const container = document.getElementById('calDragSource');
-  if (!container) return;
-
-  // 미완료 + 마감 3일 이내 과제만 표시
+  const container = document.getElementById('calDragSource'); if (!container) return;
   const pending = assignments.filter(a => !a.completed && getDaysLeft(a.due_date) >= -3);
-  if (!pending.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">미완료 수행평가가 없습니다.</div>';
-    return;
-  }
-
+  if (!pending.length) { container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">미완료 수행평가가 없습니다.</div>'; return; }
   container.innerHTML = pending.map(a => {
     const days = getDaysLeft(a.due_date);
     const dueClass = days <= 1 ? 'urgent' : days <= 4 ? 'soon' : 'ok';
     const dueLabel = days < 0 ? '마감' : days === 0 ? '오늘' : days === 1 ? '내일' : `${days}일`;
     const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--accent)';
     return `
-      <div class="cal-drag-chip"
-           draggable="true"
-           data-assign-id="${a.id}"
-           title="${escHtml(a.title)} — ${escHtml(a.due_date || '')}까지">
+      <div class="cal-drag-chip" draggable="true" data-assign-id="${a.id}" title="${escHtml(a.title)}">
         <div class="cal-drag-chip-dot" style="background:${dotColor}"></div>
         <div class="cal-drag-chip-info">
           <div class="cal-drag-chip-title">${escHtml(a.title)}</div>
-          <div class="cal-drag-chip-sub">${escHtml(a.subject_name || '')} · ${a.type || '일반'}</div>
+          <div class="cal-drag-chip-sub">${escHtml(a.subject_name||'')} · ${a.type||'일반'}</div>
         </div>
         <div class="cal-drag-chip-due ${dueClass}">${dueLabel}</div>
       </div>
     `;
   }).join('');
-
-  // 드래그 이벤트 바인딩
   container.querySelectorAll('.cal-drag-chip').forEach(chip => {
     chip.addEventListener('dragstart', onChipDragStart);
     chip.addEventListener('dragend',   onChipDragEnd);
   });
 }
-
 function onChipDragStart(e) {
   const id = parseInt(e.currentTarget.dataset.assignId);
   calDraggingAssign = assignments.find(a => a.id === id) || null;
   if (!calDraggingAssign) return;
-
   e.dataTransfer.effectAllowed = 'copy';
-  e.dataTransfer.setData('text/plain', String(id));
   e.currentTarget.classList.add('dragging');
-
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const dueKey   = calDraggingAssign.due_date ? calDraggingAssign.due_date.slice(0, 10) : null;
-
-  const grid = document.getElementById('calGrid');
-  grid.classList.add('drag-active');
+  const todayKey = new Date().toISOString().slice(0,10);
+  const dueKey   = calDraggingAssign.due_date ? calDraggingAssign.due_date.slice(0,10) : null;
+  const grid = document.getElementById('calGrid'); grid.classList.add('drag-active');
   grid.querySelectorAll('.cal-cell[data-date]').forEach(cell => {
-    const cellDate = cell.dataset.date;
-    // 오늘 이전 OR 마감일 이후 → 드롭 불가
-    if (cellDate < todayKey || (dueKey && cellDate > dueKey)) {
-      cell.classList.add('drop-invalid');
-    }
+    const cd = cell.dataset.date;
+    if (cd < todayKey || (dueKey && cd > dueKey)) cell.classList.add('drop-invalid');
   });
 }
-
 function onChipDragEnd(e) {
-  e.currentTarget.classList.remove('dragging');
-  calDraggingAssign = null;
-
-  const grid = document.getElementById('calGrid');
-  grid.classList.remove('drag-active');
-  grid.querySelectorAll('.cal-cell').forEach(cell => {
-    cell.classList.remove('drop-invalid', 'drop-valid');
-  });
+  e.currentTarget.classList.remove('dragging'); calDraggingAssign = null;
+  const grid = document.getElementById('calGrid'); grid.classList.remove('drag-active');
+  grid.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('drop-invalid','drop-valid'));
 }
-
 function onCellDragOver(e, dateKey) {
-  e.preventDefault();
-  if (!calDraggingAssign) return;
-
+  e.preventDefault(); if (!calDraggingAssign) return;
   const cell = e.currentTarget;
-  // 이미 drop-invalid(마감 초과)인 셀이면 거부
-  if (cell.classList.contains('drop-invalid')) {
-    e.dataTransfer.dropEffect = 'none';
-    return;
-  }
-  e.dataTransfer.dropEffect = 'copy';
-  cell.classList.add('drop-valid');
+  if (cell.classList.contains('drop-invalid')) { e.dataTransfer.dropEffect = 'none'; return; }
+  e.dataTransfer.dropEffect = 'copy'; cell.classList.add('drop-valid');
 }
-
-function onCellDragLeave(e) {
-  // drop-invalid는 유지, drop-valid만 제거
-  e.currentTarget.classList.remove('drop-valid');
-}
-
+function onCellDragLeave(e) { e.currentTarget.classList.remove('drop-valid'); }
 async function onCellDrop(e, dateKey) {
   e.preventDefault();
-  const cell = e.currentTarget;
-  cell.classList.remove('drop-valid', 'drop-invalid');
-
+  const cell = e.currentTarget; cell.classList.remove('drop-valid','drop-invalid');
   if (!calDraggingAssign) return;
-
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const dueKey   = calDraggingAssign.due_date ? calDraggingAssign.due_date.slice(0, 10) : null;
-
-  if (dateKey < todayKey) {
-    showToast('오늘 이전 날짜에는 배치할 수 없습니다.', 'error');
-    return;
-  }
-  if (dueKey && dateKey > dueKey) {
-    showToast('마감일 이후에는 배치할 수 없습니다.', 'error');
-    return;
-  }
-
+  const todayKey = new Date().toISOString().slice(0,10);
+  const dueKey   = calDraggingAssign.due_date ? calDraggingAssign.due_date.slice(0,10) : null;
+  if (dateKey < todayKey) { showToast('오늘 이전 날짜에는 배치할 수 없습니다.', 'error'); return; }
+  if (dueKey && dateKey > dueKey) { showToast('마감일 이후에는 배치할 수 없습니다.', 'error'); return; }
   const a = calDraggingAssign;
-  const title = `[${a.subject_name || '과제'}] ${a.title}`;
-  const desc  = `마감: ${a.due_date || '없음'} / 수행평가 공부 계획`;
-
   try {
-    await fetch('/api/timetable/personal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ title, description: desc, due_date: dateKey })
-    });
-    // 성공 플래시
+    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title:`[${a.subject_name||'과제'}] ${a.title}`, description:`마감: ${a.due_date||'없음'} / 수행평가 공부 계획`, due_date: dateKey }) });
     cell.classList.add('drop-flash');
-    cell.addEventListener('animationend', () => cell.classList.remove('drop-flash'), { once: true });
-
+    cell.addEventListener('animationend', () => cell.classList.remove('drop-flash'), { once:true });
     showToast('공부 계획이 등록되었습니다! 📅', 'success');
-    await loadEvents();
-    renderCalendar();
-  } catch {
-    showToast('등록 실패. 다시 시도해주세요.', 'error');
-  }
+    await loadEvents(); renderCalendar();
+  } catch { showToast('등록 실패. 다시 시도해주세요.', 'error'); }
 }
-
 function renderCalendar() {
   const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById('calMonthLabel').textContent = `${calYear}년 ${monthNames[calMonth]}`;
-
   renderCalDragSource();
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  const firstDay    = new Date(calYear, calMonth, 1).getDay();
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
   const daysInPrev  = new Date(calYear, calMonth, 0).getDate();
-
-  // 완료 과제 제외된 이벤트 맵
   const evMap = buildCalEvMap();
-
-  const grid = document.getElementById('calGrid');
-  grid.innerHTML = '';
-
+  const grid = document.getElementById('calGrid'); grid.innerHTML = '';
   const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
-
   for (let i = 0; i < totalCells; i++) {
-    const cell = document.createElement('div');
     let dateNum, isCurrentMonth = true;
-
-    if (i < firstDay) {
-      dateNum = daysInPrev - firstDay + i + 1;
-      isCurrentMonth = false;
-    } else if (i >= firstDay + daysInMonth) {
-      dateNum = i - firstDay - daysInMonth + 1;
-      isCurrentMonth = false;
-    } else {
-      dateNum = i - firstDay + 1;
-    }
-
-    const cellDate = isCurrentMonth
-      ? new Date(calYear, calMonth, dateNum)
-      : i < firstDay
-        ? new Date(calYear, calMonth - 1, dateNum)
-        : new Date(calYear, calMonth + 1, dateNum);
-
-    const dateKey    = `${cellDate.getFullYear()}-${String(cellDate.getMonth()+1).padStart(2,'0')}-${String(cellDate.getDate()).padStart(2,'0')}`;
-    const isToday    = cellDate.getTime() === today.getTime();
-    const dow        = cellDate.getDay();
+    if (i < firstDay) { dateNum = daysInPrev - firstDay + i + 1; isCurrentMonth = false; }
+    else if (i >= firstDay + daysInMonth) { dateNum = i - firstDay - daysInMonth + 1; isCurrentMonth = false; }
+    else dateNum = i - firstDay + 1;
+    const cellDate = isCurrentMonth ? new Date(calYear, calMonth, dateNum) : (i < firstDay ? new Date(calYear, calMonth-1, dateNum) : new Date(calYear, calMonth+1, dateNum));
+    const dateKey = `${cellDate.getFullYear()}-${String(cellDate.getMonth()+1).padStart(2,'0')}-${String(cellDate.getDate()).padStart(2,'0')}`;
+    const isToday = cellDate.getTime() === today.getTime();
+    const dow = cellDate.getDay();
     const isSelected = calSelectedDate === dateKey;
-
-    cell.className = [
-      'cal-cell',
-      !isCurrentMonth ? 'other-month' : '',
-      isToday         ? 'today'        : '',
-      isSelected      ? 'selected'     : '',
-      dow === 0       ? 'sunday'       : '',
-      dow === 6       ? 'saturday'     : '',
-    ].filter(Boolean).join(' ');
-
+    const cell = document.createElement('div');
+    cell.className = ['cal-cell', !isCurrentMonth?'other-month':'', isToday?'today':'', isSelected?'selected':'', dow===0?'sunday':'', dow===6?'saturday':''].filter(Boolean).join(' ');
     cell.dataset.date = dateKey;
-
     cell.addEventListener('dragover',  e => onCellDragOver(e, dateKey));
     cell.addEventListener('dragleave', onCellDragLeave);
     cell.addEventListener('drop',      e => onCellDrop(e, dateKey));
-
     const cellEvs = evMap[dateKey] || [];
-    const maxShow = 3;
-    const shown   = cellEvs.slice(0, maxShow);
-    const more    = cellEvs.length - maxShow;
-
+    const shown = cellEvs.slice(0,3), more = cellEvs.length - 3;
     cell.innerHTML = `
       <div class="cal-day-num">${dateNum}</div>
       <div class="cal-events">
-        ${shown.map(e => {
-          if (e.kind === 'assign') {
-            const cls = e.item.type === '진로' ? '진로' : '';
-            return `<div class="cal-event-chip type-assign ${cls}">${escHtml(e.item.subject_name || '')} ${escHtml(e.item.title)}</div>`;
-          } else {
-            return `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`;
-          }
-        }).join('')}
+        ${shown.map(e => e.kind==='assign' ? `<div class="cal-event-chip type-assign ${e.item.type==='진로'?'진로':''}">${escHtml(e.item.subject_name||'')} ${escHtml(e.item.title)}</div>` : `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`).join('')}
         ${more > 0 ? `<div class="cal-more">+${more}개 더</div>` : ''}
       </div>
     `;
-
-    cell.addEventListener('click', () => selectCalDate(dateKey, cellDate, evMap[dateKey] || []));
+    cell.addEventListener('click', () => selectCalDate(dateKey, cellDate, evMap[dateKey]||[]));
     grid.appendChild(cell);
   }
-
-  // 선택 날짜 유지
   if (calSelectedDate) {
     const parts = calSelectedDate.split('-');
-    const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
-    renderCalDetailPanel(calSelectedDate, d, evMap[calSelectedDate] || []);
+    renderCalDetailPanel(calSelectedDate, new Date(+parts[0], +parts[1]-1, +parts[2]), evMap[calSelectedDate]||[]);
   }
 }
-
 function selectCalDate(dateKey, dateObj, evs) {
   calSelectedDate = dateKey;
   document.querySelectorAll('#calGrid .cal-cell').forEach(c => c.classList.remove('selected'));
@@ -2404,157 +1325,54 @@ function selectCalDate(dateKey, dateObj, evs) {
   renderCalDetailPanel(dateKey, dateObj, evs);
   document.getElementById('calRightCol').classList.add('mobile-show');
 }
-
 function renderCalDetailPanel(dateKey, dateObj, evs) {
   const dayNames = ['일','월','화','수','목','금','토'];
-  const label = `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${dayNames[dateObj.getDay()]})`;
-  document.getElementById('calDetailDate').textContent = label;
-
+  document.getElementById('calDetailDate').textContent = `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${dayNames[dateObj.getDay()]})`;
   const list = document.getElementById('calDetailList');
-
-  if (!evs.length) {
-    list.innerHTML = '<div class="cal-detail-empty">이 날에 일정이 없습니다.</div>';
-  } else {
+  if (!evs.length) { list.innerHTML = '<div class="cal-detail-empty">이 날에 일정이 없습니다.</div>'; }
+  else {
     list.innerHTML = evs.map(e => {
       if (e.kind === 'assign') {
-        const a = e.item;
-        const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--accent)';
-        return `
-          <div class="cal-detail-item" onclick="openAssignDetail(${a.id})">
-            <div class="cal-detail-dot" style="background:${dotColor}"></div>
-            <div class="cal-detail-info">
-              <div class="cal-detail-title">${escHtml(a.title)}</div>
-              <div class="cal-detail-sub">${escHtml(a.subject_name || '')} · ${a.type || '일반'} · 마감 ${fmtDate(a.due_date)}</div>
-            </div>
-          </div>
-        `;
+        const a = e.item; const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--accent)';
+        return `<div class="cal-detail-item" onclick="openAssignDetail(${a.id})"><div class="cal-detail-dot" style="background:${dotColor}"></div><div><div class="cal-detail-title">${escHtml(a.title)}</div><div class="cal-detail-sub">${escHtml(a.subject_name||'')} · 마감 ${fmtDate(a.due_date)}</div></div></div>`;
       } else {
         const ev = e.item;
-        return `
-          <div class="cal-detail-item" id="cal-ev-row-${ev.id}" style="cursor:default;align-items:flex-start">
-            ${personalEvRowInner(ev.id, ev.title, ev.description || '')}
-          </div>
-        `;
+        return `<div class="cal-detail-item" id="cal-ev-row-${ev.id}" style="cursor:default;align-items:flex-start">${personalEvRowInner(ev.id, ev.title, ev.description||'')}</div>`;
       }
     }).join('');
   }
-
-  // 인라인 추가 폼 표시 (날짜 선택 시 항상)
-  const form = document.getElementById('calAddForm');
-  form.style.display = 'block';
+  document.getElementById('calAddForm').style.display = 'block';
   document.getElementById('calAddTitle').value = '';
   document.getElementById('calAddMemo').value  = '';
-}
-
-// ── Timetable ──
-async function loadTimetable() {
-  try {
-    const res = await fetch('/api/timetable', { credentials: 'include' });
-    const data = await res.json();
-    const tt = data.timetable || data || [];
-    renderTimetable(tt);
-  } catch {}
-}
-
-function renderTimetable(tt) {
-  const grid = document.getElementById('timetableGrid');
-
-  if (!tt.length) {
-    grid.style.display = 'block';
-    grid.innerHTML = '<div class="empty-state"><p>수강 중인 과목이 없습니다.</p></div>';
-    return;
-  }
-
-  const 일반 = tt.filter(t => (t.category || '일반') === '일반');
-  const 진로 = tt.filter(t => t.category === '진로');
-
-  const makeCard = (t) => `
-    <div style="
-      background:var(--surface2);border:1px solid var(--border);
-      border-radius:var(--radius-sm);padding:10px 14px;
-      display:flex;align-items:center;justify-content:space-between;
-    ">
-      <div>
-        <div style="font-size:0.88rem;font-weight:600;color:var(--text)">${escHtml(t.subject_name)}</div>
-        <div style="font-size:0.75rem;color:var(--text3);margin-top:2px">${escHtml(t.class_code)}반 · ${escHtml(t.teacher || '')}</div>
-      </div>
-      <span class="badge ${t.category === '진로' ? 'badge-blue' : 'badge-green'}">${t.category || '일반'}</span>
-    </div>
-  `;
-
-  grid.style.display = 'flex';
-  grid.style.flexDirection = 'column';
-  grid.style.gap = '20px';
-
-  grid.innerHTML = `
-    ${일반.length ? `
-      <div>
-        <div style="font-size:0.78rem;font-weight:600;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">일반 과목</div>
-        <div style="display:flex;flex-direction:column;gap:6px">${일반.map(makeCard).join('')}</div>
-      </div>
-    ` : ''}
-    ${진로.length ? `
-      <div>
-        <div style="font-size:0.78rem;font-weight:600;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">진로 과목</div>
-        <div style="display:flex;flex-direction:column;gap:6px">${진로.map(makeCard).join('')}</div>
-      </div>
-    ` : ''}
-  `;
 }
 
 // ── Meals ──
 async function loadMeals() {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/meals?date=${today}`, { credentials: 'include' });
+    const res = await fetch(`/api/meals?date=${today}`, { credentials:'include' });
     const data = await res.json();
-    const meals = data.meals || data || {};
-    renderMeals(meals, today);
+    renderMeals(data.meals || {}, today);
   } catch(e) { console.error(e); }
 }
-
 function renderMeals(meals, date) {
   const wrap = document.getElementById('mealWrap');
   const d = new Date(date);
   const dateStr = `${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]})`;
-
-  const types = [
-    { key: 'breakfast', label: '조식' },
-    { key: 'lunch',     label: '중식' },
-    { key: 'dinner',    label: '석식' }
-  ];
-
+  const types = [{key:'breakfast',label:'조식'},{key:'lunch',label:'중식'},{key:'dinner',label:'석식'}];
   wrap.innerHTML = `
     <div class="meal-card">
-      <div class="meal-header">
-        <h3>오늘의 급식</h3>
-        <span class="meal-date">${dateStr}</span>
-      </div>
-      <div class="meal-tabs">
-        ${types.map((t,i) => `
-          <button class="meal-tab ${i===1 ? 'active' : ''}" onclick="switchMealTab(this, '${t.key}')">${t.label}</button>
-        `).join('')}
-      </div>
-      ${types.map(t => `
-        <div class="meal-content" id="meal-${t.key}" style="${t.key === 'lunch' ? '' : 'display:none'}">
-          ${renderMealMenu(meals[t.key])}
-        </div>
-      `).join('')}
+      <div class="meal-header"><h3>오늘의 급식</h3><span class="meal-date">${dateStr}</span></div>
+      <div class="meal-tabs">${types.map((t,i) => `<button class="meal-tab ${i===1?'active':''}" onclick="switchMealTab(this,'${t.key}')">${t.label}</button>`).join('')}</div>
+      ${types.map(t => `<div class="meal-content" id="meal-${t.key}" style="${t.key==='lunch'?'':'display:none'}">${renderMealMenu(meals[t.key])}</div>`).join('')}
     </div>
   `;
 }
-
 function renderMealMenu(meal) {
-  if (!meal || !meal.menu) {
-    return '<div style="color:var(--muted);font-size:0.83rem;padding:8px 0">급식 정보가 없습니다.</div>';
-  }
+  if (!meal || !meal.menu) return '<div style="color:var(--muted);font-size:0.83rem;padding:8px 0">급식 정보가 없습니다.</div>';
   const items = Array.isArray(meal.menu) ? meal.menu : meal.menu.split('\n');
-  return `
-    <div class="meal-menu">${items.map(i => `<span>${escHtml(i.trim())}</span>`).join('')}</div>
-    ${meal.calories ? `<div class="meal-cal">🔥 ${meal.calories} kcal</div>` : ''}
-  `;
+  return `<div class="meal-menu">${items.map(i=>`<span>${escHtml(i.trim())}</span>`).join('')}</div>${meal.calories ? `<div class="meal-cal">🔥 ${meal.calories} kcal</div>` : ''}`;
 }
-
 function switchMealTab(btn, type) {
   btn.closest('.meal-card').querySelectorAll('.meal-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
@@ -2562,89 +1380,147 @@ function switchMealTab(btn, type) {
   document.getElementById(`meal-${type}`).style.display = '';
 }
 
-// ── Modal ──
-function closeModal(id) {
-  document.getElementById(id).style.display = 'none';
+// ── Profile ──
+async function loadProfileSubjects() {
+  try {
+    const res = await fetch('/api/timetable', { credentials:'include' });
+    const data = await res.json();
+    const tt = data.timetable || [];
+    const list = document.getElementById('profileSubjectList');
+    if (!tt.length) { list.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;text-align:center;padding:16px">수강 과목이 없습니다.</div>'; return; }
+    list.innerHTML = tt.map(t => `
+      <div class="subj-row">
+        <span class="badge ${t.category==='진로'?'badge-blue':'badge-green'}">${t.category||'일반'}</span>
+        <span class="subj-row-name">${escHtml(t.subject_name)}</span>
+        <span class="subj-row-meta">${escHtml(t.class_code)}반 · ${escHtml(t.teacher||'')}</span>
+      </div>
+    `).join('');
+  } catch {}
 }
 
-// ── Auth ──
-async function logout() {
-  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-  location.href = 'login.html';
+async function loadTimetablePreview() {
+  try {
+    const res = await fetch(`/api/timetable/image/${encodeURIComponent(currentUser.id)}`, { credentials:'include' });
+    const data = await res.json();
+    renderTimetablePreview(data);
+  } catch {}
 }
 
-// ── Drag & Drop ──
-const zone = document.getElementById('eventUploadZone');
-if (zone) {
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-  zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.classList.remove('drag-over');
-    const files = e.dataTransfer.files;
-    handleFileSelect({ target: { files } });
-  });
+function renderTimetablePreview(data) {
+  const preview = document.getElementById('ttPreview');
+  if (!data || !data.image_url) { preview.innerHTML = ''; return; }
+  if (data.file_type === 'pdf') {
+    preview.innerHTML = `<div class="pdf-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ${escHtml(data.file_name||'시간표.pdf')} <a href="${data.image_url}" target="_blank" style="color:var(--accent);margin-left:auto;font-size:0.78rem">열기 →</a></div>`;
+  } else {
+    preview.innerHTML = `<img src="${data.image_url}" alt="시간표" style="cursor:pointer" onclick="window.open('${data.image_url}','_blank')" />`;
+  }
 }
 
-// ── Sidebar toggle (mobile) ──
+async function uploadTimetable(e) {
+  const file = e.target.files[0]; if (!file) return;
+  showToast('업로드 중...', 'info');
+  const form = new FormData(); form.append('file', file);
+  try {
+    const res = await fetch(`/api/timetable/image/${encodeURIComponent(currentUser.id)}`, { method:'POST', credentials:'include', body:form });
+    const data = await res.json();
+    if (data.success) { showToast('시간표가 업로드되었습니다.', 'success'); renderTimetablePreview({ image_url: data.image_url, file_type: file.name.toLowerCase().endsWith('.pdf')?'pdf':'image', file_name: file.name }); }
+    else showToast(data.error||'업로드 실패', 'error');
+  } catch { showToast('업로드 실패', 'error'); }
+  e.target.value = '';
+}
+
+async function changeId() {
+  const new_id  = document.getElementById('newIdInput').value.trim();
+  const password = document.getElementById('idChangePwInput').value;
+  if (!new_id || !password) { showToast('모든 필드를 입력하세요.', 'error'); return; }
+  try {
+    const res = await fetch('/api/me/id', { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ new_id, password }) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.message||'변경 실패', 'error'); return; }
+    showToast('아이디가 변경되었습니다. 다시 로그인해주세요.', 'success');
+    document.getElementById('newIdInput').value = '';
+    document.getElementById('idChangePwInput').value = '';
+    document.getElementById('profileDisplayId').textContent = data.new_id;
+    currentUser.id = data.new_id;
+    setTimeout(() => { fetch('/api/logout',{method:'POST',credentials:'include'}).then(()=>{ location.href='login.html'; }); }, 1500);
+  } catch { showToast('변경 실패', 'error'); }
+}
+
+async function changePassword() {
+  const current_password = document.getElementById('curPwInput').value;
+  const new_password     = document.getElementById('newPwInput').value;
+  const confirm_password = document.getElementById('newPwConfirmInput').value;
+  if (!current_password || !new_password || !confirm_password) { showToast('모든 필드를 입력하세요.', 'error'); return; }
+  if (new_password !== confirm_password) { showToast('새 비밀번호가 일치하지 않습니다.', 'error'); return; }
+  try {
+    const res = await fetch('/api/me/password', { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ current_password, new_password }) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.message||'변경 실패', 'error'); return; }
+    showToast('비밀번호가 변경되었습니다.', 'success');
+    ['curPwInput','newPwInput','newPwConfirmInput'].forEach(id => document.getElementById(id).value = '');
+  } catch { showToast('변경 실패', 'error'); }
+}
+
+// ── Sidebar ──
 function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar.classList.contains('open')) closeSidebar();
+  else openSidebar();
+}
+function openSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
   const tab     = document.getElementById('sidebarTab');
-  if (sidebar.classList.contains('open')) {
-    closeSidebar();
-  } else {
-    sidebar.classList.add('open');
-    overlay.classList.add('active');
-    tab.classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
+  sidebar.classList.add('open');
+  overlay.classList.add('active');
+  tab.classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebarOverlay').classList.remove('active');
-  document.getElementById('sidebarTab').classList.remove('open');
-  document.body.style.overflow = '';
-}
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebarOverlay').classList.remove('active');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const tab     = document.getElementById('sidebarTab');
+  sidebar.classList.remove('open');
+  overlay.classList.remove('active');
+  tab.classList.remove('open');
   document.body.style.overflow = '';
 }
 
-// ── Utilities ──
-function escHtml(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ── Modal ──
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// ── Auth ──
+async function logout() {
+  await fetch('/api/logout', { method:'POST', credentials:'include' });
+  location.href = 'login.html';
 }
-function fmtDate(str) {
-  if (!str) return '';
-  const d = new Date(str);
-  return `${d.getMonth()+1}/${d.getDate()}`;
-}
-function fmtDateTime(str) {
-  if (!str) return '';
-  const d = new Date(str);
-  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
-function showToast(msg, type = 'info') {
+
+// ── Utils ──
+function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}/${d.getDate()}`; }
+function fmtDateTime(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function showToast(msg, type='info') {
   const c = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.textContent = msg;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
+  c.appendChild(t); setTimeout(() => t.remove(), 3000);
 }
 
-// Enter for comments
-document.getElementById('noticeCommentInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') submitComment('notice');
-});
-document.getElementById('assignCommentInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') submitComment('assignment');
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.activeElement.id === 'calAddTitle') calAddEvent();
-});
+// ── Event Listeners ──
+document.getElementById('noticeCommentInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitComment('notice'); });
+document.getElementById('assignCommentInput').addEventListener('keydown',  e => { if (e.key === 'Enter') submitComment('assignment'); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.activeElement.id === 'calAddTitle') calAddEvent(); });
+
+// 시간표 업로드존 드래그앤드롭
+const ttZone = document.getElementById('ttUploadZone');
+if (ttZone) {
+  ttZone.addEventListener('dragover',  e => { e.preventDefault(); ttZone.classList.add('drag-over'); });
+  ttZone.addEventListener('dragleave', () => ttZone.classList.remove('drag-over'));
+  ttZone.addEventListener('drop', e => {
+    e.preventDefault(); ttZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) uploadTimetable({ target: { files: [file], value: '' } });
+  });
+}
 </script>
 </body>
 </html>

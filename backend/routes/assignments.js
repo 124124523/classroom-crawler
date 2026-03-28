@@ -50,7 +50,7 @@ router.get('/', requireLogin, async (req, res) => {
   try {
     let rows;
 
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'teacher') {
       [rows] = await db.query(BASE_SELECT + ' ORDER BY a.deadline ASC');
 
     } else if (user.role === 'leader' && req.query.mine === 'true') {
@@ -117,8 +117,6 @@ router.get('/:id', requireLogin, async (req, res) => {
 router.post('/', requireLogin, async (req, res) => {
   const user = req.session.user;
   if (user.role === 'student') return res.status(403).json({ message: '권한 없음' });
-
-  const { title, description, class_id, due_date, images } = req.body;
   if (!title || !class_id) return res.status(400).json({ message: '제목과 분반은 필수입니다.' });
   if (!due_date) return res.status(400).json({ message: '마감일은 필수입니다.' });
 
@@ -150,7 +148,7 @@ router.put('/:id', requireLogin, async (req, res) => {
     if (rows[0].writer === 'classroom_bot') {
       return res.status(403).json({ message: '크롤러 자동 등록 항목은 수정할 수 없습니다.' });
     }
-    if (user.role !== 'admin' && rows[0].writer !== user.id) {
+    if (user.role !== 'admin' && user.role !== 'teacher' && rows[0].writer !== user.id) {
       return res.status(403).json({ message: '수정 권한이 없습니다.' });
     }
 
@@ -172,7 +170,7 @@ router.delete('/:id', requireLogin, async (req, res) => {
   try {
     const [rows] = await db.query('SELECT writer FROM assignments WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: '과제를 찾을 수 없습니다.' });
-    if (user.role !== 'admin' && rows[0].writer !== user.id) {
+    if (user.role !== 'admin' && user.role !== 'teacher' && rows[0].writer !== user.id) {
       return res.status(403).json({ message: '삭제 권한이 없습니다.' });
     }
 
