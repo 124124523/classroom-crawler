@@ -89,6 +89,20 @@
     .section-page { display: none; }
     .section-page.active { display: block; }
 
+    /* ── 모바일 사이드바 오버레이 ── */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 99;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    @media (max-width: 768px) {
+      .sidebar-overlay.active { display: block; }
+    }
+
     /* File upload in form */
     .inline-upload {
       border: 1px dashed var(--border2);
@@ -106,6 +120,9 @@
 </head>
 <body>
 <div class="app-shell">
+
+  <!-- 모바일 사이드바 오버레이 -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
@@ -668,6 +685,9 @@ function showSection(name) {
   if (event && event.currentTarget) event.currentTarget.classList.add('active');
   const titles = { overview:'개요', assignments:'수행평가 관리', notices:'공지 관리' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
+
+  // 모바일에서 네비 클릭 시 사이드바 자동 닫기
+  if (window.innerWidth <= 768) closeSidebar();
 }
 
 function fmtDate(str) {
@@ -691,7 +711,20 @@ async function logout() {
   location.href = 'login.html';
 }
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (sidebar.classList.contains('open')) {
+    closeSidebar();
+  } else {
+    sidebar.classList.add('open');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+  document.body.style.overflow = '';
 }
 </script>
 </body>

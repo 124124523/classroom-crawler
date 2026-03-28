@@ -48,9 +48,6 @@ async function getSubjects() {
 
 // ================================================================
 // parseCourseName: 수업명 → { matchedSubject, matchedTeacher, matchedClass }
-// 패턴1: 한글만 추출 → 과목명 매칭
-// 패턴2: 한글에서 과목명 제거 → DB 선생님 목록과 대조
-// 패턴3: 알파벳 추출 → 분반코드
 // ================================================================
 async function parseCourseName(courseName) {
   const subjects = await getSubjects();
@@ -201,7 +198,8 @@ async function findClassId(courseName) {
     }
     console.warn(`  [sync] ❌ "${courseName}" → 매칭 실패 (과목:${matchedSubject||'?'} 선생님:${matchedTeacher||'?'} 분반:${matchedClass||'?'})`);
   } else {
-    console.warn(`  [sync] ❌ "${courseName}" → 매칭 실패 (과목:${matchedSubject||'?'} 선생님:${matchedTeacher||'?'} 분반:${matchedClass||'?'})`);
+    // 과목명 자체가 없으면 로그 레벨을 낮춤 (홈룸/행정 수업 등 노이즈 방지)
+    console.debug(`  [sync] ⏭  "${courseName}" → 과목 없음, 스킵`);
   }
 
   return bestMatch ? bestMatch.id : null;
@@ -227,12 +225,17 @@ async function syncCourseworkToAssignments() {
 
   for (const cw of courseworks) {
     try {
+      // ✅ FIX: classId를 루프 최상단에서 먼저 resolve
+      const classId = await findClassId(cw.course_name);
+
       const [existing] = await pool.query(
-        'SELECT id, class_id FROM assignments WHERE gclassroom_id = ?', [cw.coursework_id]
+        'SELECT id, class_id FROM assignments WHERE gclassroom_id = ?',
+        [cw.coursework_id]
       );
+
       if (existing.length > 0) {
-        // 이미 있어도 class_id가 다르면 재매핑 (잘못 매핑된 경우 자동 수정)
-        if (existing[0].class_id !== classId) {
+        // 이미 존재 — classId가 유효하고 다를 때만 재매핑
+        if (classId && existing[0].class_id !== classId) {
           await pool.query(
             'UPDATE assignments SET class_id = ? WHERE gclassroom_id = ?',
             [classId, cw.coursework_id]
@@ -244,7 +247,7 @@ async function syncCourseworkToAssignments() {
         continue;
       }
 
-      const classId = await findClassId(cw.course_name);
+      // 신규 — classId 없으면 failed 처리
       if (!classId) { failed++; continue; }
 
       const content = [
