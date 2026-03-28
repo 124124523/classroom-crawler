@@ -124,6 +124,69 @@
 
     /* Role selector */
     .role-select { appearance: none; }
+
+    /* Notice image upload */
+    .notice-upload-zone {
+      border: 2px dashed var(--border2);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text3);
+      font-size: 0.83rem;
+    }
+    .notice-upload-zone:hover, .notice-upload-zone.drag-over {
+      border-color: var(--accent2);
+      background: rgba(114,201,154,0.05);
+      color: var(--text2);
+    }
+    .notice-upload-zone svg { margin: 0 auto 6px; opacity: 0.5; }
+    .notice-img-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .notice-img-thumb {
+      position: relative;
+      width: 76px; height: 76px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .notice-img-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .notice-img-thumb .rm-btn {
+      position: absolute; top: 3px; right: 3px;
+      width: 18px; height: 18px;
+      background: rgba(0,0,0,0.72);
+      border: none; border-radius: 50%;
+      color: #fff; font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      line-height: 1;
+    }
+    /* notice list image strip */
+    .notice-img-strip {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .notice-img-strip img {
+      width: 56px; height: 56px;
+      object-fit: cover;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .notice-img-strip img:hover { opacity: 0.8; }
   </style>
 </head>
 <body>
@@ -464,6 +527,22 @@
           <div class="form-group">
             <label class="form-label">내용 *</label>
             <textarea class="form-input form-textarea" id="noticeContent" style="min-height:120px" placeholder="공지 내용을 입력하세요"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">이미지 첨부 (선택)</label>
+            <div class="notice-upload-zone" id="noticeUploadZone"
+                 onclick="document.getElementById('noticeFileInput').click()">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polyline points="16 16 12 12 8 16"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+              </svg>
+              <p>클릭하거나 파일을 드래그하세요</p>
+              <p style="font-size:0.72rem;margin-top:3px;color:var(--muted)">JPG, PNG, GIF · 최대 5장</p>
+              <input type="file" id="noticeFileInput" accept="image/*" multiple style="display:none"
+                     onchange="handleNoticeFile(event)" />
+            </div>
+            <div class="notice-img-preview" id="noticeImgPreview"></div>
           </div>
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
             <button class="btn btn-ghost" onclick="clearNoticeForm()">초기화</button>
@@ -852,6 +931,57 @@ async function loadCoverage() {
 // ── Notices (전체 공지) ──
 let adminNotices = [];
 let editingNoticeId = null;
+let noticeUploadedFiles = []; // { file, dataUrl } — 새로 선택한 파일
+let noticeExistingUrls  = []; // string[] — 수정 시 기존 URL
+
+function handleNoticeFile(e) {
+  const files = Array.from(e.target.files).slice(0, 5 - noticeUploadedFiles.length - noticeExistingUrls.length);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      noticeUploadedFiles.push({ file, dataUrl: ev.target.result });
+      renderNoticeImgPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = ''; // 같은 파일 재선택 허용
+}
+
+function renderNoticeImgPreview() {
+  const wrap = document.getElementById('noticeImgPreview');
+  wrap.innerHTML = '';
+
+  // 기존 URL (수정 모드)
+  noticeExistingUrls.forEach((url, i) => {
+    const div = document.createElement('div');
+    div.className = 'notice-img-thumb';
+    div.innerHTML = `
+      <img src="${url}" onclick="window.open('${url}','_blank')" />
+      <button class="rm-btn" onclick="removeExistingNoticeImg(${i})">✕</button>
+    `;
+    wrap.appendChild(div);
+  });
+
+  // 새로 추가된 파일
+  noticeUploadedFiles.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'notice-img-thumb';
+    div.innerHTML = `
+      <img src="${f.dataUrl}" />
+      <button class="rm-btn" onclick="removeNewNoticeImg(${i})">✕</button>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+function removeExistingNoticeImg(i) {
+  noticeExistingUrls.splice(i, 1);
+  renderNoticeImgPreview();
+}
+function removeNewNoticeImg(i) {
+  noticeUploadedFiles.splice(i, 1);
+  renderNoticeImgPreview();
+}
 
 async function loadAdminNotices() {
   const list = document.getElementById('noticeAdminList');
@@ -859,7 +989,6 @@ async function loadAdminNotices() {
   try {
     const res = await fetch('/api/notices', { credentials: 'include' });
     const data = await res.json();
-    // 전체공지(class_id=null)만 필터
     adminNotices = (data.notices || []).filter(n => n.class_id === null || n.class_id === undefined);
     renderAdminNotices();
   } catch(e) {
@@ -876,19 +1005,26 @@ function renderAdminNotices() {
     return;
   }
 
-  list.innerHTML = adminNotices.map(n => `
-    <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:4px">${escHtml(n.title)}</div>
-        <div style="font-size:0.8rem;color:var(--text3);white-space:pre-wrap;line-height:1.7;max-height:60px;overflow:hidden;text-overflow:ellipsis">${escHtml(n.content || '')}</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px">${fmtDate(n.created_at)} · 작성자: ${escHtml(n.writer || '-')}</div>
+  list.innerHTML = adminNotices.map(n => {
+    const imgs = n.images || [];
+    return `
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:4px">${escHtml(n.title)}</div>
+          <div style="font-size:0.8rem;color:var(--text3);white-space:pre-wrap;line-height:1.7;max-height:60px;overflow:hidden">${escHtml(n.content || '')}</div>
+          ${imgs.length ? `
+            <div class="notice-img-strip">
+              ${imgs.map(url => `<img src="${url}" onclick="window.open('${url}','_blank')" title="클릭해서 원본 보기" />`).join('')}
+            </div>` : ''}
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:6px">${fmtDate(n.created_at)} · 작성자: ${escHtml(n.writer || '-')}${imgs.length ? ` · 사진 ${imgs.length}장` : ''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="startEditNotice(${n.id})">수정</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAdminNotice(${n.id})">삭제</button>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" onclick="startEditNotice(${n.id})">수정</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAdminNotice(${n.id})">삭제</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function startEditNotice(id) {
@@ -897,6 +1033,12 @@ function startEditNotice(id) {
   editingNoticeId = id;
   document.getElementById('noticeTitle').value   = n.title;
   document.getElementById('noticeContent').value = n.content || '';
+
+  // 기존 이미지 복원
+  noticeExistingUrls  = [...(n.images || [])];
+  noticeUploadedFiles = [];
+  renderNoticeImgPreview();
+
   document.getElementById('noticeSaveBtn').innerHTML = `
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -904,15 +1046,17 @@ function startEditNotice(id) {
     </svg>
     공지 수정
   `;
-  // 폼으로 스크롤
   document.getElementById('noticeTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
   document.getElementById('noticeTitle').focus();
 }
 
 function clearNoticeForm() {
-  editingNoticeId = null;
+  editingNoticeId     = null;
+  noticeUploadedFiles = [];
+  noticeExistingUrls  = [];
   document.getElementById('noticeTitle').value   = '';
   document.getElementById('noticeContent').value = '';
+  document.getElementById('noticeImgPreview').innerHTML = '';
   document.getElementById('noticeSaveBtn').innerHTML = `
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -927,29 +1071,46 @@ async function saveNotice() {
   const content = document.getElementById('noticeContent').value.trim();
   if (!title || !content) { showToast('제목과 내용을 모두 입력하세요.', 'error'); return; }
 
+  // 새 이미지 업로드
+  let newUrls = [];
+  if (noticeUploadedFiles.length > 0) {
+    showToast('이미지 업로드 중...', 'info');
+    const form = new FormData();
+    noticeUploadedFiles.forEach(f => form.append('images', f.file));
+    try {
+      const res  = await fetch('/api/upload/multiple', { method: 'POST', credentials: 'include', body: form });
+      const data = await res.json();
+      newUrls = data.urls || [];
+    } catch {
+      showToast('이미지 업로드 실패', 'error');
+      return;
+    }
+  }
+
+  // 기존 URL + 신규 URL 합산
+  const images = [...noticeExistingUrls, ...newUrls];
+
   try {
     if (editingNoticeId) {
-      // 수정 — class_id: null 유지
       await fetch(`/api/notices/${editingNoticeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ title, content, class_id: null })
+        body: JSON.stringify({ title, content, class_id: null, images })
       });
       showToast('공지가 수정되었습니다.', 'success');
     } else {
-      // 신규 — class_id 미포함 → 서버에서 null 처리
       await fetch('/api/notices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ title, content })
+        body: JSON.stringify({ title, content, images })
       });
       showToast('전체 공지가 등록되었습니다.', 'success');
     }
     clearNoticeForm();
     await loadAdminNotices();
-    await loadDashboard(); // 대시보드 공지 수 갱신
+    await loadDashboard();
   } catch { showToast('저장 실패', 'error'); }
 }
 
@@ -969,6 +1130,18 @@ async function logout() {
 }
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
+}
+
+// 공지 업로드존 드래그앤드롭
+const nZone = document.getElementById('noticeUploadZone');
+if (nZone) {
+  nZone.addEventListener('dragover',  e => { e.preventDefault(); nZone.classList.add('drag-over'); });
+  nZone.addEventListener('dragleave', () => nZone.classList.remove('drag-over'));
+  nZone.addEventListener('drop', e => {
+    e.preventDefault();
+    nZone.classList.remove('drag-over');
+    handleNoticeFile({ target: { files: e.dataTransfer.files, value: '' } });
+  });
 }
 </script>
 </body>
