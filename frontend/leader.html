@@ -893,6 +893,17 @@ async function openCommentModal(assignId, title) {
   await loadComments();
 }
 
+async function openNoticeCommentModal(noticeId, title) {
+  commentModalType = 'notice';
+  commentModalAssignId = noticeId;
+  replyToId = null;
+  commentPage = 1;
+  document.getElementById('commentModalTitle').textContent = `💬 ${title}`;
+  document.getElementById('commentModalBackdrop').style.display = 'flex';
+  document.getElementById('commentInput').value = '';
+  await loadComments();
+}
+
 function closeCommentModal() {
   document.getElementById('commentModalBackdrop').style.display = 'none';
   commentModalAssignId = null;

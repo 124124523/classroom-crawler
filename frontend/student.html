@@ -1243,6 +1243,7 @@ async function loadNotices() {
     notices = data.notices || data || [];
     renderNotices();
     updateNoticeBadge();
+    updateCommentBadges();
   } catch(e) { console.error(e); }
 }
 
@@ -1364,6 +1365,9 @@ async function loadComments(type, id, listId, page = 1, append = false) {
         headers: {'Content-Type':'application/json'},
         credentials: 'include',
         body: JSON.stringify({ type, ids: unreadIds })
+      }).then(() => {
+        // 읽음 처리 후 배지 즉시 업데이트
+        updateCommentBadges();
       }).catch(() => {});
       unreadIds.forEach(id => {
         const el = document.getElementById(`sc-${id}`);
