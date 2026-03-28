@@ -689,6 +689,7 @@ function renderNoticeList() {
         </div>
       </div>
       <div class="manage-item-actions">
+        <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, '${escHtml(n.title).replace(/'/g, '&apos;')}')" title="댓글">💬</button>
         <button class="btn-icon" onclick="editNotice(${n.id})" title="수정">✏️</button>
         <button class="btn-icon" onclick="deleteNotice(${n.id})" title="삭제">🗑️</button>
       </div>
@@ -875,12 +876,14 @@ function closeSidebar() {
 }
 
 // ── 댓글/답글 기능 ──────────────────────────────────
+let commentModalType = 'assignment';
 let commentModalAssignId = null;
 let replyToId = null;
 let commentPage = 1;
 const COMMENT_PAGE_SIZE = 5;
 
 async function openCommentModal(assignId, title) {
+  commentModalType = 'assignment';
   commentModalAssignId = assignId;
   replyToId = null;
   commentPage = 1;
@@ -902,7 +905,7 @@ async function loadComments(append = false) {
     thread.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px">로딩 중...</div>';
   }
   try {
-    const url = `/api/comments/assignment/${commentModalAssignId}?page=${commentPage}&limit=${COMMENT_PAGE_SIZE}`;
+    const url = `/api/comments/${commentModalType || 'assignment'}/${commentModalAssignId}?page=${commentPage}&limit=${COMMENT_PAGE_SIZE}`;
     const res  = await fetch(url, { credentials: 'include' });
     const data = await res.json();
     const comments = data.comments || [];
@@ -991,7 +994,7 @@ async function loadComments(append = false) {
 async function submitComment() {
   const content = document.getElementById('commentInput').value.trim();
   if (!content || !commentModalAssignId) return;
-  const body = { type: 'assignment', ref_id: commentModalAssignId, content };
+  const body = { type: commentModalType || 'assignment', ref_id: commentModalAssignId, content };
   if (replyToId) body.parent_id = replyToId;
   try {
     const res  = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });

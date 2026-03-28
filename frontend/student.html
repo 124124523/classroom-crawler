@@ -1060,22 +1060,17 @@ async function updateCommentBadges() {
     const res  = await fetch('/api/comments/unread-summary', { credentials: 'include' });
     const data = await res.json();
 
-    // 수행평가 탭: 기존 새과제 수 + 미읽음 댓글 수
+    // 수행평가 탭: 새 과제 수 + 미읽음 수행평가 댓글 수
     const assignNewCount = assignments.filter(a => !readAssignIds.has(a.id)).length;
     const assignTotal = assignNewCount + (data.assignment || 0);
     const ab = document.getElementById('assignBadge');
     if (ab) { ab.textContent = assignTotal; ab.style.display = assignTotal > 0 ? '' : 'none'; }
 
-    // 공지 탭: 기존 배지 + 미읽음 댓글 수
-    const noticeCommentCount = data.notice || 0;
-    if (noticeCommentCount > 0) {
-      const nb = document.getElementById('noticeBadge');
-      if (nb) {
-        const cur = parseInt(nb.textContent || '0');
-        nb.textContent = cur + noticeCommentCount;
-        nb.style.display = '';
-      }
-    }
+    // 공지 탭: 새 공지 수 + 미읽음 공지 댓글 수 (독립 계산)
+    const noticeNewCount = notices ? notices.filter(n => !readNoticeIds.has(n.id)).length : 0;
+    const noticeTotal = noticeNewCount + (data.notice || 0);
+    const nb = document.getElementById('noticeBadge');
+    if (nb) { nb.textContent = noticeTotal; nb.style.display = noticeTotal > 0 ? '' : 'none'; }
   } catch {}
 }
 

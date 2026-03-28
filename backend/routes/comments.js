@@ -203,8 +203,8 @@ router.post('/', requireLogin, async (req, res) => {
          ORDER BY id ASC`,
         [parent_id, user.id]
       );
-      if (myReplies.length > 3) {
-        const toDelete = myReplies.slice(0, myReplies.length - 3);
+      if (myReplies.length > 2) {
+        const toDelete = myReplies.slice(0, myReplies.length - 2);
         for (const row of toDelete) {
           await db.query(`DELETE FROM ${meta.table} WHERE id = ?`, [row.id]);
           try { await db.query(`DELETE FROM comment_reads WHERE comment_id = ? AND ctype = ?`, [row.id, type]); } catch {}
