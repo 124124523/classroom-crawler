@@ -30,7 +30,7 @@ router.get('/:type/:refId', requireLogin, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT c.id, c.${meta.fkCol} AS ref_id, c.writer, c.content, c.created_at,
-              c.parent_id,
+              IFNULL(c.parent_id, NULL) AS parent_id,
               u.name AS user_name
        FROM ${meta.table} c
        LEFT JOIN users u ON u.id = c.writer
@@ -75,17 +75,34 @@ router.post('/', requireLogin, async (req, res) => {
       }
     }
 
-    // DB에 parent_id 컬럼이 없으면 ALTER로 추가 (최초 1회)
+    // parent_id 컬럼 존재 여부 확인 후 INSERT
+    let hasParentId = false;
     try {
-      await db.query(
-        `ALTER TABLE ${meta.table} ADD COLUMN IF NOT EXISTS parent_id INT NULL DEFAULT NULL`
+      const [cols] = await db.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'parent_id'`,
+        [meta.table]
       );
+      if (!cols.length) {
+        await db.query(
+          `ALTER TABLE ${meta.table} ADD COLUMN parent_id INT NULL DEFAULT NULL`
+        );
+      }
+      hasParentId = true;
     } catch {}
 
-    const [result] = await db.query(
-      `INSERT INTO ${meta.table} (${meta.fkCol}, writer, content, parent_id) VALUES (?, ?, ?, ?)`,
-      [ref_id, user.id, content.trim(), parent_id || null]
-    );
+    let result;
+    if (hasParentId) {
+      [result] = await db.query(
+        `INSERT INTO ${meta.table} (${meta.fkCol}, writer, content, parent_id) VALUES (?, ?, ?, ?)`,
+        [ref_id, user.id, content.trim(), parent_id || null]
+      );
+    } else {
+      [result] = await db.query(
+        `INSERT INTO ${meta.table} (${meta.fkCol}, writer, content) VALUES (?, ?, ?)`,
+        [ref_id, user.id, content.trim()]
+      );
+    }
 
     // 답글인 경우: 원 댓글 작성자에게 알림용 정보 반환
     let notifyUser = null;
@@ -125,7 +142,11 @@ router.delete('/:type/:id', requireLogin, async (req, res) => {
     }
 
     // 답글도 함께 삭제
-    await db.query(`DELETE FROM ${meta.table} WHERE id = ? OR parent_id = ?`, [id, id]);
+    try {
+      await db.query(`DELETE FROM ${meta.table} WHERE id = ? OR parent_id = ?`, [id, id]);
+    } catch {
+      await db.query(`DELETE FROM ${meta.table} WHERE id = ?`, [id]);
+    }
     res.json({ message: '삭제되었습니다.' });
   } catch (err) {
     console.error('[comments] DELETE 오류:', err.message);

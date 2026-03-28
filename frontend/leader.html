@@ -460,6 +460,28 @@
 </div>
 
 <div id="toast-container"></div>
+<!-- 댓글/답글 모달 -->
+<div class="comment-modal-backdrop" id="commentModalBackdrop" style="display:none" onclick="if(event.target===this)closeCommentModal()">
+  <div class="comment-modal">
+    <div class="comment-modal-header">
+      <div class="comment-modal-title" id="commentModalTitle">댓글</div>
+      <button class="comment-modal-close" onclick="closeCommentModal()">✕</button>
+    </div>
+    <div class="comment-modal-body">
+      <div class="comment-thread" id="commentThread">
+        <div style="text-align:center;color:var(--muted);padding:24px">로딩 중...</div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+        <div style="font-size:.75rem;font-weight:700;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;">댓글 작성</div>
+        <div class="comment-input-row">
+          <textarea class="comment-textarea" id="commentInput" rows="2" placeholder="댓글을 입력하세요..."></textarea>
+          <button class="comment-submit-btn" onclick="submitComment()">등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 let currentUser = null;
