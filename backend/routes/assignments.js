@@ -117,6 +117,7 @@ router.get('/:id', requireLogin, async (req, res) => {
 router.post('/', requireLogin, async (req, res) => {
   const user = req.session.user;
   if (user.role === 'student') return res.status(403).json({ message: '권한 없음' });
+  const { title, description, class_id, due_date, images, type } = req.body;
   if (!title || !class_id) return res.status(400).json({ message: '제목과 분반은 필수입니다.' });
   if (!due_date) return res.status(400).json({ message: '마감일은 필수입니다.' });
 

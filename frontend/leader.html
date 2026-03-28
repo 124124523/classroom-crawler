@@ -166,6 +166,32 @@
     }
     .inline-upload:hover { border-color: var(--accent2); color: var(--text2); }
     .img-preview-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+    /* ── 댓글/답글 ── */
+    .comment-modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px; }
+    .comment-modal { background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg); }
+    .comment-modal-header { padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+    .comment-modal-title { font-size:.95rem;font-weight:700;color:var(--text); }
+    .comment-modal-close { background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text3);padding:4px 8px; }
+    .comment-modal-body { flex:1;overflow-y:auto;padding:16px 20px; }
+    .comment-thread { display:flex;flex-direction:column;gap:10px;margin-bottom:16px; }
+    .comment-item { background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px; }
+    .comment-item.reply { margin-left:24px;border-left:2px solid var(--primary-l);background:rgba(27,72,50,0.04); }
+    .comment-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:4px; }
+    .comment-author { font-size:.78rem;font-weight:600;color:var(--primary); }
+    .comment-time { font-size:.68rem;color:var(--text3); }
+    .comment-text { font-size:.84rem;color:var(--text2);line-height:1.5; }
+    .comment-actions { display:flex;gap:6px;margin-top:6px; }
+    .comment-reply-btn { font-size:.72rem;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px; }
+    .comment-reply-btn:hover { background:var(--surface3);color:var(--primary); }
+    .reply-form { margin-top:8px;padding:10px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm); }
+    .reply-form-label { font-size:.72rem;color:var(--primary);font-weight:600;margin-bottom:6px; }
+    .comment-input-row { display:flex;gap:8px;margin-top:8px; }
+    .comment-textarea { flex:1;padding:8px 12px;font-size:.84rem;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-body);resize:none; }
+    .comment-textarea:focus { outline:none;border-color:var(--primary); }
+    .comment-submit-btn { padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap; }
+    .comment-submit-btn:hover { background:var(--primary-l); }
+    .new-reply-badge { display:inline-block;background:var(--red);color:#fff;font-size:.62rem;font-weight:700;padding:1px 5px;border-radius:99px;margin-left:4px;vertical-align:middle; }
   </style>
 </head>
 <body>
@@ -516,6 +542,7 @@ function renderAssignList() {
         </div>
       </div>
       <div class="manage-item-actions">
+        <button class="btn-icon" onclick="openCommentModal(${a.id}, '${escHtml(a.title).replace(/'/g, '\\&apos;')}')" title="댓글 보기">💬</button>
         <button class="btn-icon" onclick="editAssign(${a.id})" title="수정">✏️</button>
         <button class="btn-icon" onclick="deleteAssign(${a.id})" title="삭제">🗑️</button>
       </div>
@@ -547,12 +574,17 @@ async function saveAssignment() {
   const method = editId ? 'PUT' : 'POST';
 
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(body)
     });
+    const result = await res.json();
+    if (!res.ok) {
+      showToast(result.message || '저장 실패', 'error');
+      return;
+    }
     showToast(editId ? '수정되었습니다.' : '과제가 등록되었습니다.', 'success');
     cancelAssignEdit();
     await loadAssignments();
@@ -667,6 +699,7 @@ async function saveNotice() {
       credentials: 'include',
       body: JSON.stringify(body)
     });
+    if (!noticeRes.ok) { const nr = await noticeRes.json(); showToast(nr.message||'저장 실패','error'); return; }
     showToast(editId ? '수정되었습니다.' : '공지가 등록되었습니다.', 'success');
     cancelNoticeEdit();
     await loadNotices();
@@ -798,6 +831,121 @@ function closeSidebar() {
   document.getElementById('sidebarTab').classList.remove('open');
   document.body.style.overflow = '';
 }
+
+// ── 댓글/답글 기능 ──────────────────────────────────
+let commentModalAssignId = null;
+let replyToId = null;
+
+async function openCommentModal(assignId, title) {
+  commentModalAssignId = assignId;
+  replyToId = null;
+  document.getElementById('commentModalTitle').textContent = `💬 ${title}`;
+  document.getElementById('commentModalBackdrop').style.display = 'flex';
+  document.getElementById('commentInput').value = '';
+  await loadComments();
+}
+
+function closeCommentModal() {
+  document.getElementById('commentModalBackdrop').style.display = 'none';
+  commentModalAssignId = null;
+  replyToId = null;
+}
+
+async function loadComments() {
+  const thread = document.getElementById('commentThread');
+  thread.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px">로딩 중...</div>';
+  try {
+    const res  = await fetch(`/api/comments/assignment/${commentModalAssignId}`, { credentials: 'include' });
+    const data = await res.json();
+    const comments = data.comments || [];
+
+    if (!comments.length) {
+      thread.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.84rem;padding:24px">아직 댓글이 없습니다.</div>';
+      return;
+    }
+
+    // 트리 구조: parent_id 없는 것 → 그 아래 parent_id 있는 것
+    const roots   = comments.filter(c => !c.parent_id);
+    const replies = comments.filter(c =>  c.parent_id);
+
+    thread.innerHTML = roots.map(root => {
+      const childReplies = replies.filter(r => r.parent_id === root.id);
+      return `
+        <div class="comment-item" id="comment-${root.id}">
+          <div class="comment-header">
+            <span class="comment-author">${escHtml(root.user_name || root.writer)}</span>
+            <span class="comment-time">${fmtCommentTime(root.created_at)}</span>
+          </div>
+          <div class="comment-text">${escHtml(root.content)}</div>
+          <div class="comment-actions">
+            <button class="comment-reply-btn" onclick="setReplyTo(${root.id}, '${escHtml(root.user_name||root.writer)}')">↩ 답글</button>
+          </div>
+        </div>
+        ${childReplies.map(r => `
+          <div class="comment-item reply" id="comment-${r.id}">
+            <div class="comment-header">
+              <span class="comment-author">${escHtml(r.user_name || r.writer)}</span>
+              <span class="comment-time">${fmtCommentTime(r.created_at)}</span>
+            </div>
+            <div class="comment-text">${escHtml(r.content)}</div>
+          </div>
+        `).join('')}
+      `;
+    }).join('');
+  } catch {
+    thread.innerHTML = '<div style="text-align:center;color:var(--red);font-size:.84rem;padding:24px">댓글 로딩 실패</div>';
+  }
+}
+
+function setReplyTo(parentId, authorName) {
+  replyToId = parentId;
+  const input = document.getElementById('commentInput');
+  input.placeholder = `${authorName}님에게 답글...`;
+  input.focus();
+  // 답글 대상 표시
+  const existing = document.getElementById('replyToLabel');
+  if (existing) existing.remove();
+  const label = document.createElement('div');
+  label.id = 'replyToLabel';
+  label.style.cssText = 'font-size:.72rem;color:var(--primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;';
+  label.innerHTML = `↩ <strong>${escHtml(authorName)}</strong>님에게 답글 <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.7rem;">취소</button>`;
+  input.parentElement.insertBefore(label, input);
+}
+
+function cancelReply() {
+  replyToId = null;
+  document.getElementById('commentInput').placeholder = '댓글을 입력하세요...';
+  const label = document.getElementById('replyToLabel');
+  if (label) label.remove();
+}
+
+async function submitComment() {
+  const content = document.getElementById('commentInput').value.trim();
+  if (!content || !commentModalAssignId) return;
+  const body = { type: 'assignment', ref_id: commentModalAssignId, content };
+  if (replyToId) body.parent_id = replyToId;
+  try {
+    const res  = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.message || '등록 실패', 'error'); return; }
+    document.getElementById('commentInput').value = '';
+    cancelReply();
+    await loadComments();
+    showToast(data.message, 'success');
+  } catch { showToast('등록 실패', 'error'); }
+}
+
+function fmtCommentTime(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return '방금';
+  if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
 </script>
 </body>
 </html>
