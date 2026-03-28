@@ -487,6 +487,56 @@
       font-weight: 700;
       transition: all 0.15s;
     }
+
+    /* ── 모바일 사이드바 오버레이 ── */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 99;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    @media (max-width: 768px) {
+      .sidebar-overlay.active { display: block; }
+    }
+
+    /* ── 사이드바 토글 탭 (항상 고정) ── */
+    .sidebar-tab {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      z-index: 101;
+      background: var(--primary-l);
+      color: var(--mint);
+      border: none;
+      border-radius: 0 8px 8px 0;
+      width: 22px;
+      height: 56px;
+      cursor: pointer;
+      transition: left 0.3s ease, background 0.2s;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.4);
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .sidebar-tab svg {
+      transition: transform 0.3s ease;
+      flex-shrink: 0;
+    }
+    .sidebar-tab.open {
+      left: var(--sidebar-w);
+      background: var(--surface3);
+    }
+    .sidebar-tab.open svg {
+      transform: rotate(180deg);
+    }
+    @media (max-width: 768px) {
+      .sidebar-tab { display: flex; }
+    }
     .section-page { display: none; }
     .section-page.active { display: block; }
 
@@ -836,6 +886,20 @@
       100% { background: var(--surface); }
     }
 
+    /* ── 모바일 사이드바 오버레이 ── */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 99;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    @media (max-width: 768px) {
+      .sidebar-overlay.active { display: block; }
+    }
+
     /* ── 캘린더 우측 탭 패널 ── */
     .cal-panel-tabs {
       display: flex;
@@ -936,6 +1000,16 @@
 </head>
 <body>
 <div class="app-shell">
+
+<!-- 사이드바 항상-열기 탭 -->
+  <button class="sidebar-tab" id="sidebarTab" onclick="toggleSidebar()" aria-label="사이드바 열기/닫기">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </button>
+
+  <!-- 모바일 사이드바 오버레이 -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
   <!-- ── SIDEBAR ── -->
   <aside class="sidebar" id="sidebar">
@@ -1431,6 +1505,9 @@ function showSection(name) {
     meals: '오늘의 학식'
   };
   document.getElementById('pageTitle').textContent = titles[name] || name;
+
+  // 모바일에서 네비 클릭 시 사이드바 자동 닫기
+  if (window.innerWidth <= 768) closeSidebar();
 
   if (name === 'calendar') renderCalendar();
 }
@@ -2511,7 +2588,28 @@ if (zone) {
 
 // ── Sidebar toggle (mobile) ──
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const tab     = document.getElementById('sidebarTab');
+  if (sidebar.classList.contains('open')) {
+    closeSidebar();
+  } else {
+    sidebar.classList.add('open');
+    overlay.classList.add('active');
+    tab.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+  document.getElementById('sidebarTab').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+  document.body.style.overflow = '';
 }
 
 // ── Utilities ──
