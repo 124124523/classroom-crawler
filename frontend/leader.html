@@ -446,6 +446,7 @@ let noticeUploadFiles = [];
 
     if (currentUser.role === 'student') { location.href = 'student.html'; return; }
     if (currentUser.role === 'admin')   { location.href = 'admin.html';   return; }
+    if (currentUser.role === 'teacher') { location.href = 'teacher.html'; return; }
 
     const nameEl = document.getElementById('sidebarName');
     nameEl.textContent = currentUser.name || currentUser.username;
