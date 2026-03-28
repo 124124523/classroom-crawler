@@ -193,7 +193,7 @@
       <div class="user-info">
         <div class="user-name" id="sidebarName">로딩 중...</div>
         <div class="user-role">
-          <span class="leader-badge">반장</span>
+          <span class="leader-badge" id="leaderBadge">반장</span>
         </div>
       </div>
     </div>
@@ -450,6 +450,12 @@ let noticeUploadFiles = [];
 
     const nameEl = document.getElementById('sidebarName');
     nameEl.textContent = currentUser.name || currentUser.username;
+
+    // 배지: ID에 '_' 구분자 있으면 과목명_선생님 형태 → "교과 담당"으로 표시
+    const leaderBadge = document.getElementById('leaderBadge');
+    if (leaderBadge && currentUser.id && currentUser.id.includes('_')) {
+      leaderBadge.textContent = '교과 담당';
+    }
     document.getElementById('avatarCircle').textContent =
       (currentUser.name || currentUser.username || '?')[0].toUpperCase();
 
