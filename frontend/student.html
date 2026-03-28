@@ -1074,7 +1074,7 @@ function makeAssignCard(a) {
   let urgency = '';
   if (!a.completed) {
     if (days <= 1) urgency = 'urgent';
-    else if (days <= 3) urgency = 'soon';
+    else if (days <= 5) urgency = 'soon';
   }
   el.className = `assign-card type-${a.type || '일반'} ${a.completed ? 'completed' : ''}`;
   el.innerHTML = `
@@ -1103,12 +1103,14 @@ function getDaysLeft(due) {
 }
 function formatDue(due, days) {
   if (!due) return '기한 없음';
-  const d = new Date(due); const mm = d.getMonth()+1, dd = d.getDate();
-  if (days < 0)  return `${mm}/${dd} (마감)`;
-  if (days === 0) return '오늘 마감';
-  if (days === 1) return '내일 마감';
-  if (days <= 7)  return `${days}일 후`;
-  return `${mm}/${dd}`;
+  const d = new Date(due);
+  const mm = d.getMonth() + 1;
+  const dd = d.getDate();
+  const base = `${mm}월 ${dd}일 오후 11:59까지`;
+  if (days < 0)  return `${mm}월 ${dd}일 (마감)`;
+  if (days === 0) return `오늘 · ${base}`;
+  if (days === 1) return `내일 · ${base}`;
+  return base;
 }
 
 async function toggleComplete(e, id) {
@@ -1130,7 +1132,7 @@ async function openAssignDetail(id) {
   const days = getDaysLeft(a.due_date);
   document.getElementById('assignDetailMeta').innerHTML = `
     <span>${a.subject_name || ''}</span><span>${a.type || ''}</span>
-    <span class="${days <= 2 && !a.completed ? 'assign-due urgent' : ''}">마감: ${a.due_date ? new Date(a.due_date).toLocaleDateString('ko-KR') : '없음'}</span>
+    <span class="${days < 0 ? 'assign-due' : days <= 2 && !a.completed ? 'assign-due urgent' : days <= 5 && !a.completed ? 'assign-due soon' : 'assign-due'}">🗓 ${formatDue(a.due_date, days)}</span>
   `;
   document.getElementById('assignDetailContent').textContent = a.description || '내용 없음';
   const imgs = document.getElementById('assignDetailImages'); imgs.innerHTML = '';
@@ -1410,8 +1412,14 @@ function renderCalDragSource() {
   if (!pending.length) { container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">미완료 수행평가가 없습니다.</div>'; return; }
   container.innerHTML = pending.map(a => {
     const days = getDaysLeft(a.due_date);
-    const dueClass = days <= 1 ? 'urgent' : days <= 4 ? 'soon' : 'ok';
-    const dueLabel = days < 0 ? '마감' : days === 0 ? '오늘' : days === 1 ? '내일' : `${days}일`;
+    const dueClass = days <= 1 ? 'urgent' : days <= 5 ? 'soon' : 'ok';
+    const d2 = a.due_date ? new Date(a.due_date) : null;
+    const chipMm = d2 ? d2.getMonth()+1 : 0;
+    const chipDd = d2 ? d2.getDate() : 0;
+    const dueLabel = days < 0 ? `${chipMm}/${chipDd} 마감`
+                   : days === 0 ? `오늘 오후 11:59`
+                   : days === 1 ? `내일 오후 11:59`
+                   : d2 ? `${chipMm}월 ${chipDd}일 11:59` : '기한없음';
     const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--accent)';
     return `
       <div class="cal-drag-chip" draggable="true" data-assign-id="${a.id}" title="${escHtml(a.title)}">
@@ -1533,7 +1541,7 @@ function renderCalDetailPanel(dateKey, dateObj, evs) {
     list.innerHTML = evs.map(e => {
       if (e.kind === 'assign') {
         const a = e.item; const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--accent)';
-        return `<div class="cal-detail-item" onclick="openAssignDetail(${a.id})"><div class="cal-detail-dot" style="background:${dotColor}"></div><div><div class="cal-detail-title">${escHtml(a.title)}</div><div class="cal-detail-sub">${escHtml(a.subject_name||'')} · 마감 ${fmtDate(a.due_date)}</div></div></div>`;
+        return `<div class="cal-detail-item" onclick="openAssignDetail(${a.id})"><div class="cal-detail-dot" style="background:${dotColor}"></div><div><div class="cal-detail-title">${escHtml(a.title)}</div><div class="cal-detail-sub">${escHtml(a.subject_name||'')} · ${fmtDate(a.due_date)}</div></div></div>`;
       } else {
         const ev = e.item;
         return `<div class="cal-detail-item" id="cal-ev-row-${ev.id}" style="cursor:default;align-items:flex-start">${personalEvRowInner(ev.id, ev.title, ev.description||'')}</div>`;
@@ -1712,7 +1720,7 @@ async function logout() {
 
 // ── Utils ──
 function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmtDate(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}/${d.getDate()}`; }
+function fmtDate(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}월 ${d.getDate()}일 오후 11:59까지`; }
 function fmtDateTime(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function showToast(msg, type='info') {
   const c = document.getElementById('toast-container');
