@@ -480,13 +480,13 @@ async function loadMyClasses() {
   myClasses = data.classes || data || [];
 
   const label = document.getElementById('classLabel');
-  label.textContent = myClasses.map(c => c.subject_name || c.name).join(', ') || '분반 없음';
+  label.textContent = myClasses.map(c => (c.subject_name||'') + ' ' + (c.class_code||'') + '반').join(', ') || '분반 없음';
 
   // Populate selects
   ['assignClass','noticeClass'].forEach(id => {
     const sel = document.getElementById(id);
     sel.innerHTML = myClasses.map(c =>
-      `<option value="${c.id}">${c.subject_name || ''} — ${c.class_name || c.name}</option>`
+      `<option value="${c.id}">${c.subject_name || ''} ${c.class_code || ''}반${c.teacher ? ' · '+c.teacher : ''}</option>`
     ).join('') || '<option value="">분반 없음</option>';
   });
 }
