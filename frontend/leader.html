@@ -251,6 +251,7 @@
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
         공지 관리
+        <span id="noticeUnreadBadge" class="nav-badge" style="display:none">0</span>
       </div>
     </nav>
 
@@ -838,13 +839,15 @@ async function loadUnreadBadges() {
   try {
     const res  = await fetch('/api/comments/unread-summary', { credentials: 'include' });
     const data = await res.json();
-    const total = (data.assignment || 0) + (data.notice || 0);
-    // 사이드바 수행평가 nav-badge 활용 or 별도 badge
-    const badge = document.getElementById('commentUnreadBadge');
-    if (badge) {
-      badge.textContent = total;
-      badge.style.display = total > 0 ? 'inline-flex' : 'none';
-    }
+
+    const assignCount = data.assignment || 0;
+    const noticeCount = data.notice || 0;
+
+    const ab = document.getElementById('commentUnreadBadge');
+    if (ab) { ab.textContent = assignCount; ab.style.display = assignCount > 0 ? 'inline-flex' : 'none'; }
+
+    const nb = document.getElementById('noticeUnreadBadge');
+    if (nb) { nb.textContent = noticeCount; nb.style.display = noticeCount > 0 ? 'inline-flex' : 'none'; }
   } catch {}
 }
 async function logout() {
@@ -999,6 +1002,29 @@ async function submitComment() {
     await loadComments();
     showToast(data.message, 'success');
   } catch { showToast('등록 실패', 'error'); }
+}
+
+function setReplyTo(parentId, authorName) {
+  replyToId = parentId;
+  const input = document.getElementById('commentInput');
+  input.placeholder = `${authorName}님에게 답글...`;
+  input.focus();
+  const existing = document.getElementById('replyToLabel');
+  if (existing) existing.remove();
+  const label = document.createElement('div');
+  label.id = 'replyToLabel';
+  label.style.cssText = 'font-size:.72rem;color:var(--primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;padding:4px 0;';
+  label.innerHTML = `↩ <strong>${escHtml(authorName)}</strong>님에게 답글 <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.7rem;margin-left:4px;">✕ 취소</button>`;
+  const inputRow = input.closest('.comment-input-row') || input.parentElement;
+  inputRow.parentElement.insertBefore(label, inputRow);
+}
+
+function cancelReply() {
+  replyToId = null;
+  const input = document.getElementById('commentInput');
+  if (input) input.placeholder = '댓글을 입력하세요...';
+  const label = document.getElementById('replyToLabel');
+  if (label) label.remove();
 }
 
 function fmtCommentTime(str) {

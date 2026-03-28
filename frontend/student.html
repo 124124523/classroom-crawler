@@ -1043,6 +1043,7 @@ async function loadAssignments() {
     assignments = data.assignments || data || [];
     renderAssignBoard();
     updateAssignBadge();
+    updateCommentBadges();
   } catch(e) { console.error('assignments load fail', e); }
 }
 
@@ -1051,6 +1052,31 @@ function updateAssignBadge() {
   const badge = document.getElementById('assignBadge');
   if (newItems.length > 0) { badge.textContent = newItems.length; badge.style.display = ''; }
   else badge.style.display = 'none';
+}
+
+// 댓글 미읽음 배지 업데이트 (수행평가/공지 탭에 합산 표시)
+async function updateCommentBadges() {
+  try {
+    const res  = await fetch('/api/comments/unread-summary', { credentials: 'include' });
+    const data = await res.json();
+
+    // 수행평가 탭: 기존 새과제 수 + 미읽음 댓글 수
+    const assignNewCount = assignments.filter(a => !readAssignIds.has(a.id)).length;
+    const assignTotal = assignNewCount + (data.assignment || 0);
+    const ab = document.getElementById('assignBadge');
+    if (ab) { ab.textContent = assignTotal; ab.style.display = assignTotal > 0 ? '' : 'none'; }
+
+    // 공지 탭: 기존 배지 + 미읽음 댓글 수
+    const noticeCommentCount = data.notice || 0;
+    if (noticeCommentCount > 0) {
+      const nb = document.getElementById('noticeBadge');
+      if (nb) {
+        const cur = parseInt(nb.textContent || '0');
+        nb.textContent = cur + noticeCommentCount;
+        nb.style.display = '';
+      }
+    }
+  } catch {}
 }
 
 function renderAssignBoard() {
