@@ -548,6 +548,7 @@
           <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
         </svg>
         시간표
+        <span class="nav-badge" id="timetableBadge" style="display:none">0</span>
       </div>
 
       <div class="nav-section-label">개인</div>
@@ -1088,7 +1089,7 @@ function updateAssignBadge() {
   else badge.style.display = 'none';
 }
 
-// 댓글 미읽음 배지 업데이트 (수행평가/공지 탭에 합산 표시)
+// 댓글 미읽음 배지 업데이트 (수행평가/공지/시간표 탭에 표시)
 async function updateCommentBadges() {
   try {
     const res  = await fetch('/api/comments/unread-summary', { credentials: 'include' });
@@ -1105,6 +1106,11 @@ async function updateCommentBadges() {
     const noticeTotal = noticeNewCount + (data.notice || 0);
     const nb = document.getElementById('noticeBadge');
     if (nb) { nb.textContent = noticeTotal; nb.style.display = noticeTotal > 0 ? '' : 'none'; }
+
+    // 시간표 탭: 내 댓글에 달린 미읽음 답글 수
+    const replyCount = data.reply_count || 0;
+    const tb = document.getElementById('timetableBadge');
+    if (tb) { tb.textContent = replyCount; tb.style.display = replyCount > 0 ? '' : 'none'; }
   } catch {}
 }
 

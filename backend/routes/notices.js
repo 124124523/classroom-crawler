@@ -8,6 +8,22 @@ function requireLogin(req, res, next) {
   next();
 }
 
+// notice_reads 테이블 자동 생성 (최초 1회)
+async function ensureNoticeReadsTable() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS notice_reads (
+        id        INT AUTO_INCREMENT PRIMARY KEY,
+        user_id   VARCHAR(100) NOT NULL,
+        notice_id INT NOT NULL,
+        read_at   DATETIME DEFAULT NOW(),
+        UNIQUE KEY uq_notice_read (user_id, notice_id)
+      )
+    `);
+  } catch {}
+}
+ensureNoticeReadsTable();
+
 function parseImages(rows) {
   return rows.map(row => {
     let images = [];
@@ -32,6 +48,60 @@ const BASE_SELECT = `
   LEFT JOIN subjects s ON c.subject_id = s.id
 `;
 
+// is_read 포함 SELECT 생성 (user_id 파라미터 필요)
+const BASE_SELECT_WITH_READ = `
+  SELECT n.*,
+    s.name AS subject_name,
+    c.class_code, c.teacher,
+    IFNULL(CONCAT(s.name,' ',c.class_code),'전체공지') AS class_label,
+    CASE WHEN nr.notice_id IS NOT NULL THEN 1 ELSE 0 END AS is_read
+  FROM notices n
+  LEFT JOIN classes  c  ON n.class_id   = c.id
+  LEFT JOIN subjects s  ON c.subject_id = s.id
+  LEFT JOIN notice_reads nr ON nr.notice_id = n.id AND nr.user_id = ?
+`;
+
+// GET /api/notices/unread-count
+router.get('/unread-count', requireLogin, async (req, res) => {
+  const user = req.session.user;
+  try {
+    let rows;
+    if (user.role === 'student') {
+      [rows] = await db.query(`
+        SELECT COUNT(*) AS cnt FROM notices n
+        WHERE (n.class_id IS NULL OR n.class_id IN (SELECT class_id FROM enrollments WHERE user_id = ?))
+          AND n.id NOT IN (SELECT notice_id FROM notice_reads WHERE user_id = ?)
+      `, [user.id, user.id]);
+    } else {
+      [rows] = await db.query(`
+        SELECT COUNT(*) AS cnt FROM notices n
+        WHERE n.id NOT IN (SELECT notice_id FROM notice_reads WHERE user_id = ?)
+      `, [user.id]);
+    }
+    res.json({ unread: rows[0].cnt });
+  } catch (err) {
+    console.error('[notices] GET /unread-count 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
+// POST /api/notices/read — 공지 읽음 처리 (DB 영속)
+router.post('/read', requireLogin, async (req, res) => {
+  const user = req.session.user;
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) {
+    return res.status(400).json({ message: 'ids 필드가 필요합니다.' });
+  }
+  try {
+    const values = ids.map(id => [user.id, id]);
+    await db.query('INSERT IGNORE INTO notice_reads (user_id, notice_id) VALUES ?', [values]);
+    res.json({ message: '읽음 처리 완료', count: ids.length });
+  } catch (err) {
+    console.error('[notices] POST /read 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
 // GET /api/notices
 router.get('/', requireLogin, async (req, res) => {
   const user = req.session.user;
@@ -40,24 +110,27 @@ router.get('/', requireLogin, async (req, res) => {
     let rows;
 
     if (user.role === 'admin' || user.role === 'teacher') {
-      [rows] = await db.query(BASE_SELECT + ' ORDER BY n.created_at DESC');
-
-    } else if (user.role === 'leader' && req.query.mine === 'true') {
       [rows] = await db.query(
-        BASE_SELECT + ' WHERE n.writer = ? ORDER BY n.created_at DESC',
+        BASE_SELECT_WITH_READ + ' ORDER BY n.created_at DESC',
         [user.id]
       );
 
-    } else {
-      // 학생 — 전체공지(class_id IS NULL) + 내 분반 공지
+    } else if (user.role === 'leader' && req.query.mine === 'true') {
       [rows] = await db.query(
-        BASE_SELECT + `
+        BASE_SELECT_WITH_READ + ' WHERE n.writer = ? ORDER BY n.created_at DESC',
+        [user.id, user.id]
+      );
+
+    } else {
+      // 학생/리더 — 전체공지(class_id IS NULL) + 내 분반 공지
+      [rows] = await db.query(
+        BASE_SELECT_WITH_READ + `
           WHERE n.class_id IS NULL
              OR n.class_id IN (
                SELECT class_id FROM enrollments WHERE user_id = ?
              )
           ORDER BY n.created_at DESC`,
-        [user.id]
+        [user.id, user.id]
       );
     }
 

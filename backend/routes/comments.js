@@ -125,6 +125,7 @@ router.get('/unread-summary', requireLogin, async (req, res) => {
   const user = req.session.user;
   try {
     const result = {};
+
     for (const [type, meta] of Object.entries(META)) {
       try {
         await ensureParentId(meta.table);
@@ -140,6 +141,29 @@ router.get('/unread-summary', requireLogin, async (req, res) => {
         result[type] = rows[0].cnt;
       } catch { result[type] = 0; }
     }
+
+    // 학생 전용: 내 댓글에 달린 미읽음 답글 수 (시간표 탭 배지용)
+    if (user.role === 'student') {
+      let replyCount = 0;
+      for (const [type, meta] of Object.entries(META)) {
+        try {
+          const [rows] = await db.query(
+            `SELECT COUNT(*) AS cnt
+             FROM ${meta.table} c
+             WHERE c.writer != ?
+               AND c.parent_id IS NOT NULL
+               AND c.parent_id IN (SELECT id FROM ${meta.table} WHERE writer = ?)
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )`,
+            [user.id, user.id, user.id, type]
+          );
+          replyCount += rows[0].cnt;
+        } catch {}
+      }
+      result.reply_count = replyCount;
+    }
+
     res.json(result);
   } catch (err) {
     res.status(500).json({ message: '서버 오류' });

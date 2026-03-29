@@ -244,6 +244,7 @@
           <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
         </svg>
         수행평가 관리
+        <span id="assignUnreadBadge" class="nav-badge" style="display:none">0</span>
       </div>
       <div class="nav-item" onclick="showSection('notices')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -844,9 +845,11 @@ async function loadUnreadBadges() {
     const assignCount = data.assignment || 0;
     const noticeCount = data.notice || 0;
 
-    const ab = document.getElementById('commentUnreadBadge');
+    // 수행평가 관리 탭 배지
+    const ab = document.getElementById('assignUnreadBadge');
     if (ab) { ab.textContent = assignCount; ab.style.display = assignCount > 0 ? 'inline-flex' : 'none'; }
 
+    // 공지 관리 탭 배지 (기존 noticeUnreadBadge)
     const nb = document.getElementById('noticeUnreadBadge');
     if (nb) { nb.textContent = noticeCount; nb.style.display = noticeCount > 0 ? 'inline-flex' : 'none'; }
   } catch {}
