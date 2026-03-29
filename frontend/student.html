@@ -293,6 +293,36 @@
     .cal-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
     .cal-grid.drag-active .cal-cell { transition: opacity 0.15s, background 0.15s, box-shadow 0.15s; }
 
+    /* ── Draggable calendar chips ── */
+    .cal-event-chip.type-assign.cal-chip-drag {
+      cursor: grab;
+      position: relative;
+      transition: box-shadow 0.15s, transform 0.12s, opacity 0.12s;
+    }
+    .cal-event-chip.type-assign.cal-chip-drag:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transform: translateY(-1px);
+      z-index: 2;
+    }
+    .cal-event-chip.type-assign.cal-chip-drag:active { cursor: grabbing; }
+    .cal-event-chip.type-assign.cal-chip-drag.chip-dragging { opacity: 0.35; transform: none; }
+    /* drag-handle icon on hover */
+    .cal-event-chip.type-assign.cal-chip-drag::after {
+      content: '⠿';
+      opacity: 0;
+      margin-left: 3px;
+      font-size: 0.62rem;
+      transition: opacity 0.15s;
+      color: currentColor;
+    }
+    .cal-event-chip.type-assign.cal-chip-drag:hover::after { opacity: 0.5; }
+    /* prep-plan indicator on chip when a plan exists */
+    .cal-event-chip.type-assign.has-plan::before {
+      content: '📌';
+      font-size: 0.6rem;
+      margin-right: 2px;
+    }
+
     /* ── Stats bar ── */
     .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
     .stat-chip { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 16px; flex: 1; min-width: 100px; }
@@ -743,7 +773,7 @@
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/>
                   </svg>
-                  카드를 날짜로 드래그해 공부 계획 등록
+                  카드 또는 캘린더의 수행평가를 날짜로 드래그해 준비 계획 등록
                 </div>
                 <div class="cal-drag-list" id="calDragSource">
                   <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0"><span class="spinner"></span></div>
@@ -1060,7 +1090,6 @@ function showSection(name, el) {
 
   if (window.innerWidth <= 768) closeSidebar();
   if (name === 'calendar') renderCalendar();
-  if (name === 'meals') loadMeals();
 }
 
 // ── Assignments ──
@@ -1604,7 +1633,8 @@ function onChipDragStart(e) {
   calDraggingAssign = assignments.find(a => a.id === id) || null;
   if (!calDraggingAssign) return;
   e.dataTransfer.effectAllowed = 'copy';
-  e.currentTarget.classList.add('dragging');
+  // 오른쪽 패널 칩: 'dragging', 캘린더 그리드 칩: 'chip-dragging'
+  e.currentTarget.classList.add(e.currentTarget.classList.contains('cal-event-chip') ? 'chip-dragging' : 'dragging');
   const todayKey = new Date().toISOString().slice(0,10);
   const dueKey   = calDraggingAssign.due_date ? calDraggingAssign.due_date.slice(0,10) : null;
   const grid = document.getElementById('calGrid'); grid.classList.add('drag-active');
@@ -1614,7 +1644,7 @@ function onChipDragStart(e) {
   });
 }
 function onChipDragEnd(e) {
-  e.currentTarget.classList.remove('dragging'); calDraggingAssign = null;
+  e.currentTarget.classList.remove('dragging', 'chip-dragging'); calDraggingAssign = null;
   const grid = document.getElementById('calGrid'); grid.classList.remove('drag-active');
   grid.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('drop-invalid','drop-valid'));
 }
@@ -1635,10 +1665,13 @@ async function onCellDrop(e, dateKey) {
   if (dueKey && dateKey > dueKey) { showToast('마감일 이후에는 배치할 수 없습니다.', 'error'); return; }
   const a = calDraggingAssign;
   try {
-    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title:`[${a.subject_name||'과제'}] ${a.title}`, description:`마감: ${a.due_date||'없음'} / 수행평가 공부 계획`, due_date: dateKey }) });
+    const [yy, mm, dd] = dateKey.split('-');
+    const planTitle = `[준비] ${a.title}`;
+    const planDesc  = `${a.subject_name||''} 수행평가 준비\n마감: ${a.due_date ? a.due_date.slice(0,10) : '없음'}`;
+    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title: planTitle, description: planDesc, due_date: dateKey }) });
     cell.classList.add('drop-flash');
     cell.addEventListener('animationend', () => cell.classList.remove('drop-flash'), { once:true });
-    showToast('공부 계획이 등록되었습니다! 📅', 'success');
+    showToast(`📌 ${Number(mm)}월 ${Number(dd)}일에 준비 계획이 등록됐어요!`, 'success');
     await loadEvents(); renderCalendar();
   } catch { showToast('등록 실패. 다시 시도해주세요.', 'error'); }
 }
@@ -1677,11 +1710,27 @@ function renderCalendar() {
       cell.innerHTML = `
         <div class="cal-day-num">${dateNum}</div>
         <div class="cal-events">
-          ${shown.map(e => e.kind==='assign' ? `<div class="cal-event-chip type-assign ${e.item.type==='진로'?'진로':''}">${escHtml(e.item.subject_name||'')} ${escHtml(e.item.title)}</div>` : `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`).join('')}
+          ${shown.map(e => e.kind==='assign' ? `<div class="cal-event-chip type-assign ${e.item.type==='진로'?'진로':''} cal-chip-drag" draggable="true" data-assign-id="${e.item.id}" title="${escHtml(e.item.title)} — 드래그해서 준비 계획 추가">${escHtml(e.item.subject_name||'')} ${escHtml(e.item.title)}</div>` : `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`).join('')}
           ${more > 0 ? `<div class="cal-more">+${more}개 더</div>` : ''}
         </div>
       `;
       cell.addEventListener('click', () => selectCalDate(dateKey, cellDate, evMap[dateKey]||[]));
+      // 캘린더 칩 드래그 이벤트 연결
+      cell.querySelectorAll('.cal-chip-drag').forEach(chip => {
+        chip.addEventListener('dragstart', e => {
+          e.stopPropagation();
+          onChipDragStart(e);
+        });
+        chip.addEventListener('dragend', onChipDragEnd);
+        // 칩 클릭 시 과제 상세 열기 (셀 클릭과 분리)
+        chip.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = parseInt(chip.dataset.assignId);
+          const a = assignments.find(x => x.id === id);
+          if (a) openAssignDetail(id);
+          else selectCalDate(dateKey, cellDate, evMap[dateKey]||[]);
+        });
+      });
     }
     grid.appendChild(cell);
   }
