@@ -52,7 +52,7 @@ function getTodayKST() {
   return kst.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-// ── 한 수업의 coursework 배치 upsert ─────────────────
+// ── 한 수업의 coursework 배치 upsert (deadlock 재시도 포함) ─────────────────
 async function batchUpsertCourseWork(items, userId) {
   if (!items.length) return;
 
@@ -68,8 +68,7 @@ async function batchUpsertCourseWork(items, userId) {
     userId,
   ]);
 
-  await pool.query(
-    `INSERT INTO coursework
+  const sql = `INSERT INTO coursework
        (coursework_id, course_id, course_name, title, description,
         due_date, state, link, fetched_by)
      VALUES ?
@@ -80,9 +79,23 @@ async function batchUpsertCourseWork(items, userId) {
        due_date    = VALUES(due_date),
        state       = VALUES(state),
        link        = VALUES(link),
-       fetched_by  = VALUES(fetched_by)`,
-    [values]
-  );
+       fetched_by  = VALUES(fetched_by)`;
+
+  // Deadlock 발생 시 최대 3회 재시도 (지수 백오프)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await pool.query(sql, [values]);
+      return;
+    } catch (e) {
+      const isDeadlock = e.code === 'ER_LOCK_DEADLOCK' || (e.message && e.message.includes('Deadlock'));
+      if (isDeadlock && attempt < 3) {
+        const delay = attempt * 200; // 200ms, 400ms
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw e;
+    }
+  }
 }
 
 // ── 한 계정의 coursework 크롤링 ───────────────────────

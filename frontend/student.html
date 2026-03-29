@@ -242,11 +242,11 @@
     .cal-event-chip.type-assign.completed { background: rgba(100,120,110,0.08); color: var(--muted); text-decoration: line-through; }
     .cal-event-chip.type-personal { background: rgba(194,101,45,0.12); color: var(--orange); }
     .cal-more { font-size: 0.63rem; color: var(--text3); padding: 1px 4px; }
-    .cal-cell.drop-valid { background: rgba(29,82,50,0.08) !important; border-color: rgba(29,82,50,0.35) !important; box-shadow: inset 0 0 0 2px rgba(29,82,50,0.2); }
-    .cal-cell.drop-valid:hover, .cal-cell.drop-over { background: rgba(29,82,50,0.15) !important; border-color: var(--primary) !important; box-shadow: inset 0 0 0 2px var(--primary); }
-    .cal-cell.drop-invalid { opacity: 0.25 !important; cursor: not-allowed !important; }
-    .cal-cell.drop-flash { animation: dropFlash 0.45s ease; }
-    @keyframes dropFlash { 0% { background: rgba(29,82,50,0.3); } 100% { background: var(--surface); } }
+    .cal-cell.drop-valid { background: rgba(29,82,50,0.06) !important; border-color: rgba(29,82,50,0.3) !important; }
+    .cal-cell.drop-over { background: rgba(29,82,50,0.18) !important; border-color: var(--primary) !important; box-shadow: inset 0 0 0 2px var(--primary); transform: scale(1.02); transition: all 0.1s; }
+    .cal-cell.drop-invalid { opacity: 0.2 !important; cursor: not-allowed !important; pointer-events: none !important; }
+    .cal-cell.drop-flash { animation: dropFlash 0.5s ease; }
+    @keyframes dropFlash { 0% { background: rgba(29,82,50,0.35); box-shadow: inset 0 0 0 2px var(--primary); } 100% { background: var(--surface); box-shadow: none; } }
 
     .cal-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
     @media (max-width: 1100px) { .cal-layout { grid-template-columns: 1fr; } .cal-right-col { display: none; } .cal-right-col.mobile-show { display: flex; } }
@@ -266,16 +266,40 @@
     .cal-add-btn:hover { background: var(--primary); }
     .cal-drag-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
     .cal-drag-hint { font-size: 0.73rem; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 5px; }
-    .cal-drag-list { display: flex; flex-direction: column; gap: 5px; max-height: 260px; overflow-y: auto; }
-    .cal-drag-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: grab; transition: all 0.15s; user-select: none; }
-    .cal-drag-chip:hover { background: var(--surface3); border-color: var(--border2); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-    .cal-drag-chip:active { cursor: grabbing; }
-    .cal-drag-chip.dragging { opacity: 0.4; transform: none; }
-    .cal-drag-chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .cal-drag-list { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; padding-right: 2px; }
+    .cal-drag-chip {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: grab; transition: all 0.15s;
+      user-select: none; position: relative;
+    }
+    .cal-drag-chip:hover {
+      background: var(--surface); border-color: var(--primary);
+      transform: translateY(-2px); box-shadow: 0 4px 12px rgba(27,72,50,0.12);
+    }
+    .cal-drag-chip:active { cursor: grabbing; transform: scale(0.98); }
+    .cal-drag-chip.dragging { opacity: 0.35; transform: none; box-shadow: none; }
+    .cal-drag-chip.has-plan { border-left: 3px solid var(--primary); background: rgba(27,72,50,0.04); }
+    .cal-drag-chip-grip {
+      color: var(--muted); flex-shrink: 0; opacity: 0.4;
+      transition: opacity 0.15s;
+    }
+    .cal-drag-chip:hover .cal-drag-chip-grip { opacity: 0.8; }
+    .cal-drag-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .cal-drag-chip-info { flex: 1; min-width: 0; }
-    .cal-drag-chip-title { font-size: 0.8rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cal-drag-chip-sub { font-size: 0.69rem; color: var(--text3); margin-top: 1px; }
-    .cal-drag-chip-due { font-size: 0.69rem; font-weight: 600; flex-shrink: 0; padding: 2px 6px; border-radius: 99px; }
+    .cal-drag-chip-title { font-size: 0.82rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cal-drag-chip-sub { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
+    .cal-drag-chip-plan-badge { font-size: 0.65rem; color: var(--primary); font-weight: 600; margin-top: 2px; }
+    .cal-drag-chip-due { font-size: 0.7rem; font-weight: 700; flex-shrink: 0; padding: 3px 7px; border-radius: 99px; }
+    /* filter buttons */
+    .drag-filter-btn {
+      flex: 1; padding: 5px 0; font-size: 0.72rem; font-weight: 600;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; color: var(--text3);
+      transition: all 0.15s; font-family: var(--font-body);
+    }
+    .drag-filter-btn:hover { background: var(--surface3); color: var(--text); }
+    .drag-filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
     .cal-drag-chip-due.urgent { background: rgba(185,28,28,0.1); color: var(--red); }
     .cal-drag-chip-due.soon   { background: rgba(194,101,45,0.1); color: var(--orange); }
     .cal-drag-chip-due.ok     { background: rgba(29,82,50,0.1);   color: var(--primary); }
@@ -292,36 +316,6 @@
     .cal-legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--text3); }
     .cal-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
     .cal-grid.drag-active .cal-cell { transition: opacity 0.15s, background 0.15s, box-shadow 0.15s; }
-
-    /* ── Draggable calendar chips ── */
-    .cal-event-chip.type-assign.cal-chip-drag {
-      cursor: grab;
-      position: relative;
-      transition: box-shadow 0.15s, transform 0.12s, opacity 0.12s;
-    }
-    .cal-event-chip.type-assign.cal-chip-drag:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-      transform: translateY(-1px);
-      z-index: 2;
-    }
-    .cal-event-chip.type-assign.cal-chip-drag:active { cursor: grabbing; }
-    .cal-event-chip.type-assign.cal-chip-drag.chip-dragging { opacity: 0.35; transform: none; }
-    /* drag-handle icon on hover */
-    .cal-event-chip.type-assign.cal-chip-drag::after {
-      content: '⠿';
-      opacity: 0;
-      margin-left: 3px;
-      font-size: 0.62rem;
-      transition: opacity 0.15s;
-      color: currentColor;
-    }
-    .cal-event-chip.type-assign.cal-chip-drag:hover::after { opacity: 0.5; }
-    /* prep-plan indicator on chip when a plan exists */
-    .cal-event-chip.type-assign.has-plan::before {
-      content: '📌';
-      font-size: 0.6rem;
-      margin-right: 2px;
-    }
 
     /* ── Stats bar ── */
     .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -769,11 +763,17 @@
                 <button class="cal-panel-tab" id="tabBtnDate" onclick="switchCalTab('date')">날짜 상세</button>
               </div>
               <div class="cal-tab-content active" id="calTabAssign">
-                <div class="cal-drag-hint">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/>
-                  </svg>
-                  카드 또는 캘린더의 수행평가를 날짜로 드래그해 준비 계획 등록
+                <div class="cal-drag-hint" style="background:rgba(27,72,50,0.05);border:1px dashed rgba(27,72,50,0.25);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:0.76rem;color:var(--text2);line-height:1.5;display:flex;flex-direction:column;gap:4px;">
+                  <div style="display:flex;align-items:center;gap:6px;font-weight:700;color:var(--primary);">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                    준비 계획 등록하기
+                  </div>
+                  <div style="color:var(--text3);">수행평가 카드를 캘린더 날짜로 드래그하면 그 날에 준비 일정이 추가됩니다.</div>
+                </div>
+                <div id="calDragFilter" style="display:flex;gap:4px;margin-bottom:10px;">
+                  <button class="drag-filter-btn active" data-filter="all" onclick="setDragFilter('all')">전체</button>
+                  <button class="drag-filter-btn" data-filter="urgent" onclick="setDragFilter('urgent')">🔴 임박</button>
+                  <button class="drag-filter-btn" data-filter="planned" onclick="setDragFilter('planned')">📌 계획됨</button>
                 </div>
                 <div class="cal-drag-list" id="calDragSource">
                   <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0"><span class="spinner"></span></div>
@@ -1597,27 +1597,65 @@ function buildCalEvMap() {
   });
   return evMap;
 }
+let calDragFilter = 'all'; // 'all' | 'urgent' | 'planned'
+function setDragFilter(f) {
+  calDragFilter = f;
+  document.querySelectorAll('.drag-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  renderCalDragSource();
+}
 function renderCalDragSource() {
   const container = document.getElementById('calDragSource'); if (!container) return;
-  const pending = assignments.filter(a => !a.completed && getDaysLeft(a.due_date) >= -3);
-  if (!pending.length) { container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">미완료 수행평가가 없습니다.</div>'; return; }
-  container.innerHTML = pending.map(a => {
+
+  // 준비 계획이 이미 등록된 assignment id 목록
+  const plannedIds = new Set(
+    events
+      .filter(ev => ev.title && ev.title.startsWith('[준비] '))
+      .map(ev => {
+        const m = ev.description && ev.description.match(/assign_id:(\d+)/);
+        return m ? parseInt(m[1]) : null;
+      })
+      .filter(Boolean)
+  );
+
+  let list = assignments.filter(a => !a.completed);
+  if (calDragFilter === 'urgent') list = list.filter(a => getDaysLeft(a.due_date) <= 5);
+  else if (calDragFilter === 'planned') list = list.filter(a => plannedIds.has(a.id));
+
+  // 마감일 오름차순 정렬
+  list = list.slice().sort((a,b) => {
+    if (!a.due_date) return 1; if (!b.due_date) return -1;
+    return a.due_date < b.due_date ? -1 : 1;
+  });
+
+  if (!list.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:20px 0">표시할 수행평가가 없습니다.</div>';
+    return;
+  }
+
+  container.innerHTML = list.map(a => {
     const days = getDaysLeft(a.due_date);
-    const dueClass = days <= 1 ? 'urgent' : days <= 5 ? 'soon' : 'ok';
+    const dueClass = days < 0 ? 'urgent' : days <= 2 ? 'urgent' : days <= 7 ? 'soon' : 'ok';
     const d2 = a.due_date ? new Date(a.due_date) : null;
     const chipMm = d2 ? d2.getMonth()+1 : 0;
     const chipDd = d2 ? d2.getDate() : 0;
-    const dueLabel = days < 0 ? `${chipMm}/${chipDd} 마감`
-                   : days === 0 ? `오늘 오후 11:59`
-                   : days === 1 ? `내일 오후 11:59`
-                   : d2 ? `${chipMm}월 ${chipDd}일 11:59` : '기한없음';
-    const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--accent)';
+    const dueLabel = days < 0 ? `${chipMm}/${chipDd} 마감됨`
+                   : days === 0 ? '오늘 마감'
+                   : days === 1 ? '내일 마감'
+                   : d2 ? `${chipMm}월 ${chipDd}일 마감` : '기한없음';
+    const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--primary)';
+    const isPlanned = plannedIds.has(a.id);
     return `
-      <div class="cal-drag-chip" draggable="true" data-assign-id="${a.id}" title="${escHtml(a.title)}">
+      <div class="cal-drag-chip${isPlanned?' has-plan':''}" draggable="true" data-assign-id="${a.id}" title="드래그해서 준비 날짜 지정">
+        <svg class="cal-drag-chip-grip" width="10" height="14" viewBox="0 0 10 16" fill="currentColor">
+          <circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/>
+          <circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/>
+          <circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/>
+        </svg>
         <div class="cal-drag-chip-dot" style="background:${dotColor}"></div>
         <div class="cal-drag-chip-info">
           <div class="cal-drag-chip-title">${escHtml(a.title)}</div>
           <div class="cal-drag-chip-sub">${escHtml(a.subject_name||'')} · ${a.type||'일반'}</div>
+          ${isPlanned ? '<div class="cal-drag-chip-plan-badge">📌 준비 계획 등록됨</div>' : ''}
         </div>
         <div class="cal-drag-chip-due ${dueClass}">${dueLabel}</div>
       </div>
@@ -1633,45 +1671,51 @@ function onChipDragStart(e) {
   calDraggingAssign = assignments.find(a => a.id === id) || null;
   if (!calDraggingAssign) return;
   e.dataTransfer.effectAllowed = 'copy';
-  // 오른쪽 패널 칩: 'dragging', 캘린더 그리드 칩: 'chip-dragging'
-  e.currentTarget.classList.add(e.currentTarget.classList.contains('cal-event-chip') ? 'chip-dragging' : 'dragging');
+  e.currentTarget.classList.add('dragging');
   const todayKey = new Date().toISOString().slice(0,10);
-  const dueKey   = calDraggingAssign.due_date ? calDraggingAssign.due_date.slice(0,10) : null;
+  // 오늘 이전 날짜만 비활성화 (마감일 이후에도 계획 등록 허용)
   const grid = document.getElementById('calGrid'); grid.classList.add('drag-active');
   grid.querySelectorAll('.cal-cell[data-date]').forEach(cell => {
     const cd = cell.dataset.date;
-    if (cd < todayKey || (dueKey && cd > dueKey)) cell.classList.add('drop-invalid');
+    if (cd < todayKey) cell.classList.add('drop-invalid');
+    else cell.classList.add('drop-valid');
   });
 }
 function onChipDragEnd(e) {
-  e.currentTarget.classList.remove('dragging', 'chip-dragging'); calDraggingAssign = null;
+  e.currentTarget.classList.remove('dragging'); calDraggingAssign = null;
   const grid = document.getElementById('calGrid'); grid.classList.remove('drag-active');
-  grid.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('drop-invalid','drop-valid'));
+  grid.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('drop-invalid','drop-valid','drop-over'));
 }
 function onCellDragOver(e, dateKey) {
   e.preventDefault(); if (!calDraggingAssign) return;
   const cell = e.currentTarget;
   if (cell.classList.contains('drop-invalid')) { e.dataTransfer.dropEffect = 'none'; return; }
-  e.dataTransfer.dropEffect = 'copy'; cell.classList.add('drop-valid');
+  e.dataTransfer.dropEffect = 'copy'; cell.classList.add('drop-over');
 }
-function onCellDragLeave(e) { e.currentTarget.classList.remove('drop-valid'); }
+function onCellDragLeave(e) { e.currentTarget.classList.remove('drop-over'); }
 async function onCellDrop(e, dateKey) {
   e.preventDefault();
-  const cell = e.currentTarget; cell.classList.remove('drop-valid','drop-invalid');
+  const cell = e.currentTarget; cell.classList.remove('drop-valid','drop-over','drop-invalid');
   if (!calDraggingAssign) return;
   const todayKey = new Date().toISOString().slice(0,10);
-  const dueKey   = calDraggingAssign.due_date ? calDraggingAssign.due_date.slice(0,10) : null;
+  // 오늘 이전 날짜만 비활성화 (마감일 이후에도 계획 등록 허용)
   if (dateKey < todayKey) { showToast('오늘 이전 날짜에는 배치할 수 없습니다.', 'error'); return; }
-  if (dueKey && dateKey > dueKey) { showToast('마감일 이후에는 배치할 수 없습니다.', 'error'); return; }
   const a = calDraggingAssign;
   try {
-    const [yy, mm, dd] = dateKey.split('-');
-    const planTitle = `[준비] ${a.title}`;
-    const planDesc  = `${a.subject_name||''} 수행평가 준비\n마감: ${a.due_date ? a.due_date.slice(0,10) : '없음'}`;
-    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title: planTitle, description: planDesc, due_date: dateKey }) });
+    const [pyy, pmm, pdd] = dateKey.split('-');
+    await fetch('/api/timetable/personal', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({
+        title: `[준비] ${a.title}`,
+        description: `${a.subject_name||''} 수행평가 준비\n마감: ${a.due_date ? a.due_date.slice(0,10) : '없음'}\nassign_id:${a.id}`,
+        due_date: dateKey
+      })
+    });
     cell.classList.add('drop-flash');
     cell.addEventListener('animationend', () => cell.classList.remove('drop-flash'), { once:true });
-    showToast(`📌 ${Number(mm)}월 ${Number(dd)}일에 준비 계획이 등록됐어요!`, 'success');
+    showToast(`📌 ${Number(pmm)}월 ${Number(pdd)}일에 "${a.title}" 준비 계획을 등록했어요!`, 'success');
     await loadEvents(); renderCalendar();
   } catch { showToast('등록 실패. 다시 시도해주세요.', 'error'); }
 }
@@ -1710,27 +1754,11 @@ function renderCalendar() {
       cell.innerHTML = `
         <div class="cal-day-num">${dateNum}</div>
         <div class="cal-events">
-          ${shown.map(e => e.kind==='assign' ? `<div class="cal-event-chip type-assign ${e.item.type==='진로'?'진로':''} cal-chip-drag" draggable="true" data-assign-id="${e.item.id}" title="${escHtml(e.item.title)} — 드래그해서 준비 계획 추가">${escHtml(e.item.subject_name||'')} ${escHtml(e.item.title)}</div>` : `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`).join('')}
+          ${shown.map(e => e.kind==='assign' ? `<div class="cal-event-chip type-assign ${e.item.type==='진로'?'진로':''}">${escHtml(e.item.subject_name||'')} ${escHtml(e.item.title)}</div>` : `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`).join('')}
           ${more > 0 ? `<div class="cal-more">+${more}개 더</div>` : ''}
         </div>
       `;
       cell.addEventListener('click', () => selectCalDate(dateKey, cellDate, evMap[dateKey]||[]));
-      // 캘린더 칩 드래그 이벤트 연결
-      cell.querySelectorAll('.cal-chip-drag').forEach(chip => {
-        chip.addEventListener('dragstart', e => {
-          e.stopPropagation();
-          onChipDragStart(e);
-        });
-        chip.addEventListener('dragend', onChipDragEnd);
-        // 칩 클릭 시 과제 상세 열기 (셀 클릭과 분리)
-        chip.addEventListener('click', e => {
-          e.stopPropagation();
-          const id = parseInt(chip.dataset.assignId);
-          const a = assignments.find(x => x.id === id);
-          if (a) openAssignDetail(id);
-          else selectCalDate(dateKey, cellDate, evMap[dateKey]||[]);
-        });
-      });
     }
     grid.appendChild(cell);
   }
@@ -1771,7 +1799,10 @@ function renderCalDetailPanel(dateKey, dateObj, evs) {
 // ── Meals ──
 async function loadMeals() {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // toISOString()은 UTC 기준 → 한국 시간(UTC+9)과 최대 9시간 차이로 날짜 오류 발생
+    // 로컬 날짜를 직접 구해서 사용
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const res = await fetch(`/api/meals?date=${today}`, { credentials:'include' });
     const data = await res.json();
     renderMeals(data.meals || {}, today);
@@ -1779,8 +1810,10 @@ async function loadMeals() {
 }
 function renderMeals(meals, date) {
   const wrap = document.getElementById('mealWrap');
-  const d = new Date(date);
-  const dateStr = `${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]})`;
+  // new Date('YYYY-MM-DD')는 UTC 00:00 기준 파싱 → 로컬 시간으로 직접 파싱
+  const [y, m, d] = date.split('-').map(Number);
+  const d2 = new Date(y, m-1, d);
+  const dateStr = `${d2.getMonth()+1}월 ${d2.getDate()}일 (${['일','월','화','수','목','금','토'][d2.getDay()]})`;
   const types = [{key:'breakfast',label:'조식'},{key:'lunch',label:'중식'},{key:'dinner',label:'석식'}];
   wrap.innerHTML = `
     <div class="meal-card">
