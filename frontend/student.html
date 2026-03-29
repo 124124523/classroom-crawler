@@ -279,27 +279,14 @@
     }
     .cal-drag-chip:active { cursor: grabbing; transform: scale(0.98); }
     .cal-drag-chip.dragging { opacity: 0.35; transform: none; box-shadow: none; }
-    .cal-drag-chip.has-plan { border-left: 3px solid var(--primary); background: rgba(27,72,50,0.04); }
-    .cal-drag-chip-grip {
-      color: var(--muted); flex-shrink: 0; opacity: 0.4;
-      transition: opacity 0.15s;
-    }
-    .cal-drag-chip:hover .cal-drag-chip-grip { opacity: 0.8; }
+
     .cal-drag-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .cal-drag-chip-info { flex: 1; min-width: 0; }
     .cal-drag-chip-title { font-size: 0.82rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .cal-drag-chip-sub { font-size: 0.7rem; color: var(--text3); margin-top: 2px; }
-    .cal-drag-chip-plan-badge { font-size: 0.65rem; color: var(--primary); font-weight: 600; margin-top: 2px; }
+
     .cal-drag-chip-due { font-size: 0.7rem; font-weight: 700; flex-shrink: 0; padding: 3px 7px; border-radius: 99px; }
-    /* filter buttons */
-    .drag-filter-btn {
-      flex: 1; padding: 5px 0; font-size: 0.72rem; font-weight: 600;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); cursor: pointer; color: var(--text3);
-      transition: all 0.15s; font-family: var(--font-body);
-    }
-    .drag-filter-btn:hover { background: var(--surface3); color: var(--text); }
-    .drag-filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
     .cal-drag-chip-due.urgent { background: rgba(185,28,28,0.1); color: var(--red); }
     .cal-drag-chip-due.soon   { background: rgba(194,101,45,0.1); color: var(--orange); }
     .cal-drag-chip-due.ok     { background: rgba(29,82,50,0.1);   color: var(--primary); }
@@ -763,17 +750,11 @@
                 <button class="cal-panel-tab" id="tabBtnDate" onclick="switchCalTab('date')">날짜 상세</button>
               </div>
               <div class="cal-tab-content active" id="calTabAssign">
-                <div class="cal-drag-hint" style="background:rgba(27,72,50,0.05);border:1px dashed rgba(27,72,50,0.25);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:0.76rem;color:var(--text2);line-height:1.5;display:flex;flex-direction:column;gap:4px;">
-                  <div style="display:flex;align-items:center;gap:6px;font-weight:700;color:var(--primary);">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
-                    준비 계획 등록하기
-                  </div>
-                  <div style="color:var(--text3);">수행평가 카드를 캘린더 날짜로 드래그하면 그 날에 준비 일정이 추가됩니다.</div>
-                </div>
-                <div id="calDragFilter" style="display:flex;gap:4px;margin-bottom:10px;">
-                  <button class="drag-filter-btn active" data-filter="all" onclick="setDragFilter('all')">전체</button>
-                  <button class="drag-filter-btn" data-filter="urgent" onclick="setDragFilter('urgent')">🔴 임박</button>
-                  <button class="drag-filter-btn" data-filter="planned" onclick="setDragFilter('planned')">📌 계획됨</button>
+                <div class="cal-drag-hint">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/>
+                  </svg>
+                  카드를 날짜로 드래그해 공부 계획 등록
                 </div>
                 <div class="cal-drag-list" id="calDragSource">
                   <div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0"><span class="spinner"></span></div>
@@ -1583,12 +1564,8 @@ function personalEvRowInner(id, title, desc) {
 }
 function buildCalEvMap() {
   const evMap = {};
-  assignments.filter(a => !a.completed).forEach(a => {
-    if (!a.due_date) return;
-    const key = a.due_date.slice(0,10);
-    if (!evMap[key]) evMap[key] = [];
-    evMap[key].push({ kind:'assign', item:a });
-  });
+  // 캘린더에는 학생이 직접 등록한 개인 일정만 표시
+  // (수행평가는 우측 패널에서 드래그해서 등록)
   events.forEach(ev => {
     if (!ev.due_date) return;
     const key = ev.due_date.slice(0,10);
@@ -1597,38 +1574,18 @@ function buildCalEvMap() {
   });
   return evMap;
 }
-let calDragFilter = 'all'; // 'all' | 'urgent' | 'planned'
-function setDragFilter(f) {
-  calDragFilter = f;
-  document.querySelectorAll('.drag-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
-  renderCalDragSource();
-}
 function renderCalDragSource() {
   const container = document.getElementById('calDragSource'); if (!container) return;
 
   // 준비 계획이 이미 등록된 assignment id 목록
-  const plannedIds = new Set(
-    events
-      .filter(ev => ev.title && ev.title.startsWith('[준비] '))
-      .map(ev => {
-        const m = ev.description && ev.description.match(/assign_id:(\d+)/);
-        return m ? parseInt(m[1]) : null;
-      })
-      .filter(Boolean)
-  );
-
-  let list = assignments.filter(a => !a.completed);
-  if (calDragFilter === 'urgent') list = list.filter(a => getDaysLeft(a.due_date) <= 5);
-  else if (calDragFilter === 'planned') list = list.filter(a => plannedIds.has(a.id));
-
-  // 마감일 오름차순 정렬
-  list = list.slice().sort((a,b) => {
+  // 미완료 수행평가 전체, 마감일 오름차순
+  const list = assignments.filter(a => !a.completed).slice().sort((a,b) => {
     if (!a.due_date) return 1; if (!b.due_date) return -1;
     return a.due_date < b.due_date ? -1 : 1;
   });
 
   if (!list.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:20px 0">표시할 수행평가가 없습니다.</div>';
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">미완료 수행평가가 없습니다.</div>';
     return;
   }
 
@@ -1638,24 +1595,17 @@ function renderCalDragSource() {
     const d2 = a.due_date ? new Date(a.due_date) : null;
     const chipMm = d2 ? d2.getMonth()+1 : 0;
     const chipDd = d2 ? d2.getDate() : 0;
-    const dueLabel = days < 0 ? `${chipMm}/${chipDd} 마감됨`
-                   : days === 0 ? '오늘 마감'
-                   : days === 1 ? '내일 마감'
-                   : d2 ? `${chipMm}월 ${chipDd}일 마감` : '기한없음';
+    const dueLabel = days < 0 ? `${chipMm}/${chipDd} 마감`
+                   : days === 0 ? '오늘 오후 11:59'
+                   : days === 1 ? '내일 오후 11:59'
+                   : d2 ? `${chipMm}월 ${chipDd}일 11:59` : '기한없음';
     const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--primary)';
-    const isPlanned = plannedIds.has(a.id);
     return `
-      <div class="cal-drag-chip${isPlanned?' has-plan':''}" draggable="true" data-assign-id="${a.id}" title="드래그해서 준비 날짜 지정">
-        <svg class="cal-drag-chip-grip" width="10" height="14" viewBox="0 0 10 16" fill="currentColor">
-          <circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/>
-          <circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/>
-          <circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/>
-        </svg>
+      <div class="cal-drag-chip" draggable="true" data-assign-id="${a.id}" title="${escHtml(a.title)}">
         <div class="cal-drag-chip-dot" style="background:${dotColor}"></div>
         <div class="cal-drag-chip-info">
           <div class="cal-drag-chip-title">${escHtml(a.title)}</div>
           <div class="cal-drag-chip-sub">${escHtml(a.subject_name||'')} · ${a.type||'일반'}</div>
-          ${isPlanned ? '<div class="cal-drag-chip-plan-badge">📌 준비 계획 등록됨</div>' : ''}
         </div>
         <div class="cal-drag-chip-due ${dueClass}">${dueLabel}</div>
       </div>
