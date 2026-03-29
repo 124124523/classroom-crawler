@@ -15,6 +15,13 @@ async function fetchMealsFromNEIS(yyyymm) {
     throw new Error('NEIS_API_KEY, NEIS_ATPT_CODE, NEIS_SCHOOL_CODE 환경변수가 필요합니다.');
   }
 
+  // NEIS MLSV_YMD는 8자리(YYYYMMDD)만 인식 — 월 범위는 FROM/TO 파라미터 사용
+  const year     = yyyymm.slice(0, 4);
+  const month    = yyyymm.slice(4, 6);
+  const lastDay  = new Date(Number(year), Number(month), 0).getDate();
+  const fromYmd  = `${yyyymm}01`;
+  const toYmd    = `${yyyymm}${String(lastDay).padStart(2, '0')}`;
+
   const params = new URLSearchParams({
     KEY:                NEIS_KEY,
     Type:               'json',
@@ -22,11 +29,12 @@ async function fetchMealsFromNEIS(yyyymm) {
     pSize:              '100',
     ATPT_OFCDC_SC_CODE: ATPT_CODE,
     SD_SCHUL_CODE:      SCHOOL_CODE,
-    MLSV_YMD:          yyyymm,
+    MLSV_FROM_YMD:      fromYmd,
+    MLSV_TO_YMD:        toYmd,
   });
 
   const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?${params}`;
-  console.log(`  [mealSync] NEIS 요청: ${yyyymm}`);
+  console.log(`  [mealSync] NEIS 요청: ${fromYmd} ~ ${toYmd}`);
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`NEIS HTTP 오류: ${res.status}`);
