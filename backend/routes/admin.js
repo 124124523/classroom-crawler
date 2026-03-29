@@ -153,4 +153,25 @@ router.get('/coverage', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/admin/sync-meals — 급식 수동 동기화
+router.post('/sync-meals', requireAdmin, async (req, res) => {
+  try {
+    const { syncCurrentAndNextMonth, syncMealsToDb } = require('../syncMeals');
+
+    // body에 yyyymm 있으면 특정 월만, 없으면 이번 달 + 다음 달
+    const { yyyymm } = req.body;
+    const result = yyyymm
+      ? await syncMealsToDb(yyyymm)
+      : await syncCurrentAndNextMonth();
+
+    res.json({
+      message: `급식 동기화 완료: ${result.total}건 처리, 실패 ${result.failed}건`,
+      result,
+    });
+  } catch (e) {
+    console.error('[admin/sync-meals]', e.message);
+    res.status(500).json({ message: '급식 동기화 실패: ' + e.message });
+  }
+});
+
 module.exports = router;

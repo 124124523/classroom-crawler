@@ -122,6 +122,14 @@ try {
   console.warn('[pipeline] 크롤러/sync 로드 실패:', e.message);
 }
 
+// ── 급식 sync ─────────────────────────────────────────
+let syncMeals = null;
+try {
+  syncMeals = require('./syncMeals').syncCurrentAndNextMonth;
+} catch (e) {
+  console.warn('[pipeline] mealSync 로드 실패:', e.message);
+}
+
 // 동시 실행 방지 락
 let pipelineRunning = false;
 
@@ -155,6 +163,16 @@ async function runPipeline() {
         console.error('[pipeline] sync 오류:', e.message);
       }
     }
+
+    // Step 3: NEIS → school_meals 테이블
+    if (syncMeals) {
+      try {
+        const mr = await syncMeals();
+        console.log(`[pipeline] 급식 sync 완료: ${mr.total}건 처리, 실패 ${mr.failed}건`);
+      } catch (e) {
+        console.error('[pipeline] 급식 sync 오류:', e.message);
+      }
+    }
   } finally {
     pipelineRunning = false;
     console.log(`[pipeline] ===== 완료 =====\n`);
@@ -164,6 +182,13 @@ async function runPipeline() {
 // 3시간마다 실행 (한국 시간)
 cron.schedule('0 */3 * * *', runPipeline, { timezone: 'Asia/Seoul' });
 console.log('[scheduler] 3시간 주기 파이프라인 등록 완료');
+
+// 매일 오전 7시 급식 단독 sync (급식표가 전날 등록되는 경우 대비)
+cron.schedule('0 7 * * *', async () => {
+  console.log('[mealCron] 매일 07:00 급식 sync 실행');
+  if (syncMeals) await syncMeals().catch(e => console.error('[mealCron]', e.message));
+}, { timezone: 'Asia/Seoul' });
+console.log('[scheduler] 매일 07:00 급식 sync 등록 완료');
 
 // ── SPA 폴백 ──────────────────────────────────────────
 app.get('/{*path}', (req, res) => {

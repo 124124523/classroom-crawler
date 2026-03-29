@@ -492,7 +492,9 @@ let myClasses   = [];
 let assignments = [];
 let notices     = [];
 let assignUploadFiles = [];
+let assignExistingImages = [];   // 수정 시 기존 이미지 URL 보관
 let noticeUploadFiles = [];
+let noticeExistingImages = [];   // 수정 시 기존 이미지 URL 보관
 
 (async () => {
   try {
@@ -585,15 +587,22 @@ async function saveAssignment() {
   const content = document.getElementById('assignContent').value.trim();
   if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
 
-  let imageUrls = [];
+  // 기존 이미지 중 미리보기에서 삭제되지 않은 것만 유지
+  const assignPreview = document.getElementById('assignImgPreview');
+  const keptExisting = assignExistingImages.filter(url =>
+    Array.from(assignPreview.querySelectorAll('img')).some(img => img.src === url)
+  );
+
+  let newUrls = [];
   if (assignUploadFiles.length) {
     showToast('이미지 업로드 중...', 'info');
     const form = new FormData();
     assignUploadFiles.forEach(f => form.append('images', f));
     const r = await fetch('/api/upload/multiple', { method:'POST', credentials:'include', body:form });
     const d = await r.json();
-    imageUrls = d.urls || [];
+    newUrls = d.urls || [];
   }
+  const imageUrls = [...keptExisting, ...newUrls];
 
   const body = { title, class_id: classId, type, due_date: due || null, description: content, images: imageUrls };
   const url    = editId ? `/api/assignments/${editId}` : '/api/assignments';
@@ -629,6 +638,19 @@ function editAssign(id) {
   document.getElementById('assignClass').value    = a.class_id || '';
   document.getElementById('assignFormTitle').textContent = '과제 수정';
   document.getElementById('assignCancelBtn').style.display = '';
+
+  // 기존 이미지 미리보기 복원
+  assignUploadFiles = [];
+  assignExistingImages = Array.isArray(a.images) ? [...a.images] : [];
+  const aPrev = document.getElementById('assignImgPreview');
+  aPrev.innerHTML = '';
+  assignExistingImages.forEach(url => {
+    const thumb = document.createElement('div');
+    thumb.className = 'upload-thumb';
+    thumb.innerHTML = `<img src="${url}" /><button class="remove-btn" onclick="this.parentElement.remove()">✕</button>`;
+    aPrev.appendChild(thumb);
+  });
+
   showSection('assignments');
 }
 
@@ -637,6 +659,7 @@ function cancelAssignEdit() {
   document.getElementById('assignType').value = '일반';
   document.getElementById('assignImgPreview').innerHTML = '';
   assignUploadFiles = [];
+  assignExistingImages = [];
   document.getElementById('assignFormTitle').textContent = '과제 등록';
   document.getElementById('assignCancelBtn').style.display = 'none';
 }
@@ -705,15 +728,22 @@ async function saveNotice() {
   const content = document.getElementById('noticeContent').value.trim();
   if (!title || !content) { showToast('제목과 내용을 입력하세요.', 'error'); return; }
 
-  let imageUrls = [];
+  // 기존 이미지 중 미리보기에서 삭제되지 않은 것만 유지
+  const noticePreview = document.getElementById('noticeImgPreview');
+  const keptNoticeExisting = noticeExistingImages.filter(url =>
+    Array.from(noticePreview.querySelectorAll('img')).some(img => img.src === url)
+  );
+
+  let newNoticeUrls = [];
   if (noticeUploadFiles.length) {
     showToast('이미지 업로드 중...', 'info');
     const form = new FormData();
     noticeUploadFiles.forEach(f => form.append('images', f));
     const r = await fetch('/api/upload/multiple', { method:'POST', credentials:'include', body:form });
     const d = await r.json();
-    imageUrls = d.urls || [];
+    newNoticeUrls = d.urls || [];
   }
+  const imageUrls = [...keptNoticeExisting, ...newNoticeUrls];
 
   const body   = { title, class_id: classId, content, images: imageUrls };
   const url    = editId ? `/api/notices/${editId}` : '/api/notices';
@@ -743,6 +773,19 @@ function editNotice(id) {
   document.getElementById('noticeClass').value    = n.class_id || '';
   document.getElementById('noticeFormTitle').textContent = '공지 수정';
   document.getElementById('noticeCancelBtn').style.display = '';
+
+  // 기존 이미지 미리보기 복원
+  noticeUploadFiles = [];
+  noticeExistingImages = Array.isArray(n.images) ? [...n.images] : [];
+  const nPrev = document.getElementById('noticeImgPreview');
+  nPrev.innerHTML = '';
+  noticeExistingImages.forEach(url => {
+    const thumb = document.createElement('div');
+    thumb.className = 'upload-thumb';
+    thumb.innerHTML = `<img src="${url}" /><button class="remove-btn" onclick="this.parentElement.remove()">✕</button>`;
+    nPrev.appendChild(thumb);
+  });
+
   showSection('notices');
 }
 
@@ -750,6 +793,7 @@ function cancelNoticeEdit() {
   ['noticeEditId','noticeTitle','noticeContent'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('noticeImgPreview').innerHTML = '';
   noticeUploadFiles = [];
+  noticeExistingImages = [];
   document.getElementById('noticeFormTitle').textContent = '공지 등록';
   document.getElementById('noticeCancelBtn').style.display = 'none';
 }
