@@ -954,7 +954,7 @@ function saveReadSet(key, set) {
   try { localStorage.setItem(key, JSON.stringify([...set])); } catch {}
 }
 let readAssignIds  = getReadSet('readAssignIds');
-// readNoticeIds는 DB 기반으로 관리 (서버 is_read 필드 사용)
+let readNoticeIds  = getReadSet('readNoticeIds');
 
 // ── Init ──
 (async () => {
@@ -1019,29 +1019,42 @@ function showSection(name, el) {
 
   // 뱃지 읽음 처리
   if (name === 'assignments') {
+    // 새 과제 로컬 읽음
     assignments.forEach(a => readAssignIds.add(a.id));
     saveReadSet('readAssignIds', readAssignIds);
     document.getElementById('assignBadge').style.display = 'none';
+    // DB 기반: 미읽음 과제 댓글 + 미읽음 답글 전체 일괄 읽음 처리
+    fetch('/api/comments/read-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ type: 'assignment' })
+    }).catch(() => {});
+    fetch('/api/comments/read-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ type: 'reply' })
+    }).then(() => {
+      // 읽음 처리 후 배지 동기화
+      const tb = document.getElementById('timetableBadge');
+      if (tb) tb.style.display = 'none';
+    }).catch(() => {});
   }
   if (name === 'notices') {
-    // DB 기반 읽음 처리: 보이는 모든 공지 id 전송
-    const unreadNotices = notices.filter(n => !n.is_read);
-    if (unreadNotices.length) {
-      fetch('/api/notices/read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ids: unreadNotices.map(n => n.id) })
-      }).then(() => {
-        // 로컬 상태도 업데이트
-        unreadNotices.forEach(n => { n.is_read = 1; });
-        renderNotices();
-      }).catch(() => {});
-    }
+    notices.forEach(n => readNoticeIds.add(n.id));
+    saveReadSet('readNoticeIds', readNoticeIds);
     document.getElementById('noticeBadge').style.display = 'none';
+    // DB 기반: 미읽음 공지 댓글 일괄 읽음 처리
+    fetch('/api/comments/read-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ type: 'notice' })
+    }).catch(() => {});
   }
   if (name === 'timetable') {
-    document.getElementById('timetableBadge').style.display = 'none';
+    // DB 기반: 내 댓글에 달린 미읽음 답글 전체 일괄 읽음 처리
+    const tb = document.getElementById('timetableBadge');
+    if (tb) tb.style.display = 'none';
+    fetch('/api/comments/read-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ type: 'reply' })
+    }).catch(() => {});
     renderWeeklyTimetable();
   }
 
@@ -1068,20 +1081,20 @@ function updateAssignBadge() {
   else badge.style.display = 'none';
 }
 
-// 댓글 미읽음 배지 업데이트 (수행평가/공지/시간표 탭에 표시)
+// 댓글 미읽음 배지 업데이트 (수행평가/공지/시간표 탭에 합산 표시)
 async function updateCommentBadges() {
   try {
     const res  = await fetch('/api/comments/unread-summary', { credentials: 'include' });
     const data = await res.json();
 
-    // 수행평가 탭: 새 과제 수 + 미읽음 수행평가 댓글 수
+    // 수행평가 탭: 새 과제 수 + 미읽음 과제 댓글 수
     const assignNewCount = assignments.filter(a => !readAssignIds.has(a.id)).length;
     const assignTotal = assignNewCount + (data.assignment || 0);
     const ab = document.getElementById('assignBadge');
     if (ab) { ab.textContent = assignTotal; ab.style.display = assignTotal > 0 ? '' : 'none'; }
 
-    // 공지 탭: 서버에서 받은 is_read 기반 + 미읽음 공지 댓글 수
-    const noticeNewCount = notices ? notices.filter(n => !n.is_read).length : 0;
+    // 공지 탭: 새 공지 수 + 미읽음 공지 댓글 수
+    const noticeNewCount = notices ? notices.filter(n => !readNoticeIds.has(n.id)).length : 0;
     const noticeTotal = noticeNewCount + (data.notice || 0);
     const nb = document.getElementById('noticeBadge');
     if (nb) { nb.textContent = noticeTotal; nb.style.display = noticeTotal > 0 ? '' : 'none'; }
@@ -1267,8 +1280,7 @@ async function loadNotices() {
 }
 
 function updateNoticeBadge() {
-  // 서버에서 반환된 is_read 필드 기반으로 계산
-  const newItems = notices.filter(n => !n.is_read);
+  const newItems = notices.filter(n => !readNoticeIds.has(n.id));
   const badge = document.getElementById('noticeBadge');
   if (newItems.length > 0) { badge.textContent = newItems.length; badge.style.display = ''; }
   else badge.style.display = 'none';
@@ -1280,7 +1292,7 @@ function renderNotices() {
   if (!filtered.length) { list.innerHTML = '<div class="empty-state"><p>공지가 없습니다.</p></div>'; return; }
   const colors = ['#72C99A','#5899C9','#D4A843','#D97070','#9B72C9'];
   list.innerHTML = filtered.map((n, i) => {
-    const isNew = !n.is_read;  // 서버 is_read 필드 사용
+    const isNew = !readNoticeIds.has(n.id);
     const c = colors[i % colors.length];
     return `
       <div class="notice-item" onclick="openNoticeDetail(${n.id})">
@@ -1299,18 +1311,9 @@ function renderNotices() {
 async function openNoticeDetail(id) {
   const n = notices.find(x => x.id === id); if (!n) return;
   currentNotice = n;
-  // DB 기반 읽음 처리 (is_read가 0인 경우만)
-  if (!n.is_read) {
-    n.is_read = 1;
-    fetch('/api/notices/read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ ids: [id] })
-    }).catch(() => {});
-    updateNoticeBadge();
-    renderNotices();
-  }
+  // 개별 읽음 처리
+  readNoticeIds.add(id); saveReadSet('readNoticeIds', readNoticeIds);
+  updateNoticeBadge(); renderNotices();
   document.getElementById('noticeDetailTitle').textContent = n.title;
   document.getElementById('noticeDetailMeta').innerHTML = `<span>${n.subject_name || '전체'}</span><span>${fmtDate(n.created_at)}</span>`;
   document.getElementById('noticeDetailContent').textContent = n.content || '';

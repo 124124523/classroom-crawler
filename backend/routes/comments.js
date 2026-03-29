@@ -250,9 +250,9 @@ router.post('/', requireLogin, async (req, res) => {
       );
     }
 
-    // ── 슬라이딩 윈도우: 답글은 부모 댓글당 3개, 루트 댓글은 유저당 5개 ──
+    // ── 슬라이딩 윈도우: 답글·루트 댓글 모두 유저당 최대 2개 유지 ──
     if (parent_id) {
-      // 이 부모 댓글에 달린 내 답글이 3개 초과하면 가장 오래된 것 삭제
+      // 이 부모 댓글에 달린 내 답글이 2개 초과하면 가장 오래된 것 삭제
       const [myReplies] = await db.query(
         `SELECT id FROM ${meta.table}
          WHERE parent_id = ? AND writer = ?
@@ -267,15 +267,15 @@ router.post('/', requireLogin, async (req, res) => {
         }
       }
     } else {
-      // 이 과제에 달린 내 루트 댓글이 5개 초과하면 가장 오래된 것 + 그 답글 삭제
+      // 이 과제/공지에 달린 내 루트 댓글이 2개 초과하면 가장 오래된 것 + 그 답글 삭제
       const [myRoots] = await db.query(
         `SELECT id FROM ${meta.table}
          WHERE ${meta.fkCol} = ? AND writer = ? AND parent_id IS NULL
          ORDER BY id ASC`,
         [ref_id, user.id]
       );
-      if (myRoots.length > 5) {
-        const toDelete = myRoots.slice(0, myRoots.length - 5);
+      if (myRoots.length > 2) {
+        const toDelete = myRoots.slice(0, myRoots.length - 2);
         for (const row of toDelete) {
           // 답글 먼저 삭제
           try {
@@ -328,6 +328,103 @@ router.post('/read', requireLogin, async (req, res) => {
     res.json({ message: '읽음 처리 완료', count: ids.length });
   } catch (err) {
     console.error('[comments] POST /read 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
+// ================================================================
+// POST /api/comments/read-all — 탭 진입 시 일괄 읽음 처리
+// ================================================================
+// body: { type: 'assignment' | 'notice' | 'reply' }
+//
+// 학생 — assignments 탭 진입:  type='assignment' → 내 미읽음 과제 댓글 전체 읽음
+//                               type='reply'      → 내 댓글에 달린 미읽음 답글 전체 읽음
+// 리더 — 수행평가 관리 탭 진입: type='assignment' → 담당 분반 미읽음 과제 댓글 전체 읽음
+//        공지 관리 탭 진입:     type='notice'     → 담당 분반 미읽음 공지 댓글 전체 읽음
+// ================================================================
+router.post('/read-all', requireLogin, async (req, res) => {
+  const user = req.session.user;
+  const { type } = req.body;
+
+  try {
+    if (type === 'reply') {
+      // 학생: 내 댓글에 달린 미읽음 답글 전체를 읽음 처리
+      for (const [ctype, meta] of Object.entries(META)) {
+        try {
+          await ensureParentId(meta.table);
+          const [rows] = await db.query(
+            `SELECT c.id FROM ${meta.table} c
+             WHERE c.writer != ?
+               AND c.parent_id IS NOT NULL
+               AND c.parent_id IN (SELECT id FROM ${meta.table} WHERE writer = ?)
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )`,
+            [user.id, user.id, user.id, ctype]
+          );
+          if (rows.length) {
+            const values = rows.map(r => [user.id, r.id, ctype]);
+            await db.query('INSERT IGNORE INTO comment_reads (user_id, comment_id, ctype) VALUES ?', [values]);
+          }
+        } catch {}
+      }
+
+    } else if (type === 'assignment' || type === 'notice') {
+      const meta = META[type];
+      if (!meta) return res.status(400).json({ message: '잘못된 type입니다.' });
+
+      await ensureParentId(meta.table);
+      let rows;
+
+      if (user.role === 'leader') {
+        // 리더: 자신이 담당하는 분반의 미읽음 댓글만 읽음 처리
+        if (type === 'assignment') {
+          [rows] = await db.query(
+            `SELECT c.id FROM ${meta.table} c
+             JOIN assignments a ON a.id = c.${meta.fkCol}
+             WHERE a.class_id IN (SELECT class_id FROM enrollments WHERE user_id = ?)
+               AND c.writer != ?
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )`,
+            [user.id, user.id, user.id, type]
+          );
+        } else {
+          [rows] = await db.query(
+            `SELECT c.id FROM ${meta.table} c
+             JOIN notices n ON n.id = c.${meta.fkCol}
+             WHERE (n.class_id IS NULL OR n.class_id IN (SELECT class_id FROM enrollments WHERE user_id = ?))
+               AND c.writer != ?
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )`,
+            [user.id, user.id, user.id, type]
+          );
+        }
+      } else {
+        // 학생/선생님/관리자: 해당 타입의 미읽음 댓글 전체를 읽음 처리
+        [rows] = await db.query(
+          `SELECT id FROM ${meta.table}
+           WHERE writer != ?
+             AND id NOT IN (
+               SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+             )`,
+          [user.id, user.id, type]
+        );
+      }
+
+      if (rows && rows.length) {
+        const values = rows.map(r => [user.id, r.id, type]);
+        await db.query('INSERT IGNORE INTO comment_reads (user_id, comment_id, ctype) VALUES ?', [values]);
+      }
+
+    } else {
+      return res.status(400).json({ message: 'type은 assignment | notice | reply 중 하나여야 합니다.' });
+    }
+
+    res.json({ message: '읽음 처리 완료' });
+  } catch (err) {
+    console.error('[comments] POST /read-all 오류:', err.message);
     res.status(500).json({ message: '서버 오류' });
   }
 });

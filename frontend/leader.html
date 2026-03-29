@@ -815,6 +815,24 @@ function showSection(name) {
   const titles = { overview:'개요', assignments:'수행평가 관리', notices:'공지 관리' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
+  // 탭 진입 시 해당 탭의 미읽음 댓글 DB 기반 일괄 읽음 처리
+  if (name === 'assignments') {
+    const ab = document.getElementById('assignUnreadBadge');
+    if (ab) ab.style.display = 'none';
+    fetch('/api/comments/read-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ type: 'assignment' })
+    }).catch(() => {});
+  }
+  if (name === 'notices') {
+    const nb = document.getElementById('noticeUnreadBadge');
+    if (nb) nb.style.display = 'none';
+    fetch('/api/comments/read-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', body: JSON.stringify({ type: 'notice' })
+    }).catch(() => {});
+  }
+
   // 모바일에서 네비 클릭 시 사이드바 자동 닫기
   if (window.innerWidth <= 768) closeSidebar();
 }
@@ -849,7 +867,7 @@ async function loadUnreadBadges() {
     const ab = document.getElementById('assignUnreadBadge');
     if (ab) { ab.textContent = assignCount; ab.style.display = assignCount > 0 ? 'inline-flex' : 'none'; }
 
-    // 공지 관리 탭 배지 (기존 noticeUnreadBadge)
+    // 공지 관리 탭 배지
     const nb = document.getElementById('noticeUnreadBadge');
     if (nb) { nb.textContent = noticeCount; nb.style.display = noticeCount > 0 ? 'inline-flex' : 'none'; }
   } catch {}
