@@ -1,0 +1,289 @@
+/* ============================================================
+   SchoolBoard — 대전대신고등학교  v3.2
+   Palette: Forest Green × Burnt Orange × Cream
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* ── Sidebar (Dark Forest Green) ── */
+  --sidebar-bg:     #1B5230;
+  --sidebar-bg2:    #153F26;
+  --sidebar-border: rgba(255,255,255,0.09);
+  --sidebar-text:   rgba(255,255,255,0.80);
+  --sidebar-text2:  rgba(255,255,255,0.42);
+  --sidebar-active: rgba(240,97,26,0.22);   /* orange tint on active */
+  --sidebar-hover:  rgba(255,255,255,0.07);
+  --sidebar-label:  rgba(255,255,255,0.30);
+
+  /* ── Page surfaces (warm cream) ── */
+  --bg:        #EAE5D6;
+  --bg2:       #F5F1E8;
+  --surface:   #F5F1E8;
+  --surface2:  #EAE5D6;
+  --surface3:  #DDD8C8;
+  --border:    rgba(80,55,20,0.12);
+  --border2:   rgba(80,55,20,0.20);
+
+  /* ── Brand ── */
+  --primary:   #1B5230;       /* forest green */
+  --primary-l: #236639;
+  --primary-d: #123820;
+  --accent:    #F0611A;       /* burnt orange — main accent */
+  --accent2:   #D9531A;       /* orange pressed/dark */
+  --accent-l:  #F57E42;       /* orange light/hover */
+  --mint:      #F5F1E8;
+
+  /* ── Text ── */
+  --text:      #1A2814;
+  --text2:     #3A4830;
+  --text3:     #7A8070;
+  --muted:     #B8B4A4;
+
+  /* ── Semantic ── */
+  --red:    #D92B2B;
+  --orange: #F0611A;
+  --yellow: #C4A020;
+  --blue:   #2260A8;
+
+  /* ── Radii / Shadows ── */
+  --radius:    10px;
+  --radius-sm: 7px;
+  --radius-lg: 16px;
+  --shadow:    0 2px 12px rgba(50,35,10,0.09);
+  --shadow-sm: 0 1px 5px  rgba(50,35,10,0.06);
+  --shadow-lg: 0 8px 28px rgba(50,35,10,0.13);
+
+  --font-display: 'Inter','Noto Sans KR',sans-serif;
+  --font-body:    'Noto Sans KR','Inter',sans-serif;
+  --sidebar-w: 228px;
+  --header-h:  60px;
+}
+
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:var(--font-body);border:none;outline:none}
+input,textarea,select{font-family:var(--font-body);background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;font-size:.9rem;transition:border-color .2s}
+
+/* Orange focus ring */
+input:focus,textarea:focus,select:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(240,97,26,.14);
+}
+
+ul{list-style:none}
+img{max-width:100%;display:block}
+
+/* ── Scrollbar (orange thumb on hover) ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--surface2)}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+.display{font-family:var(--font-display)}
+h1{font-size:1.8rem;font-weight:700}
+h2{font-size:1.3rem;font-weight:600}
+h3{font-size:1.1rem;font-weight:600}
+
+/* ── Layout ── */
+.app-shell{display:flex;min-height:100vh}
+
+/* ══════════════════════════════════════
+   SIDEBAR  —  Dark Forest Green
+   Orange accents: active strip, badge, scrollbar
+══════════════════════════════════════ */
+.sidebar{
+  width:var(--sidebar-w);
+  background:var(--sidebar-bg);
+  border-right:none;
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;height:100vh;
+  z-index:100;transition:transform .3s ease;
+}
+
+/* Orange thin line at the very top of sidebar */
+.sidebar::before{
+  content:'';
+  display:block;
+  height:3px;
+  background:linear-gradient(90deg, var(--accent), var(--accent-l));
+  flex-shrink:0;
+}
+
+.sidebar-logo{padding:15px 16px 15px;border-bottom:1px solid var(--sidebar-border)}
+.sidebar-logo-inner{display:flex;align-items:center;gap:10px}
+.sidebar-logo-img{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid rgba(255,255,255,.22)}
+.sidebar-logo .logo-mark{font-family:'Inter',sans-serif;font-size:1rem;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.2}
+.sidebar-logo .logo-sub{font-size:.67rem;color:var(--sidebar-text2);margin-top:1px}
+
+.sidebar-user{padding:12px 16px;border-bottom:1px solid var(--sidebar-border);display:flex;align-items:center;gap:10px}
+.sidebar-user .avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(240,97,26,.25);   /* orange-tinted avatar bg */
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;font-weight:700;color:#fff;
+  flex-shrink:0;border:1px solid rgba(240,97,26,.40);
+}
+.sidebar-user .user-info{overflow:hidden}
+.sidebar-user .user-name{font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.sidebar-user .user-role{font-size:.7rem;color:var(--sidebar-text2)}
+
+.sidebar-nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-section-label{font-size:.63rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--sidebar-label);padding:14px 16px 5px}
+
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 16px;font-size:.85rem;font-weight:500;
+  color:var(--sidebar-text);cursor:pointer;
+  transition:all .15s;border-left:3px solid transparent;
+}
+.nav-item:hover{color:#fff;background:var(--sidebar-hover)}
+.nav-item.active{
+  color:#fff;
+  background:var(--sidebar-active);  /* orange wash */
+  border-left-color:var(--accent);   /* orange strip */
+  font-weight:600;
+}
+.nav-item .nav-icon{width:16px;height:16px;opacity:.65;flex-shrink:0}
+.nav-item.active .nav-icon{opacity:1}
+
+/* Orange badge */
+.nav-badge{
+  margin-left:auto;
+  background:var(--accent);          /* orange badge */
+  color:#fff;font-size:.63rem;font-weight:700;
+  padding:1px 6px;border-radius:99px;min-width:18px;text-align:center;
+}
+
+.sidebar-footer{padding:12px 16px;border-top:1px solid var(--sidebar-border)}
+.btn-logout{width:100%;padding:8px;background:transparent;border:1px solid rgba(255,255,255,.14);color:var(--sidebar-text2);border-radius:var(--radius-sm);font-size:.82rem;transition:all .18s}
+.btn-logout:hover{background:rgba(217,43,43,.15);color:#fca5a5;border-color:rgba(217,43,43,.35)}
+
+/* ══════════════════════════════════════
+   MAIN CONTENT
+══════════════════════════════════════ */
+.main-content{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* Orange top border on header */
+.main-header{
+  height:var(--header-h);
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  border-top:3px solid var(--accent);  /* orange top accent line */
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;
+  position:sticky;top:0;z-index:50;
+}
+.main-header .page-title{font-family:'Inter',sans-serif;font-size:1rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.header-right{display:flex;align-items:center;gap:14px}
+.header-date{font-size:.77rem;color:var(--text3);font-family:'Inter',sans-serif}
+
+.page-content{flex:1;padding:28px}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:.93rem;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--text)}
+
+/* Orange dot on card title */
+.card-title .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:.84rem;font-weight:500;transition:all .15s;cursor:pointer;border:none}
+
+/* Primary = green, hover slides to orange */
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--accent)}
+
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);border-color:var(--accent)}
+
+.btn-sm{padding:5px 11px;font-size:.78rem}
+.btn-icon{padding:6px;background:transparent;color:var(--text3);border:1px solid transparent;border-radius:var(--radius-sm)}
+.btn-icon:hover{background:var(--surface2);color:var(--accent)}
+
+/* ── Filter Tabs ── */
+.filter-tabs{display:flex;gap:3px;padding:3px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);width:fit-content}
+.filter-tab{padding:5px 13px;font-size:.77rem;font-weight:500;color:var(--text3);background:transparent;border:none;border-radius:5px;cursor:pointer;transition:all .14s}
+
+/* Active tab = orange text + white bg */
+.filter-tab.active{
+  background:var(--surface);
+  color:var(--accent);
+  font-weight:700;
+  box-shadow:0 1px 4px rgba(240,97,26,.15);
+}
+.filter-tab:hover:not(.active){color:var(--text2)}
+
+/* ── Badge ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:600}
+.badge-green {background:rgba(27,82,48,.12); color:var(--primary)}
+.badge-red   {background:rgba(217,43,43,.12); color:var(--red)}
+.badge-yellow{background:rgba(196,160,32,.12);color:var(--yellow)}
+.badge-blue  {background:rgba(34,96,168,.12); color:var(--blue)}
+.badge-gray  {background:rgba(120,128,112,.10);color:var(--text3)}
+
+/* Orange badge variant for new/urgent items */
+.badge-orange{background:rgba(240,97,26,.13);color:var(--accent);font-weight:700}
+
+/* ── Empty State ── */
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-state svg{opacity:.2;margin:0 auto 12px}
+.empty-state p{font-size:.88rem}
+
+/* ── Toast ── */
+#toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:11px 16px;border-radius:var(--radius-sm);font-size:.84rem;box-shadow:var(--shadow-lg);animation:toastIn .25s ease;min-width:220px}
+.toast.success{border-left:3px solid var(--primary)}
+.toast.error  {border-left:3px solid var(--red)}
+.toast.info   {border-left:3px solid var(--accent)}   /* orange info */
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── Modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,30,15,.50);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border:1px solid var(--border2);border-top:3px solid var(--accent);border-radius:var(--radius-lg);width:100%;max-width:520px;box-shadow:var(--shadow-lg);animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:1rem;font-weight:700;color:var(--text)}
+.modal-body{padding:20px 24px}
+.modal-footer{padding:14px 24px 20px;display:flex;gap:10px;justify-content:flex-end}
+
+/* ── Form ── */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:.77rem;font-weight:600;color:var(--text2);margin-bottom:5px;letter-spacing:.02em}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius-sm);padding:9px 13px;font-size:.87rem;transition:border-color .2s,box-shadow .2s}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,97,26,.12)}
+.form-textarea{min-height:90px;resize:vertical}
+.form-select{width:100%;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237A8070' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+
+/* ── Upload Zone ── */
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all .2s;color:var(--text3);font-size:.85rem}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(240,97,26,.05);color:var(--accent)}
+.upload-zone svg{margin:0 auto 8px;opacity:.35}
+.upload-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.upload-thumb{position:relative;width:72px;height:72px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)}
+.upload-thumb img{width:100%;height:100%;object-fit:cover}
+.upload-thumb .remove-btn{position:absolute;top:3px;right:3px;width:18px;height:18px;background:rgba(0,0,0,.55);border:none;border-radius:50%;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* ── Spinner — orange ── */
+.spinner{width:20px;height:20px;border:2px solid var(--surface3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Divider ── */
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main-content{margin-left:0}
+  .page-content{padding:16px}
+  .hamburger{display:flex!important}
+}
+.hamburger{display:none;flex-direction:column;gap:4px;padding:6px;cursor:pointer;background:none;border:none}
+.hamburger span{width:22px;height:2px;background:var(--text2);border-radius:2px;transition:.2s}
