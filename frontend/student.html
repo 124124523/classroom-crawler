@@ -777,8 +777,23 @@
             오늘의 학식
           </div>
         </div>
-        <div style="max-width: 480px;" id="mealWrap">
-          <div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>
+        <div style="max-width: 600px;">
+          <!-- 날짜 네비 + 뷰 토글 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button onclick="mealChangeDate(-1)" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--text2);font-size:0.85rem;">‹</button>
+              <span id="mealDateLabel" style="font-size:0.9rem;font-weight:600;color:var(--text1);min-width:120px;text-align:center;"></span>
+              <button onclick="mealChangeDate(1)" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--text2);font-size:0.85rem;">›</button>
+              <button onclick="mealGoToday()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--primary);font-size:0.78rem;font-weight:600;">오늘</button>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <button id="mealViewDay" onclick="setMealView('day')" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:0.8rem;font-weight:600;">일별</button>
+              <button id="mealViewWeek" onclick="setMealView('week')" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--text2);font-size:0.8rem;">주간</button>
+            </div>
+          </div>
+          <div id="mealWrap">
+            <div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>
+          </div>
         </div>
       </div>
 
@@ -945,15 +960,40 @@ let filterType    = '';
 let filterStatus  = 'pending';
 let filterSubject = '';
 
-// 읽음 상태 관리 (localStorage)
-function getReadSet(key) {
-  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); } catch { return new Set(); }
+// 읽음 상태 관리 (DB 기반 — 새로고침/재로그인 후에도 유지)
+let lastSeenAt = { assignment: null, notice: null };
+
+async function initSeenTimestamps() {
+  try {
+    const [aRes, nRes] = await Promise.all([
+      fetch('/api/me/seen?type=assignment', { credentials: 'include' }),
+      fetch('/api/me/seen?type=notice',     { credentials: 'include' }),
+    ]);
+    const aData = await aRes.json();
+    const nData = await nRes.json();
+    lastSeenAt.assignment = aData.last_seen_at ? new Date(aData.last_seen_at) : null;
+    lastSeenAt.notice     = nData.last_seen_at ? new Date(nData.last_seen_at) : null;
+  } catch {}
 }
-function saveReadSet(key, set) {
-  try { localStorage.setItem(key, JSON.stringify([...set])); } catch {}
+
+async function markSeen(type) {
+  try {
+    await fetch('/api/me/seen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ type })
+    });
+    lastSeenAt[type] = new Date();
+    
+  } catch {}
 }
-let readAssignIds  = getReadSet('readAssignIds');
-let readNoticeIds  = getReadSet('readNoticeIds');
+
+function isNewItem(item, type) {
+  const last = lastSeenAt[type];
+  if (!last) return true;
+  return new Date(item.created_at) > last;
+}
 
 // ── Init ──
 (async () => {
@@ -988,6 +1028,7 @@ let readNoticeIds  = getReadSet('readNoticeIds');
     document.getElementById('profileDisplayId').textContent   = currentUser.id;
 
     setHeaderDate();
+    await initSeenTimestamps();
     await Promise.all([loadAssignments(), loadNotices(), loadSubjects(), loadEvents(), loadMeals()]);
     loadProfileSubjects();
     renderTimetableTable();
@@ -1016,24 +1057,17 @@ function showSection(name, el) {
   const titles = { assignments:'수행평가', notices:'공지사항', timetable:'시간표', calendar:'캘린더', meals:'오늘의 학식', profile:'프로필' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
-  // 뱃지 읽음 처리
+  // 뱃지 읽음 처리 (DB에 저장 — 재로그인 후에도 유지)
   if (name === 'assignments') {
-    assignments.forEach(a => readAssignIds.add(a.id));
-    saveReadSet('readAssignIds', readAssignIds);
+    markSeen('assignment');
+    fetch('/api/comments/read-all', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: JSON.stringify({ type: 'assignment' }) });
     document.getElementById('assignBadge').style.display = 'none';
   }
   if (name === 'notices') {
-    notices.forEach(n => readNoticeIds.add(n.id));
-    saveReadSet('readNoticeIds', readNoticeIds);
+    markSeen('notice');
+    fetch('/api/comments/read-all', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: JSON.stringify({ type: 'notice' }) });
     document.getElementById('noticeBadge').style.display = 'none';
-  }
-  if (name === 'timetable') {
-    renderWeeklyTimetable();
-  }
-
-  if (window.innerWidth <= 768) closeSidebar();
-  if (name === 'calendar') renderCalendar();
-}
+  }}
 
 // ── Assignments ──
 async function loadAssignments() {
@@ -1048,7 +1082,7 @@ async function loadAssignments() {
 }
 
 function updateAssignBadge() {
-  const newItems = assignments.filter(a => !readAssignIds.has(a.id));
+  const newItems = assignments.filter(a => isNewItem(a, 'assignment'));
   const badge = document.getElementById('assignBadge');
   if (newItems.length > 0) { badge.textContent = newItems.length; badge.style.display = ''; }
   else badge.style.display = 'none';
@@ -1061,13 +1095,13 @@ async function updateCommentBadges() {
     const data = await res.json();
 
     // 수행평가 탭: 새 과제 수 + 미읽음 수행평가 댓글 수
-    const assignNewCount = assignments.filter(a => !readAssignIds.has(a.id)).length;
+    const assignNewCount = assignments.filter(a => isNewItem(a, 'assignment')).length;
     const assignTotal = assignNewCount + (data.assignment || 0);
     const ab = document.getElementById('assignBadge');
     if (ab) { ab.textContent = assignTotal; ab.style.display = assignTotal > 0 ? '' : 'none'; }
 
-    // 공지 탭: 새 공지 수 + 미읽음 공지 댓글 수 (독립 계산)
-    const noticeNewCount = notices ? notices.filter(n => !readNoticeIds.has(n.id)).length : 0;
+    // 공지 탭: 새 공지 수 + 미읽음 공지 댓글 수
+    const noticeNewCount = notices ? notices.filter(n => isNewItem(n, 'notice')).length : 0;
     const noticeTotal = noticeNewCount + (data.notice || 0);
     const nb = document.getElementById('noticeBadge');
     if (nb) { nb.textContent = noticeTotal; nb.style.display = noticeTotal > 0 ? '' : 'none'; }
@@ -1248,7 +1282,7 @@ async function loadNotices() {
 }
 
 function updateNoticeBadge() {
-  const newItems = notices.filter(n => !readNoticeIds.has(n.id));
+  const newItems = notices.filter(n => isNewItem(n, 'notice'));
   const badge = document.getElementById('noticeBadge');
   if (newItems.length > 0) { badge.textContent = newItems.length; badge.style.display = ''; }
   else badge.style.display = 'none';
@@ -1260,7 +1294,7 @@ function renderNotices() {
   if (!filtered.length) { list.innerHTML = '<div class="empty-state"><p>공지가 없습니다.</p></div>'; return; }
   const colors = ['#72C99A','#5899C9','#D4A843','#D97070','#9B72C9'];
   list.innerHTML = filtered.map((n, i) => {
-    const isNew = !readNoticeIds.has(n.id);
+    const isNew = isNewItem(n, 'notice');
     const c = colors[i % colors.length];
     return `
       <div class="notice-item" onclick="openNoticeDetail(${n.id})">
@@ -1280,7 +1314,6 @@ async function openNoticeDetail(id) {
   const n = notices.find(x => x.id === id); if (!n) return;
   currentNotice = n;
   // 개별 읽음 처리
-  readNoticeIds.add(id); saveReadSet('readNoticeIds', readNoticeIds);
   updateNoticeBadge(); renderNotices();
   document.getElementById('noticeDetailTitle').textContent = n.title;
   document.getElementById('noticeDetailMeta').innerHTML = `<span>${n.subject_name || '전체'}</span><span>${fmtDate(n.created_at)}</span>`;
@@ -1687,37 +1720,117 @@ function renderCalDetailPanel(dateKey, dateObj, evs) {
 }
 
 // ── Meals ──
-async function loadMeals() {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/meals?date=${today}`, { credentials:'include' });
-    const data = await res.json();
-    renderMeals(data.meals || {}, today);
-  } catch(e) { console.error(e); }
+let mealCurrentDate = new Date();
+let mealView = 'day';
+
+function mealDateStr(d) { return d.toISOString().split('T')[0]; }
+
+function mealUpdateDateLabel() {
+  const label = document.getElementById('mealDateLabel');
+  if (!label) return;
+  if (mealView === 'week') {
+    const mon = mealGetWeekStart(mealCurrentDate);
+    const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+    label.textContent = `${mon.getMonth()+1}/${mon.getDate()} ~ ${sun.getMonth()+1}/${sun.getDate()}`;
+  } else {
+    const days = ['일','월','화','수','목','금','토'];
+    label.textContent = `${mealCurrentDate.getMonth()+1}월 ${mealCurrentDate.getDate()}일 (${days[mealCurrentDate.getDay()]})`;
+  }
 }
-function renderMeals(meals, date) {
+
+function mealGetWeekStart(d) {
+  const day = d.getDay();
+  const mon = new Date(d);
+  mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return mon;
+}
+
+function mealChangeDate(delta) {
+  if (mealView === 'week') mealCurrentDate.setDate(mealCurrentDate.getDate() + delta * 7);
+  else mealCurrentDate.setDate(mealCurrentDate.getDate() + delta);
+  mealUpdateDateLabel();
+  loadMeals();
+}
+
+function mealGoToday() {
+  mealCurrentDate = new Date();
+  mealUpdateDateLabel();
+  loadMeals();
+}
+
+function setMealView(view) {
+  mealView = view;
+  const dayBtn  = document.getElementById('mealViewDay');
+  const weekBtn = document.getElementById('mealViewWeek');
+  dayBtn.style.cssText  = view === 'day'  ? 'background:var(--primary);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:0.8rem;font-weight:600;' : 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--text2);font-size:0.8rem;';
+  weekBtn.style.cssText = view === 'week' ? 'background:var(--primary);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:0.8rem;font-weight:600;' : 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--text2);font-size:0.8rem;';
+  mealUpdateDateLabel();
+  loadMeals();
+}
+
+async function loadMeals() {
   const wrap = document.getElementById('mealWrap');
-  const d = new Date(date);
-  const dateStr = `${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]})`;
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>';
+  mealUpdateDateLabel();
+  try {
+    if (mealView === 'week') {
+      const mon = mealGetWeekStart(mealCurrentDate);
+      const dates = Array.from({length: 7}, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
+      const results = await Promise.all(dates.map(d => fetch(`/api/meals?date=${mealDateStr(d)}`, { credentials:'include' }).then(r => r.json())));
+      renderMealsWeek(dates, results);
+    } else {
+      const res = await fetch(`/api/meals?date=${mealDateStr(mealCurrentDate)}`, { credentials:'include' });
+      const data = await res.json();
+      renderMeals(data.meals || {});
+    }
+  } catch(e) { console.error(e); wrap.innerHTML = '<div style="padding:20px;color:var(--muted)">급식 정보를 불러오지 못했습니다.</div>'; }
+}
+
+function renderMeals(meals) {
+  const wrap = document.getElementById('mealWrap');
   const types = [{key:'breakfast',label:'조식'},{key:'lunch',label:'중식'},{key:'dinner',label:'석식'}];
   wrap.innerHTML = `
     <div class="meal-card">
-      <div class="meal-header"><h3>오늘의 급식</h3><span class="meal-date">${dateStr}</span></div>
-      <div class="meal-tabs">${types.map((t,i) => `<button class="meal-tab ${i===1?'active':''}" onclick="switchMealTab(this,'${t.key}')">${t.label}</button>`).join('')}</div>
-      ${types.map(t => `<div class="meal-content" id="meal-${t.key}" style="${t.key==='lunch'?'':'display:none'}">${renderMealMenu(meals[t.key])}</div>`).join('')}
+      <div class="meal-header"><h3>급식 정보</h3></div>
+      <div class="meal-tabs">${types.map((t,i) => `<button class="meal-tab ${i===1?'active':''}" onclick="switchMealTab(this,'meal-day-${t.key}')">${t.label}</button>`).join('')}</div>
+      ${types.map(t => `<div class="meal-content" id="meal-day-${t.key}" style="${t.key==='lunch'?'':'display:none'}">${renderMealMenu(meals[t.key])}</div>`).join('')}
     </div>
   `;
 }
+
+function renderMealsWeek(dates, results) {
+  const wrap = document.getElementById('mealWrap');
+  const dayNames = ['일','월','화','수','목','금','토'];
+  const today = mealDateStr(new Date());
+  const types = [{key:'breakfast',label:'조식'},{key:'lunch',label:'중식'},{key:'dinner',label:'석식'}];
+  wrap.innerHTML = dates.map((d, i) => {
+    const meals = results[i]?.meals || {};
+    const isToday = mealDateStr(d) === today;
+    return `
+      <div class="meal-card" style="margin-bottom:10px;${isToday ? 'border:2px solid var(--primary)' : ''}">
+        <div class="meal-header" style="${isToday ? '' : 'background:var(--surface);'}">
+          <h3 style="${isToday ? '' : 'color:var(--text1)'}">${d.getMonth()+1}월 ${d.getDate()}일</h3>
+          <span class="meal-date" style="${isToday ? '' : 'color:var(--text3)'}">${dayNames[d.getDay()]}요일${isToday ? ' · 오늘' : ''}</span>
+        </div>
+        <div class="meal-tabs">${types.map((t,j) => `<button class="meal-tab ${j===1?'active':''}" onclick="switchMealTab(this,'meal-w-${i}-${t.key}')">${t.label}</button>`).join('')}</div>
+        ${types.map(t => `<div class="meal-content" id="meal-w-${i}-${t.key}" style="${t.key==='lunch'?'':'display:none'}">${renderMealMenu(meals[t.key])}</div>`).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
 function renderMealMenu(meal) {
   if (!meal || !meal.menu) return '<div style="color:var(--muted);font-size:0.83rem;padding:8px 0">급식 정보가 없습니다.</div>';
   const items = Array.isArray(meal.menu) ? meal.menu : meal.menu.split('\n');
   return `<div class="meal-menu">${items.map(i=>`<span>${escHtml(i.trim())}</span>`).join('')}</div>${meal.calories ? `<div class="meal-cal">🔥 ${meal.calories} kcal</div>` : ''}`;
 }
-function switchMealTab(btn, type) {
+
+function switchMealTab(btn, id) {
   btn.closest('.meal-card').querySelectorAll('.meal-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   btn.closest('.meal-card').querySelectorAll('.meal-content').forEach(c => c.style.display = 'none');
-  document.getElementById(`meal-${type}`).style.display = '';
+  document.getElementById(id).style.display = '';
 }
 
 // ── Profile ──
