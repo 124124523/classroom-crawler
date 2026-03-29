@@ -132,22 +132,78 @@ router.get('/unread-summary', requireLogin, async (req, res) => {
   const user = req.session.user;
   try {
     const result = {};
+
     for (const [type, meta] of Object.entries(META)) {
       try {
         await ensureParentId(meta.table);
-        // 내 분반 과제/공지에 달린 새 댓글 (내가 쓴 것 & 이미 읽은 것 제외)
-        const [rows] = await db.query(
-          `SELECT COUNT(*) AS cnt
-           FROM ${meta.table} c
-           WHERE c.writer != ?
-             AND c.id NOT IN (
-               SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
-             )`,
-          [user.id, user.id, type]
-        );
+        let rows;
+
+        if (user.role === 'leader') {
+          // 리더: 자신이 담당하는 분반의 댓글만 카운트
+          if (type === 'assignment') {
+            [rows] = await db.query(
+              `SELECT COUNT(*) AS cnt
+               FROM ${meta.table} c
+               JOIN assignments a ON a.id = c.${meta.fkCol}
+               WHERE a.class_id IN (SELECT class_id FROM enrollments WHERE user_id = ?)
+                 AND c.writer != ?
+                 AND c.id NOT IN (
+                   SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+                 )`,
+              [user.id, user.id, user.id, type]
+            );
+          } else {
+            // notice
+            [rows] = await db.query(
+              `SELECT COUNT(*) AS cnt
+               FROM ${meta.table} c
+               JOIN notices n ON n.id = c.${meta.fkCol}
+               WHERE (n.class_id IS NULL OR n.class_id IN (SELECT class_id FROM enrollments WHERE user_id = ?))
+                 AND c.writer != ?
+                 AND c.id NOT IN (
+                   SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+                 )`,
+              [user.id, user.id, user.id, type]
+            );
+          }
+        } else {
+          // 학생/선생님/관리자: 기존 동작 (내가 쓴 것 & 읽은 것 제외)
+          [rows] = await db.query(
+            `SELECT COUNT(*) AS cnt
+             FROM ${meta.table} c
+             WHERE c.writer != ?
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )`,
+            [user.id, user.id, type]
+          );
+        }
         result[type] = rows[0].cnt;
       } catch { result[type] = 0; }
     }
+
+    // 학생 전용: 내 댓글에 달린 미읽음 답글 수 (시간표 탭 배지용)
+    if (user.role === 'student') {
+      let replyCount = 0;
+      for (const [type, meta] of Object.entries(META)) {
+        try {
+          const [rows] = await db.query(
+            `SELECT COUNT(*) AS cnt
+             FROM ${meta.table} c
+             WHERE c.writer != ?
+               AND c.parent_id IS NOT NULL
+               AND c.parent_id IN (SELECT id FROM ${meta.table} WHERE writer = ?)
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )`,
+            [user.id, user.id, user.id, type]
+          );
+          replyCount += rows[0].cnt;
+        } catch {}
+      }
+      result.reply_count = replyCount;
+    }
+
     res.json(result);
   } catch (err) {
     res.status(500).json({ message: '서버 오류' });
