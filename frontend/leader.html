@@ -720,7 +720,7 @@ async function saveNotice() {
   const method = editId ? 'PUT' : 'POST';
 
   try {
-    await fetch(url, {
+    const noticeRes = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

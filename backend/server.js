@@ -122,31 +122,43 @@ try {
   console.warn('[pipeline] 크롤러/sync 로드 실패:', e.message);
 }
 
+// 동시 실행 방지 락
+let pipelineRunning = false;
+
 async function runPipeline() {
+  if (pipelineRunning) {
+    console.warn('[pipeline] 이미 실행 중 — 스킵');
+    return;
+  }
+  pipelineRunning = true;
+
   const ts = new Date().toLocaleString('ko-KR');
   console.log(`\n[pipeline] ===== 시작: ${ts} =====`);
 
-  // Step 1: Google Classroom → coursework 테이블
-  if (crawlAll) {
-    try {
-      const cr = await crawlAll();
-      console.log(`[pipeline] 크롤링 완료: upsert ${cr.upserted}개`);
-    } catch (e) {
-      console.error('[pipeline] 크롤링 오류:', e.message);
+  try {
+    // Step 1: Google Classroom → coursework 테이블
+    if (crawlAll) {
+      try {
+        const cr = await crawlAll();
+        console.log(`[pipeline] 크롤링 완료: upsert ${cr.upserted}개`);
+      } catch (e) {
+        console.error('[pipeline] 크롤링 오류:', e.message);
+      }
     }
-  }
 
-  // Step 2: coursework → assignments 테이블
-  if (syncCoursework) {
-    try {
-      const sr = await syncCoursework();
-      console.log(`[pipeline] sync 완료: 추가 ${sr.inserted}개, 스킵 ${sr.skipped}개, 실패 ${sr.failed}개`);
-    } catch (e) {
-      console.error('[pipeline] sync 오류:', e.message);
+    // Step 2: coursework → assignments 테이블
+    if (syncCoursework) {
+      try {
+        const sr = await syncCoursework();
+        console.log(`[pipeline] sync 완료: 추가 ${sr.inserted}개, 스킵 ${sr.skipped}개, 실패 ${sr.failed}개`);
+      } catch (e) {
+        console.error('[pipeline] sync 오류:', e.message);
+      }
     }
+  } finally {
+    pipelineRunning = false;
+    console.log(`[pipeline] ===== 완료 =====\n`);
   }
-
-  console.log(`[pipeline] ===== 완료 =====\n`);
 }
 
 // 3시간마다 실행 (한국 시간)
