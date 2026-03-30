@@ -8,6 +8,9 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   ssl: { rejectUnauthorized: false },
+  // DATETIME 컬럼을 JS Date 객체가 아닌 문자열('2026-03-30 14:00:00')로 반환
+  // → JSON 직렬화 시 UTC 변환 없이 DB 저장값 그대로 프론트에 전달
+  dateStrings: true,
 });
 
 module.exports = pool;

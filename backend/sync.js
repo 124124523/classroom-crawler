@@ -367,24 +367,45 @@ async function syncCourseworkToAssignments() {
       );
 
       if (existing.length > 0) {
-        // 이미 존재 — classId가 바뀐 경우만 재매핑
+        // 이미 존재 — class_id 또는 deadline이 바뀐 경우 업데이트
+        const updates = [];
+        const params  = [];
+
         if (classId && existing[0].class_id !== classId) {
-          await pool.query(
-            'UPDATE assignments SET class_id = ? WHERE gclassroom_id = ?',
-            [classId, cw.coursework_id]
-          );
-          console.log(
-            `  [sync] 🔄 재매핑: "${cw.course_name}" ` +
-            `class_id ${existing[0].class_id} → ${classId}`
-          );
-        } else {
-          skipped++;
+          updates.push('class_id = ?');
+          params.push(classId);
         }
+        // 크롤러에서 가져온 마감일시로 항상 갱신 (시간 정보 반영)
+        updates.push('deadline = ?');
+        params.push(cw.due_date);
+
+        if (updates.length) {
+          params.push(cw.coursework_id);
+          await pool.query(
+            `UPDATE assignments SET ${updates.join(', ')} WHERE gclassroom_id = ?`,
+            params
+          );
+        }
+        skipped++;
         continue;
       }
 
       // 신규 — classId 없으면 failed 처리
       if (!classId) { failed++; continue; }
+
+      // ── [Fix D] 동일 과제 중복 삽입 방지 ─────────────────
+      // 같은 과제가 다른 구글 클래스룸 섹션에 게시되면
+      // coursework_id는 다르지만 title+class_id+deadline 날짜가 동일 → 중복
+      const [dupCheck] = await pool.query(
+        `SELECT id FROM assignments
+         WHERE class_id = ? AND title = ? AND DATE(deadline) = DATE(?)
+         LIMIT 1`,
+        [classId, cw.title, cw.due_date]
+      );
+      if (dupCheck.length > 0) {
+        skipped++;
+        continue;
+      }
 
       const content = [
         cw.description || '',

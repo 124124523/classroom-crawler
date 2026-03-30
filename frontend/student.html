@@ -1199,21 +1199,57 @@ function makeAssignCard(a) {
   return el;
 }
 
+// 마감일 문자열 → Date 객체 (로컬 시간 기준)
+// DB에서 올 수 있는 형식:
+//   '2026-03-30'                    → 날짜만 → 23:59 로컬
+//   '2026-03-30 14:00:00'           → 공백 구분 → 로컬 파싱
+//   '2026-03-30T05:00:00.000Z'      → ISO UTC  → KST(+9) 변환
+function parseDueLocal(due) {
+  if (!due) return null;
+  const s = String(due).trim();
+  // 'YYYY-MM-DD' (날짜만, 10자) → 해당 날짜 23:59 로컬
+  if (s.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d, 23, 59);
+  }
+  // ISO 형식 ('T' 포함) → new Date()가 UTC로 파싱 → 자동 로컬 변환
+  if (s.includes('T')) {
+    const d = new Date(s);
+    if (!isNaN(d)) {
+      // 시간이 00:00:00 UTC = 시간 미설정(날짜만 저장된 기존 데이터) → 23:59 로컬
+      if (s.match(/T00:00:00/)) {
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59);
+      }
+      return d;
+    }
+  }
+  // 'YYYY-MM-DD HH:MM:SS' 공백 구분 → 로컬 파싱
+  if (s.includes(' ')) {
+    const [datePart, timePart] = s.split(' ');
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [hh, mm] = (timePart || '23:59').split(':').map(Number);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d, hh || 0, mm || 0);
+  }
+  // 최후 폴백: new Date() 시도
+  const fallback = new Date(s);
+  return isNaN(fallback) ? new Date() : fallback;
+}
+
 function getDaysLeft(due) {
   if (!due) return 9999;
-  const d = new Date(due); const now = new Date(); now.setHours(0,0,0,0);
+  const d = parseDueLocal(due);
+  const now = new Date(); now.setHours(0,0,0,0);
   return Math.ceil((d - now) / 86400000);
 }
 function formatDue(due, days) {
   if (!due) return '기한 없음';
-  const d = new Date(due);
-  const mm = d.getMonth() + 1;
-  const dd = d.getDate();
-  const base = `${mm}월 ${dd}일 오후 11:59까지`;
-  if (days < 0)  return `${mm}월 ${dd}일 (마감)`;
-  if (days === 0) return `오늘 · ${base}`;
-  if (days === 1) return `내일 · ${base}`;
-  return base;
+  const d = parseDueLocal(due);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  if (days < 0) return `${mm}.${dd} ${hh}:${mi} (마감)`;
+  return `${mm}.${dd} ${hh}:${mi}까지`;
 }
 
 async function toggleComplete(e, id) {
@@ -1224,6 +1260,7 @@ async function toggleComplete(e, id) {
     await fetch('/api/timetable/complete', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: id, completed: newVal }) });
     a.completed = newVal;
     renderAssignBoard();
+    renderCalDragSource();
     showToast(newVal ? '완료 처리했습니다.' : '미완료로 변경했습니다.', 'success');
   } catch { showToast('업데이트 실패', 'error'); }
 }
@@ -1263,6 +1300,7 @@ async function modalToggleComplete() {
     updateModalCompleteBtn(newVal);
     showToast(newVal ? '완료 처리했습니다.' : '미완료로 변경했습니다.', 'success');
     renderAssignBoard();
+    renderCalDragSource();
     if (document.getElementById('page-calendar').classList.contains('active')) renderCalendar();
   } catch { showToast('업데이트 실패', 'error'); }
 }
@@ -1577,28 +1615,29 @@ function buildCalEvMap() {
 function renderCalDragSource() {
   const container = document.getElementById('calDragSource'); if (!container) return;
 
-  // 준비 계획이 이미 등록된 assignment id 목록
-  // 미완료 수행평가 전체, 마감일 오름차순
-  const list = assignments.filter(a => !a.completed).slice().sort((a,b) => {
+  // ── 드래그 목록 필터 조건 ──
+  // 1) 완료 처리하지 않은 과제만
+  // 2) 마감일이 아직 지나지 않은 과제만 (오늘 포함)
+  const list = assignments.filter(a => {
+    const isDone = Number(a.completed) === 1;
+    const isPastDue = a.due_date && getDaysLeft(a.due_date) < 0;
+    return !isDone && !isPastDue;
+  }).slice().sort((a,b) => {
     if (!a.due_date) return 1; if (!b.due_date) return -1;
     return a.due_date < b.due_date ? -1 : 1;
   });
 
   if (!list.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">미완료 수행평가가 없습니다.</div>';
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px 0">드래그할 수행평가가 없습니다.</div>';
     return;
   }
 
   container.innerHTML = list.map(a => {
     const days = getDaysLeft(a.due_date);
-    const dueClass = days < 0 ? 'urgent' : days <= 2 ? 'urgent' : days <= 7 ? 'soon' : 'ok';
-    const d2 = a.due_date ? new Date(a.due_date) : null;
-    const chipMm = d2 ? d2.getMonth()+1 : 0;
-    const chipDd = d2 ? d2.getDate() : 0;
-    const dueLabel = days < 0 ? `${chipMm}/${chipDd} 마감`
-                   : days === 0 ? '오늘 오후 11:59'
-                   : days === 1 ? '내일 오후 11:59'
-                   : d2 ? `${chipMm}월 ${chipDd}일 11:59` : '기한없음';
+    const dueClass = days <= 2 ? 'urgent' : days <= 7 ? 'soon' : 'ok';
+    const d2 = a.due_date ? parseDueLocal(a.due_date) : null;
+    const dueLabel = !d2 ? '기한없음'
+                   : `${String(d2.getMonth()+1).padStart(2,'0')}.${String(d2.getDate()).padStart(2,'0')} ${String(d2.getHours()).padStart(2,'0')}:${String(d2.getMinutes()).padStart(2,'0')}`;
     const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--primary)';
     return `
       <div class="cal-drag-chip" draggable="true" data-assign-id="${a.id}" title="${escHtml(a.title)}">
@@ -1614,6 +1653,10 @@ function renderCalDragSource() {
   container.querySelectorAll('.cal-drag-chip').forEach(chip => {
     chip.addEventListener('dragstart', onChipDragStart);
     chip.addEventListener('dragend',   onChipDragEnd);
+    // 터치 디바이스(태블릿/모바일) 드래그 지원
+    chip.addEventListener('touchstart', onChipTouchStart, { passive: false });
+    chip.addEventListener('touchmove',  onChipTouchMove,  { passive: false });
+    chip.addEventListener('touchend',   onChipTouchEnd);
   });
 }
 function onChipDragStart(e) {
@@ -1645,7 +1688,8 @@ function onCellDragOver(e, dateKey) {
 function onCellDragLeave(e) { e.currentTarget.classList.remove('drop-over'); }
 async function onCellDrop(e, dateKey) {
   e.preventDefault();
-  const cell = e.currentTarget; cell.classList.remove('drop-valid','drop-over','drop-invalid');
+  const cell = e.currentTarget || document.querySelector(`.cal-cell[data-date="${dateKey}"]`);
+  if (cell) cell.classList.remove('drop-valid','drop-over','drop-invalid');
   if (!calDraggingAssign) return;
   const todayKey = new Date().toISOString().slice(0,10);
   // 오늘 이전 날짜만 비활성화 (마감일 이후에도 계획 등록 허용)
@@ -1663,12 +1707,119 @@ async function onCellDrop(e, dateKey) {
         due_date: dateKey
       })
     });
-    cell.classList.add('drop-flash');
-    cell.addEventListener('animationend', () => cell.classList.remove('drop-flash'), { once:true });
+    if (cell) {
+      cell.classList.add('drop-flash');
+      cell.addEventListener('animationend', () => cell.classList.remove('drop-flash'), { once:true });
+    }
     showToast(`📌 ${Number(pmm)}월 ${Number(pdd)}일에 "${a.title}" 준비 계획을 등록했어요!`, 'success');
     await loadEvents(); renderCalendar();
   } catch { showToast('등록 실패. 다시 시도해주세요.', 'error'); }
 }
+
+// ── Touch Drag Support (태블릿/모바일) ──────────────────────
+let touchDragChip = null;
+let touchClone = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchDragActivated = false;
+
+function onChipTouchStart(e) {
+  const chip = e.currentTarget;
+  const id = parseInt(chip.dataset.assignId);
+  calDraggingAssign = assignments.find(a => a.id === id) || null;
+  if (!calDraggingAssign) return;
+
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  touchDragActivated = false;
+  touchDragChip = chip;
+
+  chip._touchTimer = setTimeout(() => {
+    touchDragActivated = true;
+    chip.classList.add('dragging');
+
+    touchClone = chip.cloneNode(true);
+    touchClone.style.cssText = `
+      position:fixed; z-index:9999; pointer-events:none;
+      width:${chip.offsetWidth}px; opacity:0.88;
+      box-shadow:0 8px 24px rgba(0,0,0,0.18);
+      left:${touch.clientX - chip.offsetWidth / 2}px;
+      top:${touch.clientY - 24}px;
+    `;
+    document.body.appendChild(touchClone);
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const grid = document.getElementById('calGrid');
+    grid.classList.add('drag-active');
+    grid.querySelectorAll('.cal-cell[data-date]').forEach(cell => {
+      if (cell.dataset.date < todayKey) cell.classList.add('drop-invalid');
+      else cell.classList.add('drop-valid');
+    });
+  }, 200);
+}
+
+function onChipTouchMove(e) {
+  if (!touchDragChip) return;
+  const touch = e.touches[0];
+  const dx = Math.abs(touch.clientX - touchStartX);
+  const dy = Math.abs(touch.clientY - touchStartY);
+
+  if (!touchDragActivated) {
+    if (dx > 8 || dy > 8) {
+      clearTimeout(touchDragChip._touchTimer);
+      touchDragChip = null;
+      calDraggingAssign = null;
+    }
+    return;
+  }
+
+  e.preventDefault();
+  if (touchClone) {
+    touchClone.style.left = (touch.clientX - touchClone.offsetWidth / 2) + 'px';
+    touchClone.style.top  = (touch.clientY - 24) + 'px';
+  }
+
+  document.querySelectorAll('.cal-cell.drop-over').forEach(c => c.classList.remove('drop-over'));
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  const cell = el?.closest?.('.cal-cell[data-date]');
+  if (cell && !cell.classList.contains('drop-invalid') && !cell.classList.contains('other-month')) {
+    cell.classList.add('drop-over');
+  }
+}
+
+function onChipTouchEnd(e) {
+  if (touchDragChip) clearTimeout(touchDragChip._touchTimer);
+
+  if (!touchDragActivated) {
+    touchDragChip = null;
+    calDraggingAssign = null;
+    return;
+  }
+
+  const touch = e.changedTouches[0];
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  const cell = el?.closest?.('.cal-cell[data-date]');
+
+  if (cell && cell.dataset.date && !cell.classList.contains('drop-invalid') && !cell.classList.contains('other-month')) {
+    onCellDrop({ preventDefault(){} }, cell.dataset.date);
+  }
+
+  if (touchClone) { touchClone.remove(); touchClone = null; }
+  if (touchDragChip) { touchDragChip.classList.remove('dragging'); }
+  touchDragChip = null;
+  touchDragActivated = false;
+  calDraggingAssign = null;
+
+  const grid = document.getElementById('calGrid');
+  if (grid) {
+    grid.classList.remove('drag-active');
+    grid.querySelectorAll('.cal-cell').forEach(c =>
+      c.classList.remove('drop-invalid', 'drop-valid', 'drop-over')
+    );
+  }
+}
+
 function renderCalendar() {
   const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById('calMonthLabel').textContent = `${calYear}년 ${monthNames[calMonth]}`;
@@ -1918,7 +2069,7 @@ async function logout() {
 
 // ── Utils ──
 function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmtDate(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}월 ${d.getDate()}일 오후 11:59까지`; }
+function fmtDate(str) { if (!str) return ''; const d = parseDueLocal(str); const mm = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); const hh = String(d.getHours()).padStart(2,'0'); const mi = String(d.getMinutes()).padStart(2,'0'); return `${mm}.${dd} ${hh}:${mi}까지`; }
 function fmtDateTime(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function showToast(msg, type='info') {
   const c = document.getElementById('toast-container');
@@ -1967,7 +2118,27 @@ function ttFindKey(userName, homeroom) {
   if (TT_DATA[withHomeroom]) return withHomeroom;
   // fallback: search all keys where name matches
   const candidates = Object.keys(TT_DATA).filter(k => k.split('|')[0] === baseName);
-  return candidates[0] || null;
+  console.log(`[TT-find] userName="${userName}" baseName="${baseName}" candidates=${JSON.stringify(candidates)}`);
+  if (candidates.length === 1) return candidates[0];
+  // 동명이인 처리: ID suffix (_6 등) 에서 반 번호를 추출하여 매칭
+  if (candidates.length > 1) {
+    const suffixMatch = userName.match(/_(\d+)$/);
+    console.log(`[TT-find] suffixMatch=${JSON.stringify(suffixMatch)}`);
+    if (suffixMatch) {
+      const classNum = suffixMatch[1]; // "6"
+      const byClass = candidates.find(k => k.endsWith('-' + classNum));
+      console.log(`[TT-find] classNum="${classNum}" byClass="${byClass}"`);
+      if (byClass) return byClass;
+    }
+    // homeroom이 있으면 반 번호로 매칭 시도
+    if (homeroom) {
+      const byHr = candidates.find(k => k.split('|')[1] === homeroom);
+      if (byHr) return byHr;
+    }
+    // 동명이인 구분 불가 → null 반환 (다음 시도에서 rawId suffix로 해소)
+    return null;
+  }
+  return null;
 }
 
 function ttGetCurrentPeriod() {
@@ -2000,15 +2171,43 @@ async function renderWeeklyTimetable() {
   const todayDayIdx = today.getDay(); // 0=Sun, 1=Mon...5=Fri
   const todayDayKey = ['', '월', '화', '수', '목', '금', ''][todayDayIdx] || '';
 
-  // Find timetable key — try name first (more reliable), then id
+  // Find timetable key
   const homeroom = me.homeroom || '';
-  const userName = (me.name || '').trim();
-  const userId = (me.id || '').replace(/_\d+$/, '').trim();
-  const key = ttFindKey(userName, homeroom)
-           || ttFindKey(userId, homeroom)
-           || ttFindKey(ttNormalizeName(me.id), homeroom)
-           || Object.keys(TT_DATA).find(k => k.split('|')[0] === userName)
-           || Object.keys(TT_DATA).find(k => k.split('|')[0] === userId);
+  const rawId = (me.id || '').trim();               // 원본 ID: 김재민_6
+  const userName = (me.name || '').trim();           // 이름: 김재민
+  const userId = rawId.replace(/_\d+$/, '').trim();  // suffix 제거: 김재민
+
+  let key = null;
+
+  // ── 1단계: ID에 _숫자 suffix가 있으면 직접 키 생성해서 매칭 (최우선) ──
+  const idSuffix = rawId.match(/_(\d+)$/);
+  if (idSuffix) {
+    const classNum = idSuffix[1]; // "6"
+    const baseName = rawId.replace(/_\d+$/, ''); // "김재민"
+    // 3-6 형식으로 직접 조합
+    const directKey = baseName + '|3-' + classNum;
+    if (TT_DATA[directKey]) {
+      key = directKey;
+      console.log(`[TT] suffix 직접 매칭: "${rawId}" → "${directKey}" ✅`);
+    } else {
+      // 3-6이 아닐 수 있으니 전체 키에서 -숫자로 끝나는 것 검색
+      const allKeys = Object.keys(TT_DATA).filter(k => k.split('|')[0] === baseName);
+      const matched = allKeys.find(k => k.endsWith('-' + classNum));
+      if (matched) {
+        key = matched;
+        console.log(`[TT] suffix 검색 매칭: "${rawId}" → "${matched}" ✅`);
+      }
+    }
+  }
+
+  // ── 2단계: suffix 매칭 실패 시 기존 방식 시도 ──
+  if (!key) {
+    key = ttFindKey(userName, homeroom)
+       || ttFindKey(rawId, homeroom)
+       || ttFindKey(userId, homeroom);
+  }
+
+  console.log(`[TT] 최종: id="${me.id}" name="${me.name}" → key="${key}"`);
   
   const wrap = document.getElementById('ttWeeklyGrid');
   const todayPanel = document.getElementById('ttTodayPanel');

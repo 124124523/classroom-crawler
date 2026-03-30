@@ -10,6 +10,8 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   ssl: { rejectUnauthorized: false },
+  // DATETIME 컬럼을 문자열로 반환 (UTC 변환 방지)
+  dateStrings: true,
 });
 
 module.exports = pool;
