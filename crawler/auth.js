@@ -37,11 +37,29 @@ async function getClientForUser(userId) {
   return oauth2Client;
 }
 
-// ── 마감일 파싱 ───────────────────────────────────────
-function parseDueDate(dueDate) {
+// ── 마감일+시간 파싱 ──────────────────────────────────
+// Google Classroom API: dueDate={year,month,day}, dueTime={hours,minutes} (UTC)
+// → KST(UTC+9) 변환 후 'YYYY-MM-DD HH:MM:00' 형식 반환
+function parseDueDate(dueDate, dueTime) {
   if (!dueDate) return null;
   const { year, month, day } = dueDate;
-  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+
+  if (dueTime && (dueTime.hours != null || dueTime.minutes != null)) {
+    const utcH = dueTime.hours || 0;
+    const utcM = dueTime.minutes || 0;
+    // UTC → KST 변환
+    const utc = new Date(Date.UTC(year, month - 1, day, utcH, utcM));
+    const kst = new Date(utc.getTime() + 9 * 60 * 60 * 1000);
+    const ky = kst.getUTCFullYear();
+    const km = String(kst.getUTCMonth() + 1).padStart(2, '0');
+    const kd = String(kst.getUTCDate()).padStart(2, '0');
+    const kh = String(kst.getUTCHours()).padStart(2, '0');
+    const ki = String(kst.getUTCMinutes()).padStart(2, '0');
+    return `${ky}-${km}-${kd} ${kh}:${ki}:00`;
+  }
+
+  // dueTime 없으면 23:59 KST
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')} 23:59:00`;
 }
 
 // ── 오늘 날짜 (KST) ───────────────────────────────────
@@ -135,13 +153,13 @@ async function crawlForUser(userId) {
       const toUpsert = [];
 
       for (const cw of (cwRes.data.courseWork || [])) {
-        const dueDate = parseDueDate(cw.dueDate);
+        const dueDate = parseDueDate(cw.dueDate, cw.dueTime);
 
         // 마감일 없는 과제 스킵
         if (!dueDate) { skipped++; continue; }
 
-        // 1개월 이전 마감 과제 스킵
-        if (dueDate < cutoff) { skipped++; continue; }
+        // 1개월 이전 마감 과제 스킵 (날짜 부분만 비교)
+        if (dueDate.slice(0, 10) < cutoff) { skipped++; continue; }
 
         toUpsert.push({
           coursework_id: cw.id,
