@@ -524,6 +524,7 @@ let noticeExistingImages = [];   // 수정 시 기존 이미지 URL 보관
     await Promise.all([loadAssignments(), loadNotices()]);
     renderOverview();
     loadUnreadBadges();
+    setInterval(loadUnreadBadges, 60000); // 60초마다 배지 갱신
   } catch(e) {
     console.error(e);
     showToast('초기화 실패', 'error');
@@ -630,11 +631,12 @@ async function saveAssignment() {
       credentials: 'include',
       body: JSON.stringify(body)
     });
-    const result = await res.json();
     if (!res.ok) {
+      const result = await res.json().catch(() => ({}));
       showToast(result.message || '저장 실패', 'error');
       return;
     }
+    const result = await res.json();
     showToast(editId ? '수정되었습니다.' : '과제가 등록되었습니다.', 'success');
     cancelAssignEdit();
     await loadAssignments();
@@ -943,6 +945,7 @@ async function loadUnreadBadges() {
       fetch('/api/comments/unread-summary', { credentials: 'include' }),
       fetch('/api/comments/unread-per-item', { credentials: 'include' }),
     ]);
+    if (!summaryRes.ok || !perItemRes.ok) return;
     const summary = await summaryRes.json();
     const perItem = await perItemRes.json();
     unreadPerItem = perItem;
@@ -1051,6 +1054,7 @@ function closeCommentModal() {
   document.getElementById('commentModalBackdrop').style.display = 'none';
   commentModalAssignId = null;
   replyToId = null;
+  loadUnreadBadges(); // 읽음 처리 후 사이드바 배지 즉시 갱신
 }
 
 async function loadComments(append = false) {
@@ -1061,6 +1065,7 @@ async function loadComments(append = false) {
   try {
     const url = `/api/comments/${commentModalType || 'assignment'}/${commentModalAssignId}?page=${commentPage}&limit=${COMMENT_PAGE_SIZE}`;
     const res  = await fetch(url, { credentials: 'include' });
+    if (!res.ok) { thread.innerHTML = ''; return; }
     const data = await res.json();
     const comments = data.comments || [];
     const hasMore  = data.has_more || false;
@@ -1160,7 +1165,7 @@ async function submitComment() {
   if (replyToId) body.parent_id = replyToId;
   try {
     const res = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
-    if (!res.ok) { const d = await res.json(); showToast(d.message || '등록 실패', 'error'); return; }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showToast(d.message || '등록 실패', 'error'); return; }
     document.getElementById('commentInput').value = '';
     cancelReply();
     await loadComments();
