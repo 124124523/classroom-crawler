@@ -144,6 +144,12 @@
         </svg>
         공지 관리
       </div>
+      <div class="nav-item" onclick="showSection('stats', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>
+        </svg>
+        수행 성실도
+      </div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="logout()">로그아웃</button>
@@ -277,9 +283,8 @@
                 <input class="form-input" type="text" id="noticeTitle" placeholder="공지 제목" />
               </div>
               <div class="form-group">
-                <label class="form-label">분반 (비우면 전체 공지)</label>
+                <label class="form-label">분반 *</label>
                 <select class="form-input form-select" id="noticeClass">
-                  <option value="">전체 공지</option>
                 </select>
               </div>
               <div class="form-group">
@@ -316,6 +321,19 @@
         </div>
       </div>
 
+      <!-- STATS -->
+      <div class="section-page" id="page-stats">
+        <div class="form-card">
+          <div class="form-card-header">
+            <div class="card-title"><div class="dot" style="background:var(--blue)"></div>학생 수행 성실도</div>
+            <button class="btn btn-ghost btn-sm" onclick="loadCompletionStats()">새로고침</button>
+          </div>
+          <div class="form-card-body" id="statsContent">
+            <div style="text-align:center;color:var(--muted);padding:24px">로딩 중...</div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -332,11 +350,11 @@
       <div class="comment-thread" id="tNoticeThread">
         <div style="text-align:center;color:var(--muted);padding:24px">로딩 중...</div>
       </div>
-      <div style="border-top:1px solid var(--border);padding-top:12px;">
-        <div style="font-size:.75rem;font-weight:700;color:var(--text3);margin-bottom:8px;">답글 달기</div>
+      <div id="tReplyInputArea" style="border-top:1px solid var(--border);padding-top:12px;display:none;">
+        <div style="font-size:.75rem;font-weight:700;color:var(--text3);margin-bottom:8px;">답변 작성</div>
         <div id="tReplyToLabel"></div>
         <div class="t-comment-input-row">
-          <textarea class="t-comment-textarea" id="tNoticeCommentInput" rows="2" placeholder="↩ 답글 버튼을 눌러 학생 댓글에 답변하세요..."></textarea>
+          <textarea class="t-comment-textarea" id="tNoticeCommentInput" rows="2" placeholder="답변을 입력하세요..."></textarea>
           <button class="t-comment-submit" onclick="submitTeacherComment()">등록</button>
         </div>
       </div>
@@ -397,8 +415,19 @@ async function loadAllClasses() {
     allClasses.forEach(c => {
       const opt = `<option value="${c.id}">${escHtml(c.subject_name)} ${escHtml(c.class_code)}반${c.teacher ? ' · '+escHtml(c.teacher) : ''}</option>`;
       assignSel.insertAdjacentHTML('beforeend', opt);
-      noticeSel.insertAdjacentHTML('beforeend', opt);
     });
+    // 공지 분반: 선생님 담당 분반만 표시
+    const myClasses = allClasses.filter(c => c.teacher === currentUser.name);
+    if (myClasses.length) {
+      myClasses.forEach(c => {
+        noticeSel.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escHtml(c.subject_name)} ${escHtml(c.class_code)}반</option>`);
+      });
+    } else {
+      // 담당 분반이 없으면 전체 목록 표시
+      allClasses.forEach(c => {
+        noticeSel.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escHtml(c.subject_name)} ${escHtml(c.class_code)}반${c.teacher ? ' · '+escHtml(c.teacher) : ''}</option>`);
+      });
+    }
   } catch(e) { showToast('분반 목록 로딩 실패', 'error'); }
 }
 
@@ -426,7 +455,7 @@ function renderAssignList() {
         <div class="manage-item-meta">
           <span>${escHtml(a.class_label||a.subject_name||'')}</span>
           <span class="badge ${a.type==='진로'?'badge-blue':'badge-green'}" style="font-size:0.68rem;padding:1px 7px">${a.type||'일반'}</span>
-          <span>마감: ${a.due_date ? new Date(a.due_date).toLocaleDateString('ko-KR') : '없음'}</span>
+          <span>마감: ${a.due_date ? new Date(a.due_date.replace(' ','T')).toLocaleDateString('ko-KR') : '없음'}</span>
           ${a.is_crawled ? '<span class="badge badge-gray" style="font-size:0.65rem">자동</span>' : ''}
         </div>
       </div>
@@ -643,13 +672,13 @@ async function deleteNotice(id) {
 function renderOverview() {
   document.getElementById('ovAssignCount').textContent = assignments.length;
   document.getElementById('ovNoticeCount').textContent = notices.length;
-  const urgent = assignments.filter(a => { if (!a.due_date) return false; const d = Math.ceil((new Date(a.due_date)-new Date())/86400000); return d<=3&&d>=0; }).length;
+  const urgent = assignments.filter(a => { if (!a.due_date) return false; const d = Math.ceil((new Date(a.due_date.replace(' ','T'))-new Date())/86400000); return d<=3&&d>=0; }).length;
   document.getElementById('ovUrgentCount').textContent = urgent;
   const ra = document.getElementById('recentAssigns');
   ra.innerHTML = assignments.slice(0,4).map(a => `
     <div style="padding:9px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:0.82rem">
       <div style="font-weight:600;color:var(--text)">${escHtml(a.title)}</div>
-      <div style="color:var(--text3);font-size:0.72rem;margin-top:2px">${escHtml(a.class_label||'')} · ${a.due_date ? '마감: '+new Date(a.due_date).toLocaleDateString('ko-KR') : '기한없음'}</div>
+      <div style="color:var(--text3);font-size:0.72rem;margin-top:2px">${escHtml(a.class_label||'')} · ${a.due_date ? '마감: '+new Date(a.due_date.replace(' ','T')).toLocaleDateString('ko-KR') : '기한없음'}</div>
     </div>
   `).join('') || '<div style="color:var(--muted);font-size:0.83rem;padding:12px">없음</div>';
   const rn = document.getElementById('recentNotices');
@@ -668,12 +697,58 @@ function showSection(name, el) {
   document.getElementById(`page-${name}`).classList.add('active');
   const navEl = el || (typeof event !== 'undefined' && event?.currentTarget);
   if (navEl && navEl.classList) navEl.classList.add('active');
-  const titles = { overview:'개요', assignments:'수행평가 관리', notices:'공지 관리' };
+  const titles = { overview:'개요', assignments:'수행평가 관리', notices:'공지 관리', stats:'수행 성실도' };
+  if (name === 'stats') loadCompletionStats();
   document.getElementById('pageTitle').textContent = titles[name] || name;
   if (window.innerWidth <= 768) closeSidebar();
 }
-function fmtDate(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}/${d.getDate()}`; }
+function fmtDate(str) { if (!str) return ''; const d = new Date(str.replace(' ','T')); if (isNaN(d)) return str.slice(0,10); return `${d.getMonth()+1}/${d.getDate()}`; }
 function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function loadCompletionStats() {
+  const container = document.getElementById('statsContent');
+  container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px"><span class="spinner"></span></div>';
+  try {
+    const res = await fetch('/api/assignments/completion-stats', { credentials: 'include' });
+    if (!res.ok) { container.innerHTML = '<div style="color:var(--red);padding:16px;text-align:center">로딩 실패</div>'; return; }
+    const data = await res.json();
+    const stats = data.stats || [];
+    if (!stats.length) { container.innerHTML = '<div style="color:var(--muted);padding:24px;text-align:center">담당 분반 데이터가 없습니다.</div>'; return; }
+
+    // 분반별 그룹핑
+    const byClass = {};
+    stats.forEach(s => {
+      if (!byClass[s.class_label]) byClass[s.class_label] = [];
+      byClass[s.class_label].push(s);
+    });
+
+    let html = '';
+    for (const [label, students] of Object.entries(byClass)) {
+      students.sort((a, b) => b.percent - a.percent);
+      const avg = students.length ? Math.round(students.reduce((s, x) => s + x.percent, 0) / students.length) : 0;
+      html += `<div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:.88rem;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+          ${escHtml(label)}
+          <span style="font-size:.75rem;font-weight:500;color:var(--text3)">평균 ${avg}%</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${students.map(s => {
+            const color = s.percent >= 80 ? 'var(--primary)' : s.percent >= 50 ? 'var(--orange)' : 'var(--red)';
+            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);font-size:.82rem;">
+              <span style="width:80px;font-weight:500;color:var(--text);flex-shrink:0">${escHtml(s.user_name)}</span>
+              <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:${s.percent}%;background:${color};border-radius:4px;transition:width .3s"></div>
+              </div>
+              <span style="width:45px;text-align:right;font-weight:700;font-size:.78rem;color:${color}">${s.percent}%</span>
+              <span style="font-size:.68rem;color:var(--text3)">${s.completed}/${s.total}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+    container.innerHTML = html;
+  } catch { container.innerHTML = '<div style="color:var(--red);padding:16px;text-align:center">로딩 실패</div>'; }
+}
 function showToast(msg, type='info') {
   const c = document.getElementById('toast-container');
   const t = document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg;
@@ -768,17 +843,21 @@ function closeNoticeComments() {
 
 function tSetReplyTo(parentId, authorName) {
   tReplyToId = parentId;
+  const area = document.getElementById('tReplyInputArea');
+  if (area) area.style.display = 'block';
   const input = document.getElementById('tNoticeCommentInput');
-  input.placeholder = `${authorName}님에게 답글...`;
+  input.placeholder = `${authorName}님에게 답변...`;
   input.focus();
   const label = document.getElementById('tReplyToLabel');
-  label.innerHTML = `<div style="font-size:.72rem;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;">↩ <strong>${escHtml(authorName)}</strong>님에게 답글 <button onclick="tCancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.7rem;margin-left:4px;">✕ 취소</button></div>`;
+  label.innerHTML = `<div style="font-size:.72rem;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;">↩ <strong>${escHtml(authorName)}</strong>님에게 답변 <button onclick="tCancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.7rem;margin-left:4px;">✕ 취소</button></div>`;
 }
 
 function tCancelReply() {
   tReplyToId = null;
+  const area = document.getElementById('tReplyInputArea');
+  if (area) area.style.display = 'none';
   const input = document.getElementById('tNoticeCommentInput');
-  if (input) input.placeholder = '↩ 답글 버튼을 눌러 학생 댓글에 답변하세요...';
+  if (input) input.placeholder = '답변을 입력하세요...';
   const label = document.getElementById('tReplyToLabel');
   if (label) label.innerHTML = '';
 }

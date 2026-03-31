@@ -8,6 +8,19 @@ function requireLogin(req, res, next) {
   next();
 }
 
+// updated_at 컬럼 자동 추가
+(async () => {
+  try {
+    const [cols] = await db.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assignments' AND COLUMN_NAME = 'updated_at'`
+    );
+    if (!cols.length) {
+      await db.query('ALTER TABLE assignments ADD COLUMN updated_at DATETIME DEFAULT NULL');
+    }
+  } catch {}
+})();
+
 function parseImages(rows) {
   return rows.map(row => {
     let images = [];
@@ -32,6 +45,7 @@ const BASE_SELECT = `
     a.image_urls,
     a.gclassroom_id,
     a.created_at,
+    a.updated_at,
     s.name          AS subject_name,
     s.category      AS type,
     c.class_code,
@@ -62,7 +76,7 @@ router.get('/', requireLogin, async (req, res) => {
       );
 
     } else {
-      // 학생 — 수강 분반 과제 + 완료 여부
+      // 학생/리더 — 수강 분반 과제 + 완료 여부
       [rows] = await db.query(`
         SELECT
           a.id,
@@ -74,6 +88,7 @@ router.get('/', requireLogin, async (req, res) => {
           a.image_urls,
           a.gclassroom_id,
           a.created_at,
+          a.updated_at,
           s.name          AS subject_name,
           s.category      AS type,
           c.class_code,
@@ -97,6 +112,61 @@ router.get('/', requireLogin, async (req, res) => {
     res.json({ assignments: parseImages(rows) });
   } catch (err) {
     console.error('[assignments] GET 오류:', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
+// GET /api/assignments/completion-stats — 분반별 학생 수행 성실도
+router.get('/completion-stats', requireLogin, async (req, res) => {
+  const user = req.session.user;
+  if (user.role !== 'teacher' && user.role !== 'admin') {
+    return res.status(403).json({ message: '권한 없음' });
+  }
+
+  try {
+    const [classes] = await db.query(
+      `SELECT c.id, s.name AS subject_name, c.class_code
+       FROM classes c JOIN subjects s ON c.subject_id = s.id
+       WHERE c.teacher = ?`, [user.name]
+    );
+    if (!classes.length) return res.json({ stats: [] });
+
+    const classIds = classes.map(c => c.id);
+    const classMap = {};
+    classes.forEach(c => { classMap[c.id] = `${c.subject_name} ${c.class_code}반`; });
+
+    const [rows] = await db.query(
+      `SELECT
+         e.user_id,
+         u.name AS user_name,
+         a.class_id,
+         COUNT(DISTINCT a.id) AS total_assignments,
+         COUNT(DISTINCT co.target_id) AS completed_count
+       FROM enrollments e
+       JOIN users u ON u.id = e.user_id AND u.role = 'student'
+       JOIN assignments a ON a.class_id = e.class_id
+       LEFT JOIN completions co ON co.user_id = e.user_id
+         AND co.target_type = 'assignment' AND co.target_id = CAST(a.id AS CHAR)
+       WHERE e.class_id IN (?)
+       GROUP BY e.user_id, a.class_id`,
+      [classIds]
+    );
+
+    const stats = rows.map(r => ({
+      user_id: r.user_id,
+      user_name: r.user_name,
+      class_id: r.class_id,
+      class_label: classMap[r.class_id] || '',
+      total: r.total_assignments,
+      completed: r.completed_count,
+      percent: r.total_assignments > 0
+        ? Math.round((r.completed_count / r.total_assignments) * 100)
+        : 0,
+    }));
+
+    res.json({ stats });
+  } catch (err) {
+    console.error('[assignments] GET /completion-stats 오류:', err.message);
     res.status(500).json({ message: '서버 오류' });
   }
 });
@@ -154,7 +224,7 @@ router.put('/:id', requireLogin, async (req, res) => {
     }
 
     await db.query(
-      'UPDATE assignments SET title=?, content=?, deadline=?, image_urls=? WHERE id=?',
+      'UPDATE assignments SET title=?, content=?, deadline=?, image_urls=?, updated_at=NOW() WHERE id=?',
       [title, description || '', due_date, imagesJson, req.params.id]
     );
     res.json({ message: '수정되었습니다.' });

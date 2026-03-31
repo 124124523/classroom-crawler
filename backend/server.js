@@ -230,7 +230,25 @@ app.get('/{*path}', (req, res) => {
 
 // ── 서버 시작 ──────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`✅ 서버 실행 중: PORT=${PORT}`);
+
+  // 선생님 계정 자동 등록 (없으면 추가)
+  const teachers = [
+    { id: '문가람', name: '문가람', role: 'teacher', password: '1234' },
+    { id: '이경규', name: '이경규', role: 'teacher', password: '1234' },
+    { id: '신율빈', name: '신율빈', role: 'teacher', password: '1234' },
+    { id: '박정은', name: '박정은', role: 'teacher', password: '1234' },
+    { id: '이상돈', name: '이상돈', role: 'teacher', password: '1234' },
+  ];
+  for (const t of teachers) {
+    try {
+      await pool.query(
+        'INSERT IGNORE INTO users (id, name, role, password) VALUES (?, ?, ?, ?)',
+        [t.id, t.name, t.role, t.password]
+      );
+    } catch {}
+  }
+
   runPipeline();
 });
