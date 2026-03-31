@@ -530,6 +530,7 @@ let noticeExistingImages = [];   // 수정 시 기존 이미지 URL 보관
 
 async function loadMyClasses() {
   const res = await fetch('/api/subjects/my-classes', { credentials: 'include' });
+  if (!res.ok) { showToast('분반 정보 로딩 실패', 'error'); return; }
   const data = await res.json();
   myClasses = data.classes || data || [];
 
@@ -546,10 +547,16 @@ async function loadMyClasses() {
 }
 
 async function loadAssignments() {
-  const res = await fetch('/api/assignments?mine=true', { credentials: 'include' });
-  const data = await res.json();
-  assignments = data.assignments || data || [];
-  renderAssignList();
+  try {
+    const res = await fetch('/api/assignments?mine=true', { credentials: 'include' });
+    if (!res.ok) {
+      if (res.status === 401) { location.href = 'login.html'; return; }
+      showToast('과제 로딩 실패', 'error'); return;
+    }
+    const data = await res.json();
+    assignments = data.assignments || data || [];
+    renderAssignList();
+  } catch { showToast('과제 로딩 실패', 'error'); }
 }
 
 function renderAssignList() {
@@ -570,7 +577,7 @@ function renderAssignList() {
         </div>
       </div>
       <div class="manage-item-actions">
-        <button class="btn-icon" onclick="openCommentModal(${a.id}, '${escHtml(a.title).replace(/'/g, '\\&apos;')}')" title="댓글 보기">💬</button>
+        <button class="btn-icon" onclick="openCommentModal(${a.id}, ${JSON.stringify(escHtml(a.title))})" title="댓글 보기">💬</button>
         <button class="btn-icon" onclick="editAssign(${a.id})" title="수정">✏️</button>
         <button class="btn-icon" onclick="deleteAssign(${a.id})" title="삭제">🗑️</button>
       </div>
@@ -586,6 +593,7 @@ async function saveAssignment() {
   const due     = document.getElementById('assignDue').value;
   const content = document.getElementById('assignContent').value.trim();
   if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
+  if (!classId) { showToast('분반을 선택하세요.', 'error'); return; }
 
   // 기존 이미지 중 미리보기에서 삭제되지 않은 것만 유지
   const assignPreview = document.getElementById('assignImgPreview');
@@ -599,6 +607,7 @@ async function saveAssignment() {
     const form = new FormData();
     assignUploadFiles.forEach(f => form.append('images', f));
     const r = await fetch('/api/upload/multiple', { method:'POST', credentials:'include', body:form });
+    if (!r.ok) { showToast('이미지 업로드 실패', 'error'); return; }
     const d = await r.json();
     newUrls = d.urls || [];
   }
@@ -666,10 +675,13 @@ function cancelAssignEdit() {
 
 async function deleteAssign(id) {
   if (!confirm('이 과제를 삭제하시겠습니까?')) return;
-  await fetch(`/api/assignments/${id}`, { method:'DELETE', credentials:'include' });
-  showToast('삭제되었습니다.', 'success');
-  await loadAssignments();
-  renderOverview();
+  try {
+    const res = await fetch(`/api/assignments/${id}`, { method:'DELETE', credentials:'include' });
+    if (!res.ok) { const d = await res.json(); showToast(d.message || '삭제 실패', 'error'); return; }
+    showToast('삭제되었습니다.', 'success');
+    await loadAssignments();
+    renderOverview();
+  } catch { showToast('삭제 실패', 'error'); }
 }
 
 function handleAssignFile(e) {
@@ -690,10 +702,16 @@ function handleAssignFile(e) {
 
 // ── Notices ──
 async function loadNotices() {
-  const res = await fetch('/api/notices?mine=true', { credentials: 'include' });
-  const data = await res.json();
-  notices = data.notices || data || [];
-  renderNoticeList();
+  try {
+    const res = await fetch('/api/notices?mine=true', { credentials: 'include' });
+    if (!res.ok) {
+      if (res.status === 401) { location.href = 'login.html'; return; }
+      showToast('공지 로딩 실패', 'error'); return;
+    }
+    const data = await res.json();
+    notices = data.notices || data || [];
+    renderNoticeList();
+  } catch { showToast('공지 로딩 실패', 'error'); }
 }
 
 function renderNoticeList() {
@@ -713,7 +731,7 @@ function renderNoticeList() {
         </div>
       </div>
       <div class="manage-item-actions">
-        <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, '${escHtml(n.title).replace(/'/g, '&apos;')}')" title="댓글">💬</button>
+        <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, ${JSON.stringify(escHtml(n.title))})" title="댓글">💬</button>
         <button class="btn-icon" onclick="editNotice(${n.id})" title="수정">✏️</button>
         <button class="btn-icon" onclick="deleteNotice(${n.id})" title="삭제">🗑️</button>
       </div>
@@ -727,6 +745,7 @@ async function saveNotice() {
   const classId = document.getElementById('noticeClass').value;
   const content = document.getElementById('noticeContent').value.trim();
   if (!title || !content) { showToast('제목과 내용을 입력하세요.', 'error'); return; }
+  if (!classId) { showToast('분반을 선택하세요.', 'error'); return; }
 
   // 기존 이미지 중 미리보기에서 삭제되지 않은 것만 유지
   const noticePreview = document.getElementById('noticeImgPreview');
@@ -740,6 +759,7 @@ async function saveNotice() {
     const form = new FormData();
     noticeUploadFiles.forEach(f => form.append('images', f));
     const r = await fetch('/api/upload/multiple', { method:'POST', credentials:'include', body:form });
+    if (!r.ok) { showToast('이미지 업로드 실패', 'error'); return; }
     const d = await r.json();
     newNoticeUrls = d.urls || [];
   }
@@ -800,10 +820,13 @@ function cancelNoticeEdit() {
 
 async function deleteNotice(id) {
   if (!confirm('이 공지를 삭제하시겠습니까?')) return;
-  await fetch(`/api/notices/${id}`, { method:'DELETE', credentials:'include' });
-  showToast('삭제되었습니다.', 'success');
-  await loadNotices();
-  renderOverview();
+  try {
+    const res = await fetch(`/api/notices/${id}`, { method:'DELETE', credentials:'include' });
+    if (!res.ok) { const d = await res.json(); showToast(d.message || '삭제 실패', 'error'); return; }
+    showToast('삭제되었습니다.', 'success');
+    await loadNotices();
+    renderOverview();
+  } catch { showToast('삭제 실패', 'error'); }
 }
 
 function handleNoticeFile(e) {
@@ -855,7 +878,12 @@ function showSection(name) {
   document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`page-${name}`).classList.add('active');
-  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+  if (typeof event !== 'undefined' && event?.currentTarget) {
+    event.currentTarget.classList.add('active');
+  } else {
+    const navItem = document.querySelector(`.nav-item[onclick*="'${name}'"]`);
+    if (navItem) navItem.classList.add('active');
+  }
   const titles = { overview:'개요', assignments:'수행평가 관리', notices:'공지 관리' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
@@ -914,7 +942,9 @@ async function loadUnreadBadges() {
     // 공지 관리 탭 배지
     const nb = document.getElementById('noticeUnreadBadge');
     if (nb) { nb.textContent = noticeCount; nb.style.display = noticeCount > 0 ? 'inline-flex' : 'none'; }
-  } catch {}
+  } catch (e) {
+    console.error('[badges] 업데이트 실패:', e);
+  }
 }
 async function logout() {
   await fetch('/api/logout', { method:'POST', credentials:'include' });
@@ -954,7 +984,9 @@ async function openCommentModal(assignId, title) {
   commentPage = 1;
   document.getElementById('commentModalTitle').textContent = `💬 ${title}`;
   document.getElementById('commentModalBackdrop').style.display = 'flex';
-  document.getElementById('commentInput').value = '';
+  const input = document.getElementById('commentInput');
+  input.value = '';
+  input.placeholder = currentUser?.role === 'leader' ? '↩ 답글 버튼을 눌러 답변하세요...' : '댓글을 입력하세요...';
   await loadComments();
 }
 
@@ -965,7 +997,9 @@ async function openNoticeCommentModal(noticeId, title) {
   commentPage = 1;
   document.getElementById('commentModalTitle').textContent = `💬 ${title}`;
   document.getElementById('commentModalBackdrop').style.display = 'flex';
-  document.getElementById('commentInput').value = '';
+  const input = document.getElementById('commentInput');
+  input.value = '';
+  input.placeholder = currentUser?.role === 'leader' ? '↩ 답글 버튼을 눌러 답변하세요...' : '댓글을 입력하세요...';
   await loadComments();
 }
 
@@ -1051,7 +1085,7 @@ async function loadComments(append = false) {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         credentials: 'include',
-        body: JSON.stringify({ type: 'assignment', ids: unreadIds })
+        body: JSON.stringify({ type: commentModalType, ids: unreadIds })
       }).catch(() => {});
       // 미읽음 점 제거 (UI 즉시 반영)
       unreadIds.forEach(id => {
@@ -1063,6 +1097,7 @@ async function loadComments(append = false) {
     }
   } catch {
     if (!append) thread.innerHTML = '<div style="text-align:center;color:var(--red);font-size:.84rem;padding:24px">댓글 로딩 실패</div>';
+    else showToast('댓글을 더 불러올 수 없습니다.', 'error');
   }
 }
 
@@ -1070,16 +1105,19 @@ async function loadComments(append = false) {
 async function submitComment() {
   const content = document.getElementById('commentInput').value.trim();
   if (!content || !commentModalAssignId) return;
+  if (currentUser?.role === 'leader' && !replyToId) {
+    showToast('답글 버튼을 눌러 댓글에 답변하세요.', 'info');
+    return;
+  }
   const body = { type: commentModalType || 'assignment', ref_id: commentModalAssignId, content };
   if (replyToId) body.parent_id = replyToId;
   try {
-    const res  = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
-    const data = await res.json();
-    if (!res.ok) { showToast(data.message || '등록 실패', 'error'); return; }
+    const res = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+    if (!res.ok) { const d = await res.json(); showToast(d.message || '등록 실패', 'error'); return; }
     document.getElementById('commentInput').value = '';
     cancelReply();
     await loadComments();
-    showToast(data.message, 'success');
+    showToast(replyToId ? '답글이 등록되었습니다.' : '댓글이 등록되었습니다.', 'success');
   } catch { showToast('등록 실패', 'error'); }
 }
 
@@ -1101,7 +1139,7 @@ function setReplyTo(parentId, authorName) {
 function cancelReply() {
   replyToId = null;
   const input = document.getElementById('commentInput');
-  if (input) input.placeholder = '댓글을 입력하세요...';
+  if (input) input.placeholder = currentUser?.role === 'leader' ? '↩ 답글 버튼을 눌러 답변하세요...' : '댓글을 입력하세요...';
   const label = document.getElementById('replyToLabel');
   if (label) label.remove();
 }

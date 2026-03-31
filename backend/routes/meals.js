@@ -3,8 +3,17 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
 
+function requireLogin(req, res, next) {
+  if (!req.session?.user) return res.status(401).json({ message: '로그인이 필요합니다.' });
+  next();
+}
+function requireAdmin(req, res, next) {
+  if (req.session?.user?.role !== 'admin') return res.status(403).json({ message: '관리자 권한이 필요합니다.' });
+  next();
+}
+
 // GET /api/meals?date=YYYY-MM-DD
-router.get('/', async (req, res) => {
+router.get('/', requireLogin, async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10);
 
   try {
@@ -29,7 +38,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/meals/list — 최근 60건 (관리자용)
-router.get('/list', async (req, res) => {
+router.get('/list', requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
       "SELECT * FROM school_meals ORDER BY date DESC, FIELD(meal_type,'lunch','dinner') LIMIT 60"
@@ -41,8 +50,8 @@ router.get('/list', async (req, res) => {
   }
 });
 
-// POST /api/meals — 급식 등록/수정 (upsert)
-router.post('/', async (req, res) => {
+// POST /api/meals — 급식 등록/수정 (upsert, 관리자)
+router.post('/', requireAdmin, async (req, res) => {
   const { date, meal_type, menu } = req.body;
   if (!date || !meal_type || !menu) {
     return res.status(400).json({ message: 'date, meal_type, menu 필드가 필요합니다.' });
@@ -60,8 +69,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE /api/meals/:id
-router.delete('/:id', async (req, res) => {
+// DELETE /api/meals/:id (관리자)
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM school_meals WHERE id = ?', [req.params.id]);
     res.json({ message: '삭제되었습니다.' });

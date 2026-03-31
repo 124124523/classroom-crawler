@@ -1077,12 +1077,16 @@ function showSection(name, el) {
 async function loadAssignments() {
   try {
     const res = await fetch('/api/assignments', { credentials: 'include' });
+    if (!res.ok) {
+      if (res.status === 401) { location.href = 'login.html'; return; }
+      showToast('과제 로딩 실패', 'error'); return;
+    }
     const data = await res.json();
     assignments = data.assignments || data || [];
     renderAssignBoard();
     updateAssignBadge();
     updateCommentBadges();
-  } catch(e) { console.error('assignments load fail', e); }
+  } catch(e) { showToast('과제 로딩 실패', 'error'); }
 }
 
 function updateAssignBadge() {
@@ -1114,7 +1118,7 @@ async function updateCommentBadges() {
     const replyCount = data.reply_count || 0;
     const tb = document.getElementById('timetableBadge');
     if (tb) { tb.textContent = replyCount; tb.style.display = replyCount > 0 ? '' : 'none'; }
-  } catch {}
+  } catch(e) { console.error('[updateCommentBadges] 오류:', e); }
 }
 
 function renderAssignBoard() {
@@ -1125,15 +1129,16 @@ function renderAssignBoard() {
   const filtered = todayAssigns.filter(a => {
     const tOk = !filterType   || a.type === filterType;
     // 'all': 전체, 'done': 완료만, 'pending'(또는 기타): 미완료만
+    const isDone = Number(a.completed) === 1;
     const sOk = !filterStatus || filterStatus === 'all'
-               || (filterStatus === 'done' ? a.completed : !a.completed);
+               || (filterStatus === 'done' ? isDone : !isDone);
     return tOk && sOk;
   });
 
   const bySubject = {};
   // 미완료 먼저, 완료는 하단에
-  const pendingItems = filtered.filter(a => !a.completed);
-  const doneItems    = filtered.filter(a =>  a.completed);
+  const pendingItems = filtered.filter(a => Number(a.completed) !== 1);
+  const doneItems    = filtered.filter(a => Number(a.completed) === 1);
   const sortedFiltered = [...pendingItems, ...doneItems];
   sortedFiltered.forEach(a => {
     const key = a.subject_name || '기타';
@@ -1161,8 +1166,8 @@ function renderAssignBoard() {
   }
 
   const total  = todayAssigns.length;
-  const done   = todayAssigns.filter(a => a.completed).length;
-  const urgent = todayAssigns.filter(a => !a.completed && getDaysLeft(a.due_date) <= 2).length;
+  const done   = todayAssigns.filter(a => Number(a.completed) === 1).length;
+  const urgent = todayAssigns.filter(a => Number(a.completed) !== 1 && getDaysLeft(a.due_date) <= 2).length;
   document.getElementById('assignStats').innerHTML = `
     <div class="stat-chip"><div class="s-val">${total}</div><div class="s-lbl">전체 과제</div></div>
     <div class="stat-chip"><div class="s-val" style="color:var(--red)">${total - done}</div><div class="s-lbl">미완료</div></div>
@@ -1174,16 +1179,17 @@ function renderAssignBoard() {
 function makeAssignCard(a) {
   const el = document.createElement('div');
   const days = getDaysLeft(a.due_date);
+  const isCompleted = Number(a.completed) === 1;
   let urgency = '';
-  if (!a.completed) {
+  if (!isCompleted) {
     if (days <= 1) urgency = 'urgent';
     else if (days <= 5) urgency = 'soon';
   }
-  el.className = `assign-card type-${a.type || '일반'} ${a.completed ? 'completed' : ''}`;
+  el.className = `assign-card type-${a.type || '일반'} ${isCompleted ? 'completed' : ''}`;
   el.innerHTML = `
     <div class="assign-card-top">
       <div class="assign-title">${escHtml(a.title)}</div>
-      <button class="check-btn ${a.completed ? 'checked' : ''}" onclick="toggleComplete(event,${a.id})" title="완료 표시"></button>
+      <button class="check-btn ${isCompleted ? 'checked' : ''}" onclick="toggleComplete(event,${a.id})" title="완료 표시"></button>
     </div>
     <div class="assign-meta">
       ${a.type ? `<span class="badge ${a.type === '진로' ? 'badge-blue' : 'badge-green'}">${a.type}</span>` : ''}
@@ -1257,7 +1263,8 @@ async function toggleComplete(e, id) {
   const a = assignments.find(x => x.id === id); if (!a) return;
   const newVal = !a.completed;
   try {
-    await fetch('/api/timetable/complete', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: id, completed: newVal }) });
+    const res = await fetch('/api/timetable/complete', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: id, completed: newVal }) });
+    if (!res.ok) { showToast('업데이트 실패', 'error'); return; }
     a.completed = newVal;
     renderAssignBoard();
     renderCalDragSource();
@@ -1294,7 +1301,8 @@ async function modalToggleComplete() {
   if (!currentAssign) return;
   const newVal = !currentAssign.completed;
   try {
-    await fetch('/api/timetable/complete', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: currentAssign.id, completed: newVal }) });
+    const res = await fetch('/api/timetable/complete', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: currentAssign.id, completed: newVal }) });
+    if (!res.ok) { showToast('업데이트 실패', 'error'); return; }
     currentAssign.completed = newVal;
     const a = assignments.find(x => x.id === currentAssign.id); if (a) a.completed = newVal;
     updateModalCompleteBtn(newVal);
@@ -1320,12 +1328,16 @@ document.getElementById('statusFilter').addEventListener('click', e => {
 async function loadNotices() {
   try {
     const res = await fetch('/api/notices', { credentials: 'include' });
+    if (!res.ok) {
+      if (res.status === 401) { location.href = 'login.html'; return; }
+      showToast('공지 로딩 실패', 'error'); return;
+    }
     const data = await res.json();
     notices = data.notices || data || [];
     renderNotices();
     updateNoticeBadge();
     updateCommentBadges();
-  } catch(e) { console.error(e); }
+  } catch(e) { showToast('공지 로딩 실패', 'error'); }
 }
 
 function updateNoticeBadge() {
@@ -1381,6 +1393,11 @@ async function loadComments(type, id, listId, page = 1, append = false) {
   }
   try {
     const res = await fetch(`/api/comments/${type}/${id}?page=${page}&limit=${PAGE_SIZE}`, { credentials: 'include' });
+    if (!res.ok) {
+      if (!append) list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:4px 0">댓글을 불러오지 못했습니다.</div>';
+      else showToast('댓글을 더 불러올 수 없습니다.', 'error');
+      return;
+    }
     const data = await res.json();
     const comments = data.comments || [];
     const hasMore  = data.has_more || false;
@@ -1455,7 +1472,11 @@ async function loadComments(type, id, listId, page = 1, append = false) {
         if (el) { const dot = el.querySelector('span[style*="border-radius:50%"]'); if(dot) dot.remove(); }
       });
     }
-  } catch { if (!append) list.innerHTML = ''; }
+  } catch(e) {
+    console.error('[loadComments] 오류:', e);
+    if (!append) list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:4px 0">댓글을 불러오지 못했습니다.</div>';
+    else showToast('댓글을 더 불러올 수 없습니다.', 'error');
+  }
 }
 
 
@@ -1467,8 +1488,11 @@ async function submitComment(type) {
   const content = input.value.trim();
   if (!content || !refId) return;
   try {
-    await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ type, ref_id: refId, content }) });
-    input.value = ''; loadComments(type, refId, listId); showToast('댓글이 등록되었습니다.', 'success');
+    const res = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ type, ref_id: refId, content }) });
+    if (!res.ok) { const d = await res.json(); showToast(d.message || '댓글 등록 실패', 'error'); return; }
+    input.value = '';
+    loadComments(type, refId, listId);
+    showToast('댓글이 등록되었습니다.', 'success');
   } catch { showToast('댓글 등록 실패', 'error'); }
 }
 
@@ -1476,6 +1500,7 @@ async function submitComment(type) {
 async function loadSubjects() {
   try {
     const res = await fetch('/api/subjects', { credentials: 'include' });
+    if (!res.ok) return;
     const data = await res.json();
     subjects = data.subjects || data || [];
     const f = document.getElementById('noticeSubjectFilter');
@@ -1488,16 +1513,17 @@ async function loadSubjects() {
       f.querySelectorAll('.filter-tab').forEach(x => x.classList.remove('active'));
       t.classList.add('active'); filterSubject = t.dataset.val; renderNotices();
     });
-  } catch {}
+  } catch(e) { console.error('[loadSubjects] 오류:', e); }
 }
 
 // ── Events ──
 async function loadEvents() {
   try {
     const res = await fetch('/api/timetable/personal', { credentials: 'include' });
+    if (!res.ok) { showToast('일정 로딩 실패', 'error'); return; }
     const data = await res.json();
     events = data.events || data || [];
-  } catch(e) { console.error(e); }
+  } catch(e) { showToast('일정 로딩 실패', 'error'); }
 }
 
 // ── Calendar ──
@@ -1524,7 +1550,8 @@ async function calAddEvent() {
   if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
   if (!calSelectedDate) return;
   try {
-    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, description: memo||null, due_date: calSelectedDate }) });
+    const res = await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, description: memo||null, due_date: calSelectedDate }) });
+    if (!res.ok) { showToast('추가 실패', 'error'); return; }
     document.getElementById('calAddTitle').value = ''; document.getElementById('calAddMemo').value = '';
     showToast('일정이 추가되었습니다.', 'success');
     await loadEvents(); renderCalendar();
@@ -1535,7 +1562,8 @@ async function calAddEvent() {
 async function calDeleteEvent(id) {
   if (!confirm('이 일정을 삭제하시겠습니까?')) return;
   try {
-    await fetch(`/api/timetable/personal/${id}`, { method:'DELETE', credentials:'include' });
+    const res = await fetch(`/api/timetable/personal/${id}`, { method:'DELETE', credentials:'include' });
+    if (!res.ok) { showToast('삭제 실패', 'error'); return; }
     showToast('삭제되었습니다.', 'success');
     await loadEvents(); renderCalendar();
     if (calSelectedDate) {
@@ -1550,8 +1578,16 @@ async function calSaveEdit(id) {
   if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
   try {
     const ev = events.find(e => e.id === id); if (!ev) return;
-    await fetch(`/api/timetable/personal/${id}`, { method:'DELETE', credentials:'include' });
-    await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, description: memo||null, due_date: ev.due_date }) });
+    const delRes = await fetch(`/api/timetable/personal/${id}`, { method:'DELETE', credentials:'include' });
+    if (!delRes.ok) { showToast('수정 실패', 'error'); return; }
+    const postRes = await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, description: memo||null, due_date: ev.due_date }) });
+    if (!postRes.ok) {
+      // POST 실패 시 원본 데이터로 복원 시도
+      await fetch('/api/timetable/personal', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title: ev.title, description: ev.description||null, due_date: ev.due_date }) }).catch(() => {});
+      showToast('수정 실패 — 원본이 복원되었습니다.', 'error');
+      await loadEvents(); renderCalendar();
+      return;
+    }
     showToast('수정되었습니다.', 'success');
     await loadEvents(); renderCalendar();
     if (calSelectedDate) {
@@ -1568,7 +1604,7 @@ function calStartEdit(id, currentTitle, currentDesc) {
       <input id="cal-edit-memo-${id}"  class="cal-add-input" value="${escHtml(currentDesc||'')}" placeholder="메모" style="width:100%" />
       <div style="display:flex;gap:6px;margin-top:2px">
         <button class="cal-add-btn" onclick="calSaveEdit(${id})">저장</button>
-        <button class="btn btn-ghost btn-sm" onclick="calCancelEdit(${id},'${escHtml(currentTitle)}','${escHtml(currentDesc||'')}')">취소</button>
+        <button class="btn btn-ghost btn-sm" onclick="calCancelEdit(${id},${JSON.stringify(escHtml(currentTitle))},${JSON.stringify(escHtml(currentDesc||''))})">취소</button>
       </div>
     </div>
   `;
@@ -1585,7 +1621,7 @@ function personalEvRowInner(id, title, desc) {
       <div class="cal-detail-sub">개인 일정${desc ? ' · ' + escHtml(desc) : ''}</div>
     </div>
     <div style="display:flex;gap:3px;flex-shrink:0">
-      <button class="btn-icon" onclick="calStartEdit(${id},'${escHtml(title)}','${escHtml(desc||'')}')" title="수정">
+      <button class="btn-icon" onclick="calStartEdit(${id},${JSON.stringify(escHtml(title))},${JSON.stringify(escHtml(desc||''))})" title="수정">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -1697,7 +1733,7 @@ async function onCellDrop(e, dateKey) {
   const a = calDraggingAssign;
   try {
     const [pyy, pmm, pdd] = dateKey.split('-');
-    await fetch('/api/timetable/personal', {
+    const dropRes = await fetch('/api/timetable/personal', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       credentials: 'include',
@@ -1707,6 +1743,7 @@ async function onCellDrop(e, dateKey) {
         due_date: dateKey
       })
     });
+    if (!dropRes.ok) { showToast('등록 실패. 다시 시도해주세요.', 'error'); return; }
     if (cell) {
       cell.classList.add('drop-flash');
       cell.addEventListener('animationend', () => cell.classList.remove('drop-flash'), { once:true });
