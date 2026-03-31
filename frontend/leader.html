@@ -580,7 +580,7 @@ function renderAssignList() {
       </div>
       <div class="manage-item-actions">
         <div style="position:relative;display:inline-flex">
-          <button class="btn-icon" onclick="openCommentModal(${a.id}, ${JSON.stringify(escHtml(a.title))})" title="댓글 보기">💬</button>
+          <button class="btn-icon" onclick="openCommentModal(${a.id}, ${escHtml(JSON.stringify(a.title))})" title="댓글 보기">💬</button>
           <span data-comment-badge-assign="${a.id}" class="item-comment-badge" style="display:none"></span>
         </div>
         <button class="btn-icon" onclick="editAssign(${a.id})" title="수정">✏️</button>
@@ -738,7 +738,7 @@ function renderNoticeList() {
       </div>
       <div class="manage-item-actions">
         <div style="position:relative;display:inline-flex">
-          <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, ${JSON.stringify(escHtml(n.title))})" title="댓글">💬</button>
+          <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, ${escHtml(JSON.stringify(n.title))})" title="댓글">💬</button>
           <span data-comment-badge-notice="${n.id}" class="item-comment-badge" style="display:none"></span>
         </div>
         <button class="btn-icon" onclick="editNotice(${n.id})" title="수정">✏️</button>
@@ -1019,7 +1019,7 @@ async function openCommentModal(assignId, title) {
   document.getElementById('commentModalBackdrop').style.display = 'flex';
   const input = document.getElementById('commentInput');
   input.value = '';
-  input.placeholder = currentUser?.role === 'leader' ? '↩ 답글 버튼을 눌러 답변하세요...' : '댓글을 입력하세요...';
+  input.placeholder = '댓글을 입력하세요...';
   // 해당 과제 뱃지 즉시 제거
   clearItemBadge('assignment', assignId);
   await loadComments();
@@ -1034,7 +1034,7 @@ async function openNoticeCommentModal(noticeId, title) {
   document.getElementById('commentModalBackdrop').style.display = 'flex';
   const input = document.getElementById('commentInput');
   input.value = '';
-  input.placeholder = currentUser?.role === 'leader' ? '↩ 답글 버튼을 눌러 답변하세요...' : '댓글을 입력하세요...';
+  input.placeholder = '댓글을 입력하세요...';
   // 해당 공지 뱃지 즉시 제거
   clearItemBadge('notice', noticeId);
   await loadComments();
@@ -1156,10 +1156,6 @@ async function loadComments(append = false) {
 async function submitComment() {
   const content = document.getElementById('commentInput').value.trim();
   if (!content || !commentModalAssignId) return;
-  if (currentUser?.role === 'leader' && !replyToId) {
-    showToast('답글 버튼을 눌러 댓글에 답변하세요.', 'info');
-    return;
-  }
   const body = { type: commentModalType || 'assignment', ref_id: commentModalAssignId, content };
   if (replyToId) body.parent_id = replyToId;
   try {

@@ -431,11 +431,16 @@ function renderAssignList() {
         </div>
       </div>
       <div class="manage-item-actions">
+        <div style="position:relative;display:inline-flex">
+          <button class="btn-icon" onclick="openAssignComments(${a.id}, ${escHtml(JSON.stringify(a.title))})" title="댓글">💬</button>
+          <span data-comment-badge-assign="${a.id}" class="item-comment-badge" style="display:none"></span>
+        </div>
         ${!a.is_crawled ? `<button class="btn-icon" onclick="editAssign(${a.id})" title="수정">✏️</button>` : ''}
         <button class="btn-icon" onclick="deleteAssign(${a.id})" title="삭제">🗑️</button>
       </div>
     </div>
   `).join('');
+  applyItemBadges();
 }
 
 async function saveAssignment() {
@@ -540,7 +545,7 @@ function renderNoticeList() {
       </div>
       <div class="manage-item-actions">
         <div style="position:relative;display:inline-flex">
-          <button class="btn-icon" onclick="openNoticeComments(${n.id}, ${JSON.stringify(escHtml(n.title))})" title="댓글">💬</button>
+          <button class="btn-icon" onclick="openNoticeComments(${n.id}, ${escHtml(JSON.stringify(n.title))})" title="댓글">💬</button>
           <span data-comment-badge-notice="${n.id}" class="item-comment-badge" style="display:none"></span>
         </div>
         <button class="btn-icon" onclick="editNotice(${n.id})" title="수정">✏️</button>
@@ -699,6 +704,7 @@ if (nZone) {
 }
 
 let tCurrentNoticeId = null;
+let tCommentType = 'notice';
 let tCommentPage = 1;
 const T_PAGE_SIZE = 5;
 let tReplyToId = null;
@@ -719,14 +725,33 @@ function applyItemBadges() {
     el.textContent = cnt > 0 ? cnt : '';
     el.style.display = cnt > 0 ? 'inline-flex' : 'none';
   });
+  document.querySelectorAll('[data-comment-badge-assign]').forEach(el => {
+    const id = el.dataset.commentBadgeAssign;
+    const cnt = unreadPerItem.assignment?.[id] || 0;
+    el.textContent = cnt > 0 ? cnt : '';
+    el.style.display = cnt > 0 ? 'inline-flex' : 'none';
+  });
 }
 function clearItemBadge(type, id) {
-  const el = document.querySelector(`[data-comment-badge-notice="${id}"]`);
+  const attr = type === 'assignment' ? `data-comment-badge-assign="${id}"` : `data-comment-badge-notice="${id}"`;
+  const el = document.querySelector(`[${attr}]`);
   if (el) { el.textContent = ''; el.style.display = 'none'; }
   if (unreadPerItem[type]) delete unreadPerItem[type][id];
 }
 
+async function openAssignComments(assignId, title) {
+  tCommentType = 'assignment';
+  tCurrentNoticeId = assignId; tCommentPage = 1;
+  document.getElementById('tNoticeCommentTitle').textContent = `💬 ${title}`;
+  document.getElementById('tNoticeCommentBackdrop').style.display = 'flex';
+  document.getElementById('tNoticeCommentInput').value = '';
+  tCancelReply();
+  clearItemBadge('assignment', assignId);
+  await loadTeacherComments();
+}
+
 async function openNoticeComments(noticeId, title) {
+  tCommentType = 'notice';
   tCurrentNoticeId = noticeId; tCommentPage = 1;
   document.getElementById('tNoticeCommentTitle').textContent = `💬 ${title}`;
   document.getElementById('tNoticeCommentBackdrop').style.display = 'flex';
@@ -761,7 +786,7 @@ async function loadTeacherComments(append = false) {
   const thread = document.getElementById('tNoticeThread');
   if (!append) thread.innerHTML = '<div style="text-align:center;color:var(--muted);padding:16px">로딩 중...</div>';
   try {
-    const res = await fetch(`/api/comments/notice/${tCurrentNoticeId}?page=${tCommentPage}&limit=${T_PAGE_SIZE}`, { credentials:'include' });
+    const res = await fetch(`/api/comments/${tCommentType}/${tCurrentNoticeId}?page=${tCommentPage}&limit=${T_PAGE_SIZE}`, { credentials:'include' });
     if (!res.ok) {
       if (!append) thread.innerHTML = '<div style="color:var(--red);text-align:center;padding:12px">댓글을 불러오지 못했습니다.</div>';
       else showToast('댓글을 더 불러올 수 없습니다.', 'error');
@@ -803,7 +828,7 @@ async function submitTeacherComment() {
     return;
   }
   try {
-    const body = { type: 'notice', ref_id: tCurrentNoticeId, content, parent_id: tReplyToId };
+    const body = { type: tCommentType, ref_id: tCurrentNoticeId, content, parent_id: tReplyToId };
     const res = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
     const data = await res.json();
     if (!res.ok) { showToast(data.message||'등록 실패','error'); return; }
