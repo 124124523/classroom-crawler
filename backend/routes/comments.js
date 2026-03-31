@@ -143,6 +143,85 @@ router.get('/:type/:refId', requireLogin, async (req, res) => {
 });
 
 // ================================================================
+// GET /api/comments/unread-per-item — 아이템(과제/공지)별 미읽음 댓글 수
+// 반환: { assignment: { "42": 2, "17": 1 }, notice: { "5": 3 } }
+// ================================================================
+router.get('/unread-per-item', requireLogin, async (req, res) => {
+  const user = req.session.user;
+  const result = { assignment: {}, notice: {} };
+
+  for (const [type, meta] of Object.entries(META)) {
+    try {
+      await ensureParentId(meta.table);
+      let rows;
+
+      if (user.role === 'student') {
+        // 학생: 내 댓글에 달린 미읽음 답글만, 아이템별로
+        [rows] = await db.query(
+          `SELECT c.${meta.fkCol} AS ref_id, COUNT(*) AS cnt
+           FROM ${meta.table} c
+           WHERE c.writer != ?
+             AND c.parent_id IS NOT NULL
+             AND c.parent_id IN (SELECT id FROM ${meta.table} WHERE writer = ?)
+             AND c.id NOT IN (
+               SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+             )
+           GROUP BY c.${meta.fkCol}`,
+          [user.id, user.id, user.id, type]
+        );
+      } else if (user.role === 'leader') {
+        // 리더: 담당 분반의 미읽음 댓글, 아이템별로
+        if (type === 'assignment') {
+          [rows] = await db.query(
+            `SELECT c.${meta.fkCol} AS ref_id, COUNT(*) AS cnt
+             FROM ${meta.table} c
+             JOIN assignments a ON a.id = c.${meta.fkCol}
+             WHERE a.class_id IN (SELECT class_id FROM enrollments WHERE user_id = ?)
+               AND c.writer != ?
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )
+             GROUP BY c.${meta.fkCol}`,
+            [user.id, user.id, user.id, type]
+          );
+        } else {
+          [rows] = await db.query(
+            `SELECT c.${meta.fkCol} AS ref_id, COUNT(*) AS cnt
+             FROM ${meta.table} c
+             JOIN notices n ON n.id = c.${meta.fkCol}
+             WHERE (n.class_id IS NULL OR n.class_id IN (SELECT class_id FROM enrollments WHERE user_id = ?))
+               AND c.writer != ?
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )
+             GROUP BY c.${meta.fkCol}`,
+            [user.id, user.id, user.id, type]
+          );
+        }
+      } else {
+        // 선생님/관리자: 전체 미읽음 댓글, 아이템별로
+        [rows] = await db.query(
+          `SELECT c.${meta.fkCol} AS ref_id, COUNT(*) AS cnt
+           FROM ${meta.table} c
+           WHERE c.writer != ?
+             AND c.id NOT IN (
+               SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+             )
+           GROUP BY c.${meta.fkCol}`,
+          [user.id, user.id, type]
+        );
+      }
+
+      for (const row of rows) {
+        result[type][row.ref_id] = Number(row.cnt);
+      }
+    } catch { /* 테이블 없으면 무시 */ }
+  }
+
+  res.json(result);
+});
+
+// ================================================================
 // GET /api/comments/unread-summary — 미읽음 건수 요약 (뱃지용)
 // ================================================================
 router.get('/unread-summary', requireLogin, async (req, res) => {

@@ -193,6 +193,7 @@
     .comment-submit-btn:hover { background:var(--primary-l); }
     .comment-item.unread { border-left: 3px solid var(--red) !important; }
     .new-reply-badge { display:inline-block;background:var(--red);color:#fff;font-size:.62rem;font-weight:700;padding:1px 5px;border-radius:99px;margin-left:4px;vertical-align:middle; }
+    .item-comment-badge { position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:var(--red);color:#fff;font-size:.6rem;font-weight:700;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none; }
   </style>
 </head>
 <body>
@@ -494,6 +495,7 @@ let notices     = [];
 let assignUploadFiles = [];
 let assignExistingImages = [];   // 수정 시 기존 이미지 URL 보관
 let noticeUploadFiles = [];
+let unreadPerItem = { assignment: {}, notice: {} }; // 아이템별 미읽음 수
 let noticeExistingImages = [];   // 수정 시 기존 이미지 URL 보관
 
 (async () => {
@@ -577,12 +579,16 @@ function renderAssignList() {
         </div>
       </div>
       <div class="manage-item-actions">
-        <button class="btn-icon" onclick="openCommentModal(${a.id}, ${JSON.stringify(escHtml(a.title))})" title="댓글 보기">💬</button>
+        <div style="position:relative;display:inline-flex">
+          <button class="btn-icon" onclick="openCommentModal(${a.id}, ${JSON.stringify(escHtml(a.title))})" title="댓글 보기">💬</button>
+          <span data-comment-badge-assign="${a.id}" class="item-comment-badge" style="display:none"></span>
+        </div>
         <button class="btn-icon" onclick="editAssign(${a.id})" title="수정">✏️</button>
         <button class="btn-icon" onclick="deleteAssign(${a.id})" title="삭제">🗑️</button>
       </div>
     </div>
   `).join('');
+  applyItemBadges();
 }
 
 async function saveAssignment() {
@@ -731,12 +737,16 @@ function renderNoticeList() {
         </div>
       </div>
       <div class="manage-item-actions">
-        <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, ${JSON.stringify(escHtml(n.title))})" title="댓글">💬</button>
+        <div style="position:relative;display:inline-flex">
+          <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, ${JSON.stringify(escHtml(n.title))})" title="댓글">💬</button>
+          <span data-comment-badge-notice="${n.id}" class="item-comment-badge" style="display:none"></span>
+        </div>
         <button class="btn-icon" onclick="editNotice(${n.id})" title="수정">✏️</button>
         <button class="btn-icon" onclick="deleteNotice(${n.id})" title="삭제">🗑️</button>
       </div>
     </div>
   `).join('');
+  applyItemBadges();
 }
 
 async function saveNotice() {
@@ -926,25 +936,48 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 3000);
 }
 
-// 미읽음 댓글 배지 업데이트
+// 미읽음 댓글 배지 업데이트 (사이드바 탭 + 과제/공지 아이템별)
 async function loadUnreadBadges() {
   try {
-    const res  = await fetch('/api/comments/unread-summary', { credentials: 'include' });
-    const data = await res.json();
+    const [summaryRes, perItemRes] = await Promise.all([
+      fetch('/api/comments/unread-summary', { credentials: 'include' }),
+      fetch('/api/comments/unread-per-item', { credentials: 'include' }),
+    ]);
+    const summary = await summaryRes.json();
+    const perItem = await perItemRes.json();
+    unreadPerItem = perItem;
 
-    const assignCount = data.assignment || 0;
-    const noticeCount = data.notice || 0;
-
-    // 수행평가 관리 탭 배지
+    // 사이드바 탭 배지
+    const assignCount = summary.assignment || 0;
+    const noticeCount = summary.notice || 0;
     const ab = document.getElementById('assignUnreadBadge');
     if (ab) { ab.textContent = assignCount; ab.style.display = assignCount > 0 ? 'inline-flex' : 'none'; }
-
-    // 공지 관리 탭 배지
     const nb = document.getElementById('noticeUnreadBadge');
     if (nb) { nb.textContent = noticeCount; nb.style.display = noticeCount > 0 ? 'inline-flex' : 'none'; }
+
+    // 과제·공지 아이템별 뱃지 갱신
+    applyItemBadges();
   } catch (e) {
     console.error('[badges] 업데이트 실패:', e);
   }
+}
+
+// 각 과제·공지 💬 버튼 옆에 미읽음 수 뱃지 적용
+function applyItemBadges() {
+  // 과제
+  document.querySelectorAll('[data-comment-badge-assign]').forEach(el => {
+    const id = el.dataset.commentBadgeAssign;
+    const cnt = unreadPerItem.assignment?.[id] || 0;
+    el.textContent = cnt > 0 ? cnt : '';
+    el.style.display = cnt > 0 ? 'inline-flex' : 'none';
+  });
+  // 공지
+  document.querySelectorAll('[data-comment-badge-notice]').forEach(el => {
+    const id = el.dataset.commentBadgeNotice;
+    const cnt = unreadPerItem.notice?.[id] || 0;
+    el.textContent = cnt > 0 ? cnt : '';
+    el.style.display = cnt > 0 ? 'inline-flex' : 'none';
+  });
 }
 async function logout() {
   await fetch('/api/logout', { method:'POST', credentials:'include' });
@@ -987,6 +1020,8 @@ async function openCommentModal(assignId, title) {
   const input = document.getElementById('commentInput');
   input.value = '';
   input.placeholder = currentUser?.role === 'leader' ? '↩ 답글 버튼을 눌러 답변하세요...' : '댓글을 입력하세요...';
+  // 해당 과제 뱃지 즉시 제거
+  clearItemBadge('assignment', assignId);
   await loadComments();
 }
 
@@ -1000,7 +1035,16 @@ async function openNoticeCommentModal(noticeId, title) {
   const input = document.getElementById('commentInput');
   input.value = '';
   input.placeholder = currentUser?.role === 'leader' ? '↩ 답글 버튼을 눌러 답변하세요...' : '댓글을 입력하세요...';
+  // 해당 공지 뱃지 즉시 제거
+  clearItemBadge('notice', noticeId);
   await loadComments();
+}
+
+function clearItemBadge(type, id) {
+  const attr = type === 'assignment' ? 'data-comment-badge-assign' : 'data-comment-badge-notice';
+  const el = document.querySelector(`[${attr}="${id}"]`);
+  if (el) { el.textContent = ''; el.style.display = 'none'; }
+  if (unreadPerItem[type]) delete unreadPerItem[type][id];
 }
 
 function closeCommentModal() {
@@ -1045,7 +1089,7 @@ async function loadComments(append = false) {
           </div>
           <div class="comment-text">${escHtml(root.content)}</div>
           <div class="comment-actions">
-            <button class="comment-reply-btn" onclick="setReplyTo(${root.id}, '${escHtml(root.user_name||root.writer).replace(/'/g,"\'")}')">↩ 답글</button>
+            <button class="comment-reply-btn" data-reply-id="${root.id}" data-reply-name="${escHtml(root.user_name||root.writer)}">↩ 답글</button>
           </div>
         </div>
         ${childReplies.map(r => `
@@ -1067,6 +1111,13 @@ async function loadComments(append = false) {
     if (existing) existing.remove();
 
     thread.insertAdjacentHTML('beforeend', html);
+
+    // 이벤트 위임: 답글 버튼 클릭 (data 속성은 자동으로 HTML 엔티티 디코딩됨)
+    thread.querySelectorAll('.comment-reply-btn[data-reply-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setReplyTo(Number(btn.dataset.replyId), btn.dataset.replyName);
+      });
+    });
 
     // 더 보기 버튼
     if (hasMore) {

@@ -91,6 +91,7 @@
     .t-comment-submit { padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-size:.8rem;font-weight:600;cursor:pointer; }
     .t-reply-btn { font-size:.72rem;color:var(--text3);background:none;border:none;cursor:pointer;padding:3px 7px;border-radius:4px;margin-top:4px; }
     .t-reply-btn:hover { background:var(--surface3);color:var(--primary); }
+    .item-comment-badge { position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:var(--red);color:#fff;font-size:.6rem;font-weight:700;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none; }
   </style>
 </head>
 <body>
@@ -353,6 +354,7 @@ let assignUploadFiles = [];
 let noticeUploadFiles = [];
 let noticeExistingUrls = [];
 let editingNoticeId = null;
+let unreadPerItem = { assignment: {}, notice: {} };
 
 (async () => {
   try {
@@ -372,6 +374,7 @@ let editingNoticeId = null;
     await loadAllClasses();
     await Promise.all([loadAssignments(), loadNotices()]);
     renderOverview();
+    loadUnreadBadges();
   } catch(e) { console.error(e); showToast('초기화 실패', 'error'); }
 })();
 
@@ -536,12 +539,16 @@ function renderNoticeList() {
         </div>
       </div>
       <div class="manage-item-actions">
-        <button class="btn-icon" onclick="openNoticeComments(${n.id}, ${JSON.stringify(escHtml(n.title))})" title="댓글">💬</button>
+        <div style="position:relative;display:inline-flex">
+          <button class="btn-icon" onclick="openNoticeComments(${n.id}, ${JSON.stringify(escHtml(n.title))})" title="댓글">💬</button>
+          <span data-comment-badge-notice="${n.id}" class="item-comment-badge" style="display:none"></span>
+        </div>
         <button class="btn-icon" onclick="editNotice(${n.id})" title="수정">✏️</button>
         <button class="btn-icon" onclick="deleteNotice(${n.id})" title="삭제">🗑️</button>
       </div>
     </div>
   `).join('');
+  applyItemBadges();
 }
 
 function handleNoticeFile(e) {
@@ -696,12 +703,36 @@ let tCommentPage = 1;
 const T_PAGE_SIZE = 5;
 let tReplyToId = null;
 
+// 아이템별 미읽음 뱃지
+async function loadUnreadBadges() {
+  try {
+    const res = await fetch('/api/comments/unread-per-item', { credentials: 'include' });
+    if (!res.ok) return;
+    unreadPerItem = await res.json();
+    applyItemBadges();
+  } catch(e) { console.error('[badges]', e); }
+}
+function applyItemBadges() {
+  document.querySelectorAll('[data-comment-badge-notice]').forEach(el => {
+    const id = el.dataset.commentBadgeNotice;
+    const cnt = unreadPerItem.notice?.[id] || 0;
+    el.textContent = cnt > 0 ? cnt : '';
+    el.style.display = cnt > 0 ? 'inline-flex' : 'none';
+  });
+}
+function clearItemBadge(type, id) {
+  const el = document.querySelector(`[data-comment-badge-notice="${id}"]`);
+  if (el) { el.textContent = ''; el.style.display = 'none'; }
+  if (unreadPerItem[type]) delete unreadPerItem[type][id];
+}
+
 async function openNoticeComments(noticeId, title) {
   tCurrentNoticeId = noticeId; tCommentPage = 1;
   document.getElementById('tNoticeCommentTitle').textContent = `💬 ${title}`;
   document.getElementById('tNoticeCommentBackdrop').style.display = 'flex';
   document.getElementById('tNoticeCommentInput').value = '';
   tCancelReply();
+  clearItemBadge('notice', noticeId);
   await loadTeacherComments();
 }
 function closeNoticeComments() {
@@ -742,15 +773,21 @@ async function loadTeacherComments(append = false) {
     if (!comments.length && !append) { thread.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.84rem;padding:16px">아직 댓글이 없습니다.</div>'; return; }
     const roots = comments.filter(cm=>!cm.parent_id), replies = comments.filter(cm=>cm.parent_id);
     const ex = document.getElementById('tCommentMore'); if(ex) ex.remove();
+    // 답글 버튼 클릭 핸들러를 이벤트 위임 방식으로 처리
     thread.insertAdjacentHTML('beforeend', roots.map(root => {
       const childs = replies.filter(r=>r.parent_id===root.id);
-      const authorJson = JSON.stringify(root.user_name||root.writer);
       return `<div class="t-comment-item">
         <div class="t-comment-header"><span class="t-comment-author">${escHtml(root.user_name||root.writer)}</span><span class="t-comment-time">${fmtDate(root.created_at)}</span></div>
         <div class="t-comment-text">${escHtml(root.content)}</div>
-        <button class="t-reply-btn" onclick="tSetReplyTo(${root.id}, ${authorJson})">↩ 답글</button>
+        <button class="t-reply-btn" data-reply-id="${root.id}" data-reply-name="${escHtml(root.user_name||root.writer)}">↩ 답글</button>
       </div>${childs.map(r=>`<div class="t-comment-item reply"><div style="font-size:.68rem;color:var(--text3)">↩ 답글</div><div class="t-comment-header"><span class="t-comment-author">${escHtml(r.user_name||r.writer)}</span><span class="t-comment-time">${fmtDate(r.created_at)}</span></div><div class="t-comment-text">${escHtml(r.content)}</div></div>`).join('')}`;
     }).join(''));
+    // 이벤트 위임: 답글 버튼 클릭
+    thread.querySelectorAll('.t-reply-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tSetReplyTo(Number(btn.dataset.replyId), btn.dataset.replyName);
+      });
+    });
     if (hasMore) thread.insertAdjacentHTML('beforeend', `<div id="tCommentMore" style="text-align:center;margin-top:6px"><button onclick="tCommentPage++;loadTeacherComments(true)" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:5px 14px;border-radius:var(--radius-sm);font-size:.78rem;cursor:pointer;">더 보기</button></div>`);
   } catch(e) {
     console.error('[loadTeacherComments] 오류:', e);
