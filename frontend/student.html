@@ -564,7 +564,6 @@
           <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
         </svg>
         시간표
-        <span class="nav-badge" id="timetableBadge" style="display:none">0</span>
       </div>
 
       <div class="nav-section-label">개인</div>
@@ -1044,14 +1043,6 @@ function showSection(name, el) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'include', body: JSON.stringify({ type: 'assignment' })
     }).catch(() => {});
-    fetch('/api/comments/read-all', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ type: 'reply' })
-    }).then(() => {
-      // 읽음 처리 후 배지 동기화
-      const tb = document.getElementById('timetableBadge');
-      if (tb) tb.style.display = 'none';
-    }).catch(() => {});
   }
   if (name === 'notices') {
     notices.forEach(n => readNoticeIds.add(n.id));
@@ -1064,13 +1055,6 @@ function showSection(name, el) {
     }).catch(() => {});
   }
   if (name === 'timetable') {
-    // DB 기반: 내 댓글에 달린 미읽음 답글 전체 일괄 읽음 처리
-    const tb = document.getElementById('timetableBadge');
-    if (tb) tb.style.display = 'none';
-    fetch('/api/comments/read-all', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ type: 'reply' })
-    }).catch(() => {});
     renderWeeklyTimetable();
   }
 
@@ -1119,10 +1103,6 @@ async function updateCommentBadges() {
     const nb = document.getElementById('noticeBadge');
     if (nb) { nb.textContent = noticeTotal; nb.style.display = noticeTotal > 0 ? '' : 'none'; }
 
-    // 시간표 탭: 내 댓글에 달린 미읽음 답글 수
-    const replyCount = data.reply_count || 0;
-    const tb = document.getElementById('timetableBadge');
-    if (tb) { tb.textContent = replyCount; tb.style.display = replyCount > 0 ? '' : 'none'; }
   } catch(e) { console.error('[updateCommentBadges] 오류:', e); }
 }
 
