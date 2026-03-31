@@ -60,11 +60,17 @@ app.use('/api/classroom',   require('./routes/classroom'));
 app.use('/api/admin',       require('./routes/admin'));
 
 // ── 세션 확인 / 로그아웃 ───────────────────────────────
-app.get('/api/me', (req, res) => {
+app.get('/api/me', async (req, res) => {
   if (!req.session?.user) {
     return res.status(401).json({ message: '로그인이 필요합니다.' });
   }
-  res.json(req.session.user);
+  // class_num(담임반/반번호) 포함하여 반환
+  try {
+    const [rows] = await pool.query('SELECT class_num FROM users WHERE id = ?', [req.session.user.id]);
+    res.json({ ...req.session.user, class_num: rows[0]?.class_num || null });
+  } catch {
+    res.json(req.session.user);
+  }
 });
 
 app.post('/api/logout', (req, res) => {
@@ -233,22 +239,62 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`✅ 서버 실행 중: PORT=${PORT}`);
 
-  // 선생님 계정 자동 등록 (없으면 추가)
+  // ── class_num 컬럼 자동 추가 (학생 반번호, 선생님 담임반) ──
+  try {
+    const [cols] = await pool.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'class_num'`
+    );
+    if (!cols.length) {
+      await pool.query('ALTER TABLE users ADD COLUMN class_num VARCHAR(10) DEFAULT NULL');
+      console.log('[migration] users.class_num 컬럼 추가');
+    }
+  } catch {}
+
+  // 선생님 계정 자동 등록 (없으면 추가) + 담임반 설정
+  // homeroom: 담임반 번호 (없으면 null → 수행 성실도 비표시)
   const teachers = [
-    { id: '문가람', name: '문가람', role: 'teacher', password: '1234' },
-    { id: '이경규', name: '이경규', role: 'teacher', password: '1234' },
-    { id: '신율빈', name: '신율빈', role: 'teacher', password: '1234' },
-    { id: '박정은', name: '박정은', role: 'teacher', password: '1234' },
-    { id: '이상돈', name: '이상돈', role: 'teacher', password: '1234' },
+    { id: '문가람', name: '문가람', role: 'teacher', password: '1234', homeroom: '6' },
+    { id: '이경규', name: '이경규', role: 'teacher', password: '1234', homeroom: '7' },
+    { id: '신율빈', name: '신율빈', role: 'teacher', password: '1234', homeroom: '5' },
+    { id: '박정은', name: '박정은', role: 'teacher', password: '1234', homeroom: '8' },
+    { id: '이상돈', name: '이상돈', role: 'teacher', password: '1234', homeroom: '4' },
   ];
   for (const t of teachers) {
     try {
       await pool.query(
-        'INSERT IGNORE INTO users (id, name, role, password) VALUES (?, ?, ?, ?)',
-        [t.id, t.name, t.role, t.password]
+        'INSERT IGNORE INTO users (id, name, role, password, class_num) VALUES (?, ?, ?, ?, ?)',
+        [t.id, t.name, t.role, t.password, t.homeroom]
       );
+      // 기존 계정이면 담임반만 갱신 (homeroom이 설정된 경우만)
+      if (t.homeroom) {
+        await pool.query('UPDATE users SET class_num = ? WHERE id = ? AND role = ?', [t.homeroom, t.id, 'teacher']);
+      }
     } catch {}
   }
+
+  // ── 학생 반번호 자동 세팅 (class_num이 NULL인 학생만) ──
+  try {
+    const classMap = require('./classMap.json'); // 이름 → 반번호 매핑
+    const [students] = await pool.query(
+      "SELECT id, name FROM users WHERE role = 'student' AND class_num IS NULL"
+    );
+    for (const s of students) {
+      let classNum = null;
+      // 1순위: ID suffix에서 반번호 추출 (동명이인: 김재민_6 → 6)
+      const suffixMatch = s.id.match(/_(\d+)$/);
+      if (suffixMatch) {
+        classNum = suffixMatch[1];
+      } else if (classMap[s.name]) {
+        // 2순위: 이름으로 매핑 (유일한 이름)
+        classNum = classMap[s.name];
+      }
+      if (classNum) {
+        await pool.query('UPDATE users SET class_num = ? WHERE id = ?', [classNum, s.id]);
+      }
+    }
+    console.log(`[migration] 학생 반번호 세팅 완료 (${students.length}명 처리)`);
+  } catch (e) { console.error('[migration] 학생 반번호 세팅 오류:', e.message); }
 
   runPipeline();
 });

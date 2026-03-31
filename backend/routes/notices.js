@@ -24,6 +24,19 @@ async function ensureNoticeReadsTable() {
 }
 ensureNoticeReadsTable();
 
+// target_class_num 컬럼 자동 추가 (반 공지용)
+(async () => {
+  try {
+    const [cols] = await db.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notices' AND COLUMN_NAME = 'target_class_num'`
+    );
+    if (!cols.length) {
+      await db.query('ALTER TABLE notices ADD COLUMN target_class_num VARCHAR(10) DEFAULT NULL');
+    }
+  } catch {}
+})();
+
 function parseImages(rows) {
   return rows.map(row => {
     let images = [];
@@ -122,15 +135,18 @@ router.get('/', requireLogin, async (req, res) => {
       );
 
     } else {
-      // 학생/리더 — 전체공지(class_id IS NULL) + 내 분반 공지
+      // 학생/리더 — 전체공지 + 내 분반 공지 + 내 반 공지(target_class_num)
       [rows] = await db.query(
         BASE_SELECT_WITH_READ + `
-          WHERE n.class_id IS NULL
+          WHERE n.class_id IS NULL AND n.target_class_num IS NULL
              OR n.class_id IN (
                SELECT class_id FROM enrollments WHERE user_id = ?
              )
+             OR n.target_class_num = (
+               SELECT class_num FROM users WHERE id = ?
+             )
           ORDER BY n.created_at DESC`,
-        [user.id, user.id]
+        [user.id, user.id, user.id]
       );
     }
 
@@ -158,15 +174,15 @@ router.post('/', requireLogin, async (req, res) => {
   const user = req.session.user;
   if (user.role === 'student') return res.status(403).json({ message: '권한 없음' });
 
-  const { title, content, class_id, images } = req.body;
+  const { title, content, class_id, images, target_class_num } = req.body;
   if (!title || !content) return res.status(400).json({ message: '제목과 내용은 필수입니다.' });
 
   const imagesJson = images?.length ? JSON.stringify(images) : null;
 
   try {
     await db.query(
-      'INSERT INTO notices (title, content, writer, class_id, image_urls) VALUES (?, ?, ?, ?, ?)',
-      [title, content, user.id, class_id || null, imagesJson]
+      'INSERT INTO notices (title, content, writer, class_id, image_urls, target_class_num) VALUES (?, ?, ?, ?, ?, ?)',
+      [title, content, user.id, class_id || null, imagesJson, target_class_num || null]
     );
     res.json({ message: '공지가 등록되었습니다.' });
   } catch (err) {
@@ -178,7 +194,7 @@ router.post('/', requireLogin, async (req, res) => {
 // PUT /api/notices/:id
 router.put('/:id', requireLogin, async (req, res) => {
   const user = req.session.user;
-  const { title, content, class_id, images } = req.body;
+  const { title, content, class_id, images, target_class_num } = req.body;
   const imagesJson = images?.length ? JSON.stringify(images) : null;
 
   try {
@@ -189,8 +205,8 @@ router.put('/:id', requireLogin, async (req, res) => {
     }
 
     await db.query(
-      'UPDATE notices SET title=?, content=?, class_id=?, image_urls=? WHERE id=?',
-      [title, content, class_id || null, imagesJson, req.params.id]
+      'UPDATE notices SET title=?, content=?, class_id=?, image_urls=?, target_class_num=? WHERE id=?',
+      [title, content, class_id || null, imagesJson, target_class_num || null, req.params.id]
     );
     res.json({ message: '수정되었습니다.' });
   } catch (err) {

@@ -124,25 +124,12 @@
     </div>
     <nav class="sidebar-nav">
       <div class="nav-section-label">관리</div>
-      <div class="nav-item active" onclick="showSection('overview', this)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-        </svg>
-        개요
-      </div>
-      <div class="nav-item" onclick="showSection('assignments', this)">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-        </svg>
-        수행평가 관리
-      </div>
-      <div class="nav-item" onclick="showSection('notices', this)">
+      <div class="nav-item active" onclick="showSection('notices', this)">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
-        공지 관리
+        반 공지
       </div>
       <div class="nav-item" onclick="showSection('stats', this)">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -160,7 +147,7 @@
   <div class="main-content">
     <header class="main-header">
       <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
-      <div class="page-title" id="pageTitle">개요</div>
+      <div class="page-title" id="pageTitle">반 공지</div>
       <div class="header-right">
         <span class="header-date" id="headerDate"></span>
       </div>
@@ -168,112 +155,13 @@
 
     <main class="page-content">
 
-      <!-- OVERVIEW -->
-      <div class="section-page active" id="page-overview">
-        <div class="summary-row">
-          <div class="summary-card">
-            <div class="summary-icon green">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            </div>
-            <div><div class="summary-val" id="ovAssignCount">-</div><div class="summary-lbl">전체 수행평가</div></div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-icon blue">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            </div>
-            <div><div class="summary-val" id="ovNoticeCount">-</div><div class="summary-lbl">등록된 공지</div></div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-icon orange">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div><div class="summary-val" id="ovUrgentCount">-</div><div class="summary-lbl">D-3 이내 과제</div></div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-          <div class="card">
-            <div class="card-header"><div class="card-title"><div class="dot"></div>최근 수행평가</div><button class="btn btn-ghost btn-sm" onclick="showSection('assignments',null)">전체 보기</button></div>
-            <div id="recentAssigns" style="display:flex;flex-direction:column;gap:6px;"></div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title"><div class="dot" style="background:var(--blue)"></div>최근 공지</div><button class="btn btn-ghost btn-sm" onclick="showSection('notices',null)">전체 보기</button></div>
-            <div id="recentNotices" style="display:flex;flex-direction:column;gap:6px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ASSIGNMENTS -->
-      <div class="section-page" id="page-assignments">
+      <!-- NOTICES (반 공지) -->
+      <div class="section-page active" id="page-notices">
         <div class="manage-grid">
           <!-- Form -->
           <div class="form-card">
             <div class="form-card-header">
-              <div class="card-title"><div class="dot"></div><span id="assignFormTitle">수행평가 등록</span></div>
-              <button class="btn btn-ghost btn-sm" id="assignCancelBtn" onclick="cancelAssignEdit()" style="display:none">취소</button>
-            </div>
-            <div class="form-card-body">
-              <input type="hidden" id="assignEditId" />
-              <div class="form-group">
-                <label class="form-label">과제 제목 *</label>
-                <input class="form-input" type="text" id="assignTitle" placeholder="수행평가 이름" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">분반</label>
-                <select class="form-input form-select" id="assignClass"></select>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div class="form-group">
-                  <label class="form-label">유형</label>
-                  <select class="form-input form-select" id="assignType">
-                    <option value="일반">일반</option>
-                    <option value="진로">진로</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">마감일 *</label>
-                  <input class="form-input" type="date" id="assignDue" />
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">내용</label>
-                <textarea class="form-input form-textarea" id="assignContent" placeholder="수행평가 상세 내용"></textarea>
-              </div>
-              <div class="form-group">
-                <label class="form-label">이미지 첨부</label>
-                <div class="inline-upload" onclick="document.getElementById('assignFileInput').click()">
-                  📎 이미지 첨부 (선택사항)
-                  <input type="file" id="assignFileInput" accept="image/*" multiple style="display:none" onchange="handleAssignFile(event)" />
-                </div>
-                <div class="img-preview-row" id="assignImgPreview"></div>
-              </div>
-              <button class="btn btn-primary" style="width:100%" onclick="saveAssignment()">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                수행평가 등록
-              </button>
-            </div>
-          </div>
-          <!-- List -->
-          <div class="form-card">
-            <div class="form-card-header">
-              <div class="card-title"><div class="dot"></div>전체 수행평가 목록</div>
-              <span class="badge badge-green" id="assignListCount">0개</span>
-            </div>
-            <div class="form-card-body" style="max-height:600px;overflow-y:auto;">
-              <div class="manage-list" id="assignManageList">
-                <div style="text-align:center;padding:32px;color:var(--muted);"><span class="spinner"></span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- NOTICES -->
-      <div class="section-page" id="page-notices">
-        <div class="manage-grid">
-          <!-- Form -->
-          <div class="form-card">
-            <div class="form-card-header">
-              <div class="card-title"><div class="dot" style="background:var(--blue)"></div><span id="noticeFormTitle">공지 등록</span></div>
+              <div class="card-title"><div class="dot" style="background:var(--blue)"></div><span id="noticeFormTitle">반 공지 등록</span></div>
               <button class="btn btn-ghost btn-sm" id="noticeCancelBtn" onclick="cancelNoticeEdit()" style="display:none">취소</button>
             </div>
             <div class="form-card-body">
@@ -281,11 +169,6 @@
               <div class="form-group">
                 <label class="form-label">공지 제목 *</label>
                 <input class="form-input" type="text" id="noticeTitle" placeholder="공지 제목" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">분반 *</label>
-                <select class="form-input form-select" id="noticeClass">
-                </select>
               </div>
               <div class="form-group">
                 <label class="form-label">내용 *</label>
@@ -302,7 +185,7 @@
               </div>
               <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,#3B6B99,var(--blue))" onclick="saveNotice()">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                공지 등록
+                반 공지 등록
               </button>
             </div>
           </div>
@@ -365,14 +248,12 @@
 
 <script>
 let currentUser     = null;
-let allClasses      = [];
-let assignments     = [];
+let homeroom        = null;
 let notices         = [];
-let assignUploadFiles = [];
 let noticeUploadFiles = [];
 let noticeExistingUrls = [];
 let editingNoticeId = null;
-let unreadPerItem = { assignment: {}, notice: {} };
+let unreadPerItem = { notice: {} };
 
 (async () => {
   try {
@@ -388,10 +269,10 @@ let unreadPerItem = { assignment: {}, notice: {} };
     document.getElementById('sidebarName').textContent = name;
     document.getElementById('avatarCircle').textContent = (name[0] || 'T').toUpperCase();
 
+    homeroom = currentUser.class_num || null;
+
     setHeaderDate();
-    await loadAllClasses();
-    await Promise.all([loadAssignments(), loadNotices()]);
-    renderOverview();
+    await loadNotices();
     loadUnreadBadges();
   } catch(e) {
     console.error('[teacher init]', e);
@@ -404,152 +285,7 @@ function setHeaderDate() {
   document.getElementById('headerDate').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
 }
 
-async function loadAllClasses() {
-  try {
-    const res = await fetch('/api/subjects/classes/all', { credentials:'include' });
-    if (!res.ok) {
-      if (res.status === 401) { location.href = 'login.html'; return; }
-      showToast('분반 목록 로딩 실패', 'error'); return;
-    }
-    const data = await res.json();
-    allClasses = data || [];
-    const assignSel = document.getElementById('assignClass');
-    const noticeSel = document.getElementById('noticeClass');
-    allClasses.forEach(c => {
-      const opt = `<option value="${c.id}">${escHtml(c.subject_name)} ${escHtml(c.class_code)}반${c.teacher ? ' · '+escHtml(c.teacher) : ''}</option>`;
-      assignSel.insertAdjacentHTML('beforeend', opt);
-    });
-    // 공지 분반: 선생님 담당 분반만 표시
-    const myClasses = allClasses.filter(c => c.teacher === currentUser.name);
-    if (myClasses.length) {
-      myClasses.forEach(c => {
-        noticeSel.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escHtml(c.subject_name)} ${escHtml(c.class_code)}반</option>`);
-      });
-    } else {
-      // 담당 분반이 없으면 전체 목록 표시
-      allClasses.forEach(c => {
-        noticeSel.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escHtml(c.subject_name)} ${escHtml(c.class_code)}반${c.teacher ? ' · '+escHtml(c.teacher) : ''}</option>`);
-      });
-    }
-  } catch(e) { showToast('분반 목록 로딩 실패', 'error'); }
-}
-
-async function loadAssignments() {
-  try {
-    const res = await fetch('/api/assignments', { credentials:'include' });
-    if (!res.ok) {
-      if (res.status === 401) { location.href = 'login.html'; return; }
-      showToast('과제 로딩 실패', 'error'); return;
-    }
-    const data = await res.json();
-    assignments = data.assignments || [];
-    renderAssignList();
-  } catch(e) { showToast('과제 로딩 실패', 'error'); }
-}
-
-function renderAssignList() {
-  const list = document.getElementById('assignManageList');
-  document.getElementById('assignListCount').textContent = assignments.length + '개';
-  if (!assignments.length) { list.innerHTML = '<div class="empty-state"><p>등록된 수행평가가 없습니다.</p></div>'; return; }
-  list.innerHTML = assignments.map(a => `
-    <div class="manage-item">
-      <div class="manage-item-info">
-        <div class="manage-item-title">${escHtml(a.title)}</div>
-        <div class="manage-item-meta">
-          <span>${escHtml(a.class_label||a.subject_name||'')}</span>
-          <span class="badge ${a.type==='진로'?'badge-blue':'badge-green'}" style="font-size:0.68rem;padding:1px 7px">${a.type||'일반'}</span>
-          <span>마감: ${a.due_date ? new Date(a.due_date.replace(' ','T')).toLocaleDateString('ko-KR') : '없음'}</span>
-          ${a.is_crawled ? '<span class="badge badge-gray" style="font-size:0.65rem">자동</span>' : ''}
-        </div>
-      </div>
-      <div class="manage-item-actions">
-        <div style="position:relative;display:inline-flex">
-          <button class="btn-icon" onclick="openAssignComments(${a.id}, ${JSON.stringify(a.title).replace(/"/g, '&quot;')})" title="댓글">💬</button>
-          <span data-comment-badge-assign="${a.id}" class="item-comment-badge" style="display:none"></span>
-        </div>
-        ${!a.is_crawled ? `<button class="btn-icon" onclick="editAssign(${a.id})" title="수정">✏️</button>` : ''}
-        <button class="btn-icon" onclick="deleteAssign(${a.id})" title="삭제">🗑️</button>
-      </div>
-    </div>
-  `).join('');
-  applyItemBadges();
-}
-
-async function saveAssignment() {
-  const editId  = document.getElementById('assignEditId').value;
-  const title   = document.getElementById('assignTitle').value.trim();
-  const classId = document.getElementById('assignClass').value;
-  const type    = document.getElementById('assignType').value;
-  const due     = document.getElementById('assignDue').value;
-  const content = document.getElementById('assignContent').value.trim();
-  if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
-  if (!due)   { showToast('마감일을 입력하세요.', 'error'); return; }
-
-  let imageUrls = [];
-  if (assignUploadFiles.length) {
-    showToast('이미지 업로드 중...', 'info');
-    const form = new FormData(); assignUploadFiles.forEach(f => form.append('images', f));
-    const r = await fetch('/api/upload/multiple', { method:'POST', credentials:'include', body:form });
-    if (!r.ok) { showToast('이미지 업로드 실패', 'error'); return; }
-    const d = await r.json(); imageUrls = d.urls || [];
-  }
-
-  const body = { title, class_id: classId, type, due_date: due||null, description: content, images: imageUrls };
-  const url = editId ? `/api/assignments/${editId}` : '/api/assignments';
-  const method = editId ? 'PUT' : 'POST';
-  try {
-    const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
-    if (!res.ok) { const d = await res.json(); showToast(d.message || '저장 실패', 'error'); return; }
-    showToast(editId ? '수정되었습니다.' : '수행평가가 등록되었습니다.', 'success');
-    cancelAssignEdit(); await loadAssignments(); renderOverview();
-  } catch { showToast('저장 실패', 'error'); }
-}
-
-function editAssign(id) {
-  const a = assignments.find(x => x.id === id); if (!a) return;
-  document.getElementById('assignEditId').value   = a.id;
-  document.getElementById('assignTitle').value    = a.title;
-  document.getElementById('assignType').value     = a.type || '일반';
-  document.getElementById('assignDue').value      = a.due_date ? a.due_date.split('T')[0] : '';
-  document.getElementById('assignContent').value  = a.description || '';
-  document.getElementById('assignClass').value    = a.class_id || '';
-  document.getElementById('assignFormTitle').textContent = '수행평가 수정';
-  document.getElementById('assignCancelBtn').style.display = '';
-  showSection('assignments', document.querySelector('[onclick*="assignments"]'));
-}
-
-function cancelAssignEdit() {
-  ['assignEditId','assignTitle','assignContent','assignDue'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('assignType').value = '일반';
-  document.getElementById('assignImgPreview').innerHTML = '';
-  assignUploadFiles = [];
-  document.getElementById('assignFormTitle').textContent = '수행평가 등록';
-  document.getElementById('assignCancelBtn').style.display = 'none';
-}
-
-async function deleteAssign(id) {
-  if (!confirm('이 수행평가를 삭제하시겠습니까?')) return;
-  try {
-    const res = await fetch(`/api/assignments/${id}`, { method:'DELETE', credentials:'include' });
-    if (!res.ok) { const d = await res.json(); showToast(d.message || '삭제 실패', 'error'); return; }
-    showToast('삭제되었습니다.', 'success'); await loadAssignments(); renderOverview();
-  } catch { showToast('삭제 실패', 'error'); }
-}
-
-function handleAssignFile(e) {
-  const files = Array.from(e.target.files);
-  const preview = document.getElementById('assignImgPreview');
-  files.forEach(file => {
-    assignUploadFiles.push(file);
-    const reader = new FileReader(); reader.onload = ev => {
-      const thumb = document.createElement('div'); thumb.className = 'upload-thumb';
-      thumb.innerHTML = `<img src="${ev.target.result}" /><button class="remove-btn" onclick="this.parentElement.remove()">✕</button>`;
-      preview.appendChild(thumb);
-    }; reader.readAsDataURL(file);
-  });
-}
-
-// ── Notices ──
+// ── 반 공지 ──
 async function loadNotices() {
   try {
     const res = await fetch('/api/notices', { credentials:'include' });
@@ -564,14 +300,17 @@ async function loadNotices() {
 
 function renderNoticeList() {
   const list = document.getElementById('noticeManageList');
-  document.getElementById('noticeListCount').textContent = notices.length + '개';
-  if (!notices.length) { list.innerHTML = '<div class="empty-state"><p>등록된 공지가 없습니다.</p></div>'; return; }
-  list.innerHTML = notices.map(n => `
+  const myCount = notices.filter(n => n.writer === currentUser.id).length;
+  document.getElementById('noticeListCount').textContent = myCount + '개';
+  // 담임반 공지만 필터링 (내가 작성한 반 공지)
+  const myNotices = notices.filter(n => n.writer === currentUser.id);
+  if (!myNotices.length) { list.innerHTML = '<div class="empty-state"><p>등록된 반 공지가 없습니다.</p></div>'; return; }
+  list.innerHTML = myNotices.map(n => `
     <div class="manage-item">
       <div class="manage-item-info">
         <div class="manage-item-title">${escHtml(n.title)}</div>
         <div class="manage-item-meta">
-          <span>${n.class_label ? escHtml(n.class_label) : '전체'}</span>
+          <span>${homeroom ? homeroom+'반 공지' : '반 공지'}</span>
           <span>${fmtDate(n.created_at)}</span>
         </div>
       </div>
@@ -614,10 +353,9 @@ function renderNoticeImgPreview() {
 async function saveNotice() {
   const editId  = document.getElementById('noticeEditId').value;
   const title   = document.getElementById('noticeTitle').value.trim();
-  const classId = document.getElementById('noticeClass').value || null;
   const content = document.getElementById('noticeContent').value.trim();
   if (!title || !content) { showToast('제목과 내용을 입력하세요.', 'error'); return; }
-  if (!classId) { showToast('분반을 선택하세요.', 'error'); return; }
+  if (!homeroom) { showToast('담임반 정보가 없습니다.', 'error'); return; }
 
   let newUrls = [];
   if (noticeUploadFiles.length) {
@@ -631,14 +369,15 @@ async function saveNotice() {
 
   try {
     let res;
+    const body = { title, content, target_class_num: homeroom, images };
     if (editId) {
-      res = await fetch(`/api/notices/${editId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, content, class_id: classId, images }) });
+      res = await fetch(`/api/notices/${editId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
     } else {
-      res = await fetch('/api/notices', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ title, content, class_id: classId, images }) });
+      res = await fetch('/api/notices', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
     }
-    if (!res.ok) { const d = await res.json(); showToast(d.message || '저장 실패', 'error'); return; }
-    showToast(editId ? '수정되었습니다.' : '공지가 등록되었습니다.', 'success');
-    cancelNoticeEdit(); await loadNotices(); renderOverview();
+    if (!res.ok) { const d = await res.json().catch(()=>({})); showToast(d.message || '저장 실패', 'error'); return; }
+    showToast(editId ? '수정되었습니다.' : '반 공지가 등록되었습니다.', 'success');
+    cancelNoticeEdit(); await loadNotices();
   } catch { showToast('저장 실패', 'error'); }
 }
 
@@ -648,9 +387,8 @@ function editNotice(id) {
   document.getElementById('noticeEditId').value   = n.id;
   document.getElementById('noticeTitle').value    = n.title;
   document.getElementById('noticeContent').value  = n.content || '';
-  document.getElementById('noticeClass').value    = n.class_id || '';
   noticeExistingUrls  = [...(n.images||[])]; noticeUploadFiles = []; renderNoticeImgPreview();
-  document.getElementById('noticeFormTitle').textContent = '공지 수정';
+  document.getElementById('noticeFormTitle').textContent = '반 공지 수정';
   document.getElementById('noticeCancelBtn').style.display = '';
   showSection('notices', null);
 }
@@ -659,7 +397,7 @@ function cancelNoticeEdit() {
   editingNoticeId = null; noticeUploadFiles = []; noticeExistingUrls = [];
   ['noticeEditId','noticeTitle','noticeContent'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('noticeImgPreview').innerHTML = '';
-  document.getElementById('noticeFormTitle').textContent = '공지 등록';
+  document.getElementById('noticeFormTitle').textContent = '반 공지 등록';
   document.getElementById('noticeCancelBtn').style.display = 'none';
 }
 
@@ -668,32 +406,8 @@ async function deleteNotice(id) {
   try {
     const res = await fetch(`/api/notices/${id}`, { method:'DELETE', credentials:'include' });
     if (!res.ok) { const d = await res.json(); showToast(d.message || '삭제 실패', 'error'); return; }
-    showToast('삭제되었습니다.', 'success'); await loadNotices(); renderOverview();
+    showToast('삭제되었습니다.', 'success'); await loadNotices();
   } catch { showToast('삭제 실패', 'error'); }
-}
-
-// ── Overview ──
-function renderOverview() {
-  try {
-  document.getElementById('ovAssignCount').textContent = assignments.length;
-  document.getElementById('ovNoticeCount').textContent = notices.length;
-  const urgent = assignments.filter(a => { if (!a.due_date) return false; try { const d = Math.ceil((new Date(a.due_date.replace(' ','T'))-new Date())/86400000); return d<=3&&d>=0; } catch { return false; } }).length;
-  document.getElementById('ovUrgentCount').textContent = urgent;
-  const ra = document.getElementById('recentAssigns');
-  ra.innerHTML = assignments.slice(0,4).map(a => `
-    <div style="padding:9px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:0.82rem">
-      <div style="font-weight:600;color:var(--text)">${escHtml(a.title)}</div>
-      <div style="color:var(--text3);font-size:0.72rem;margin-top:2px">${escHtml(a.class_label||'')} · ${a.due_date ? '마감: '+new Date(a.due_date.replace(' ','T')).toLocaleDateString('ko-KR') : '기한없음'}</div>
-    </div>
-  `).join('') || '<div style="color:var(--muted);font-size:0.83rem;padding:12px">없음</div>';
-  const rn = document.getElementById('recentNotices');
-  rn.innerHTML = notices.slice(0,4).map(n => `
-    <div style="padding:9px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:0.82rem">
-      <div style="font-weight:600;color:var(--text)">${escHtml(n.title)}</div>
-      <div style="color:var(--text3);font-size:0.72rem;margin-top:2px">${fmtDate(n.created_at)}</div>
-    </div>
-  `).join('') || '<div style="color:var(--muted);font-size:0.83rem;padding:12px">없음</div>';
-  } catch(e) { console.error('[renderOverview]', e); }
 }
 
 // ── Utils ──
@@ -703,7 +417,7 @@ function showSection(name, el) {
   document.getElementById(`page-${name}`).classList.add('active');
   const navEl = el || (typeof event !== 'undefined' && event?.currentTarget);
   if (navEl && navEl.classList) navEl.classList.add('active');
-  const titles = { overview:'개요', assignments:'수행평가 관리', notices:'공지 관리', stats:'수행 성실도' };
+  const titles = { notices:'반 공지', stats:'수행 성실도' };
   if (name === 'stats') loadCompletionStats();
   document.getElementById('pageTitle').textContent = titles[name] || name;
   if (window.innerWidth <= 768) closeSidebar();
@@ -719,39 +433,32 @@ async function loadCompletionStats() {
     if (!res.ok) { container.innerHTML = '<div style="color:var(--red);padding:16px;text-align:center">로딩 실패</div>'; return; }
     const data = await res.json();
     const stats = data.stats || [];
-    if (!stats.length) { container.innerHTML = '<div style="color:var(--muted);padding:24px;text-align:center">담당 분반 데이터가 없습니다.</div>'; return; }
+    const homeroom = data.homeroom || '';
+    if (!stats.length) { container.innerHTML = `<div style="color:var(--muted);padding:24px;text-align:center">${homeroom ? homeroom+'반 ' : ''}담임반 데이터가 없습니다.</div>`; return; }
 
-    // 분반별 그룹핑
-    const byClass = {};
-    stats.forEach(s => {
-      if (!byClass[s.class_label]) byClass[s.class_label] = [];
-      byClass[s.class_label].push(s);
-    });
+    // 담임반 학생 전체 성실도 (학생별 합산)
+    stats.sort((a, b) => b.percent - a.percent);
+    const avg = stats.length ? Math.round(stats.reduce((s, x) => s + x.percent, 0) / stats.length) : 0;
 
-    let html = '';
-    for (const [label, students] of Object.entries(byClass)) {
-      students.sort((a, b) => b.percent - a.percent);
-      const avg = students.length ? Math.round(students.reduce((s, x) => s + x.percent, 0) / students.length) : 0;
-      html += `<div style="margin-bottom:20px;">
-        <div style="font-weight:700;font-size:.88rem;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px;">
-          ${escHtml(label)}
-          <span style="font-size:.75rem;font-weight:500;color:var(--text3)">평균 ${avg}%</span>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          ${students.map(s => {
-            const color = s.percent >= 80 ? 'var(--primary)' : s.percent >= 50 ? 'var(--orange)' : 'var(--red)';
-            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);font-size:.82rem;">
-              <span style="width:80px;font-weight:500;color:var(--text);flex-shrink:0">${escHtml(s.user_name)}</span>
-              <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-                <div style="height:100%;width:${s.percent}%;background:${color};border-radius:4px;transition:width .3s"></div>
-              </div>
-              <span style="width:45px;text-align:right;font-weight:700;font-size:.78rem;color:${color}">${s.percent}%</span>
-              <span style="font-size:.68rem;color:var(--text3)">${s.completed}/${s.total}</span>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
-    }
+    let html = `<div style="margin-bottom:20px;">
+      <div style="font-weight:700;font-size:.88rem;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+        ${escHtml(homeroom)}반 수행 성실도
+        <span style="font-size:.75rem;font-weight:500;color:var(--text3)">평균 ${avg}% · ${stats.length}명</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        ${stats.map(s => {
+          const color = s.percent >= 80 ? 'var(--primary)' : s.percent >= 50 ? 'var(--orange)' : 'var(--red)';
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);font-size:.82rem;">
+            <span style="width:80px;font-weight:500;color:var(--text);flex-shrink:0">${escHtml(s.user_name)}</span>
+            <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+              <div style="height:100%;width:${s.percent}%;background:${color};border-radius:4px;transition:width .3s"></div>
+            </div>
+            <span style="width:45px;text-align:right;font-weight:700;font-size:.78rem;color:${color}">${s.percent}%</span>
+            <span style="font-size:.68rem;color:var(--text3)">${s.completed}/${s.total}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
     container.innerHTML = html;
   } catch { container.innerHTML = '<div style="color:var(--red);padding:16px;text-align:center">로딩 실패</div>'; }
 }

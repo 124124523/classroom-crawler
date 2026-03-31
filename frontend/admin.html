@@ -979,7 +979,8 @@ function escHtml(str) {
 }
 function fmtDate(str) {
   if (!str) return '-';
-  const d = new Date(str);
+  const d = new Date(str.replace(' ','T'));
+  if (isNaN(d)) return str.slice(0,10);
   return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
 }
 function showToast(msg, type = 'info') {

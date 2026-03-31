@@ -1930,7 +1930,7 @@ async function logout() {
 // ── Utils ──
 function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDate(str) { if (!str) return ''; const d = parseDueLocal(str); const mm = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); const hh = String(d.getHours()).padStart(2,'0'); const mi = String(d.getMinutes()).padStart(2,'0'); return `${mm}.${dd} ${hh}:${mi}까지`; }
-function fmtDateTime(str) { if (!str) return ''; const d = new Date(str); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function fmtDateTime(str) { if (!str) return ''; const d = new Date(str.replace(' ','T')); if (isNaN(d)) return str.slice(0,16); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function showToast(msg, type='info') {
   const c = document.getElementById('toast-container');
   const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;

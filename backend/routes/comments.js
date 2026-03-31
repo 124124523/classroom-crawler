@@ -71,7 +71,8 @@ router.get('/:type/:refId', requireLogin, async (req, res) => {
     // 학생: 내 댓글 + 내 댓글에 달린 답글만 표시 (다른 학생 댓글 비표시)
     // 교사/리더/관리자: 전체 댓글
     let rows;
-    const SELECT_COLS = `c.id, c.${meta.fkCol} AS ref_id, c.writer, c.content, c.created_at,
+    const SELECT_COLS = `c.id, c.${meta.fkCol} AS ref_id, c.writer, c.content,
+            DATE_ADD(c.created_at, INTERVAL 9 HOUR) AS created_at,
             IFNULL(c.parent_id, NULL) AS parent_id, u.name AS user_name`;
     if (user.role === 'student') {
       [rows] = await db.query(

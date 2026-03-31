@@ -1091,9 +1091,11 @@ function cancelReply() {
 
 function fmtCommentTime(str) {
   if (!str) return '';
-  const d = new Date(str);
+  const d = new Date(str.replace(' ','T'));
+  if (isNaN(d)) return str.slice(0,10);
   const now = new Date();
   const diff = Math.floor((now - d) / 1000);
+  if (diff < 0) return `${d.getMonth()+1}/${d.getDate()}`;
   if (diff < 60) return '방금';
   if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
   if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;

@@ -116,7 +116,7 @@ router.get('/', requireLogin, async (req, res) => {
   }
 });
 
-// GET /api/assignments/completion-stats — 분반별 학생 수행 성실도
+// GET /api/assignments/completion-stats — 담임반 학생 수행 성실도
 router.get('/completion-stats', requireLogin, async (req, res) => {
   const user = req.session.user;
   if (user.role !== 'teacher' && user.role !== 'admin') {
@@ -124,47 +124,64 @@ router.get('/completion-stats', requireLogin, async (req, res) => {
   }
 
   try {
-    const [classes] = await db.query(
-      `SELECT c.id, s.name AS subject_name, c.class_code
-       FROM classes c JOIN subjects s ON c.subject_id = s.id
-       WHERE c.teacher = ?`, [user.name]
+    // 담임반 번호 조회 (users.class_num)
+    const [teacherRows] = await db.query(
+      'SELECT class_num FROM users WHERE id = ?', [user.id]
     );
-    if (!classes.length) return res.json({ stats: [] });
+    const homeroom = teacherRows[0]?.class_num;
+    if (!homeroom) return res.json({ stats: [], message: '담임반 정보가 없습니다.' });
 
-    const classIds = classes.map(c => c.id);
-    const classMap = {};
-    classes.forEach(c => { classMap[c.id] = `${c.subject_name} ${c.class_code}반`; });
+    // 담임반 학생 목록 (class_num이 같은 학생들)
+    const [students] = await db.query(
+      "SELECT id, name FROM users WHERE role = 'student' AND class_num = ?",
+      [homeroom]
+    );
+    if (!students.length) return res.json({ stats: [] });
 
+    const studentIds = students.map(s => s.id);
+    const studentNames = {};
+    students.forEach(s => { studentNames[s.id] = s.name; });
+
+    // 담임반 학생들의 전체 과제 완료 현황 (과목별 그룹핑)
     const [rows] = await db.query(
       `SELECT
          e.user_id,
          u.name AS user_name,
          a.class_id,
+         s.name AS subject_name,
+         c.class_code,
+         CONCAT(s.name, ' ', c.class_code, '반') AS class_label,
          COUNT(DISTINCT a.id) AS total_assignments,
          COUNT(DISTINCT co.target_id) AS completed_count
        FROM enrollments e
-       JOIN users u ON u.id = e.user_id AND u.role = 'student'
+       JOIN users u ON u.id = e.user_id
        JOIN assignments a ON a.class_id = e.class_id
+       JOIN classes c ON c.id = a.class_id
+       JOIN subjects s ON s.id = c.subject_id
        LEFT JOIN completions co ON co.user_id = e.user_id
          AND co.target_type = 'assignment' AND co.target_id = CAST(a.id AS CHAR)
-       WHERE e.class_id IN (?)
+       WHERE e.user_id IN (?)
        GROUP BY e.user_id, a.class_id`,
-      [classIds]
+      [studentIds]
     );
 
-    const stats = rows.map(r => ({
-      user_id: r.user_id,
-      user_name: r.user_name,
-      class_id: r.class_id,
-      class_label: classMap[r.class_id] || '',
-      total: r.total_assignments,
-      completed: r.completed_count,
-      percent: r.total_assignments > 0
-        ? Math.round((r.completed_count / r.total_assignments) * 100)
-        : 0,
+    // 학생별 전체 과목 합산 통계
+    const studentStats = {};
+    rows.forEach(r => {
+      if (!studentStats[r.user_id]) {
+        studentStats[r.user_id] = { user_id: r.user_id, user_name: r.user_name, total: 0, completed: 0 };
+      }
+      studentStats[r.user_id].total += r.total_assignments;
+      studentStats[r.user_id].completed += r.completed_count;
+    });
+
+    const stats = Object.values(studentStats).map(s => ({
+      ...s,
+      class_label: `${homeroom}반`,
+      percent: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0,
     }));
 
-    res.json({ stats });
+    res.json({ stats, homeroom });
   } catch (err) {
     console.error('[assignments] GET /completion-stats 오류:', err.message);
     res.status(500).json({ message: '서버 오류' });
