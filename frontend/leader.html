@@ -581,7 +581,7 @@ function renderAssignList() {
       </div>
       <div class="manage-item-actions">
         <div style="position:relative;display:inline-flex">
-          <button class="btn-icon" onclick="openCommentModal(${a.id}, ${escHtml(JSON.stringify(a.title))})" title="댓글 보기">💬</button>
+          <button class="btn-icon" onclick="openCommentModal(${a.id}, ${JSON.stringify(a.title).replace(/"/g, '&quot;')})" title="댓글 보기">💬</button>
           <span data-comment-badge-assign="${a.id}" class="item-comment-badge" style="display:none"></span>
         </div>
         <button class="btn-icon" onclick="editAssign(${a.id})" title="수정">✏️</button>
@@ -740,7 +740,7 @@ function renderNoticeList() {
       </div>
       <div class="manage-item-actions">
         <div style="position:relative;display:inline-flex">
-          <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, ${escHtml(JSON.stringify(n.title))})" title="댓글">💬</button>
+          <button class="btn-icon" onclick="openNoticeCommentModal(${n.id}, ${JSON.stringify(n.title).replace(/"/g, '&quot;')})" title="댓글">💬</button>
           <span data-comment-badge-notice="${n.id}" class="item-comment-badge" style="display:none"></span>
         </div>
         <button class="btn-icon" onclick="editNotice(${n.id})" title="수정">✏️</button>

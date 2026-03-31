@@ -1609,7 +1609,7 @@ function calStartEdit(id, currentTitle, currentDesc) {
       <input id="cal-edit-memo-${id}"  class="cal-add-input" value="${escHtml(currentDesc||'')}" placeholder="메모" style="width:100%" />
       <div style="display:flex;gap:6px;margin-top:2px">
         <button class="cal-add-btn" onclick="calSaveEdit(${id})">저장</button>
-        <button class="btn btn-ghost btn-sm" onclick="calCancelEdit(${id},${escHtml(JSON.stringify(currentTitle))},${escHtml(JSON.stringify(currentDesc||''))})">취소</button>
+        <button class="btn btn-ghost btn-sm" onclick="calCancelEdit(${id},${JSON.stringify(currentTitle).replace(/"/g,'&quot;')},${JSON.stringify(currentDesc||'').replace(/"/g,'&quot;')})">취소</button>
       </div>
     </div>
   `;
@@ -1626,7 +1626,7 @@ function personalEvRowInner(id, title, desc) {
       <div class="cal-detail-sub">개인 일정${desc ? ' · ' + escHtml(desc) : ''}</div>
     </div>
     <div style="display:flex;gap:3px;flex-shrink:0">
-      <button class="btn-icon" onclick="calStartEdit(${id},${escHtml(JSON.stringify(title))},${escHtml(JSON.stringify(desc||''))})" title="수정">
+      <button class="btn-icon" onclick="calStartEdit(${id},${JSON.stringify(title).replace(/"/g,'&quot;')},${JSON.stringify(desc||'').replace(/"/g,'&quot;')})" title="수정">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
