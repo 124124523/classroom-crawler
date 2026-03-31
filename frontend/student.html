@@ -10,7 +10,7 @@
     .meal-header { background: var(--primary) !important; }
     .meal-header h3 { color: #FFFFFF !important; }
     .meal-date { color: rgba(255,255,255,0.65) !important; }
-    .meal-tab.active { color: var(--primary) !important; border-bottom-color: var(--primary) !important; background: rgba(29,82,50,0.05) !important; }
+    .meal-nav-btn:hover:not(:disabled) { border-color: var(--primary) !important; color: var(--primary) !important; }
     .cal-cell.today .cal-day-num { background: var(--primary) !important; color: #FFFFFF !important; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
     .cal-cell.today { border-color: rgba(29,82,50,0.3) !important; background: rgba(29,82,50,0.04) !important; }
     .cal-cell.selected { border-color: var(--primary-l) !important; background: rgba(29,82,50,0.07) !important; box-shadow: 0 0 0 1px var(--primary-l) !important; }
@@ -114,13 +114,18 @@
     .meal-header { background: var(--primary); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
     .meal-header h3 { font-family: var(--font-display); font-size: 1rem; color: #FFFFFF; }
     .meal-date { font-size: 0.75rem; color: rgba(168,230,195,0.7); }
-    .meal-tabs { display: flex; border-bottom: 1px solid var(--border); }
-    .meal-tab { flex: 1; padding: 10px; text-align: center; font-size: 0.8rem; font-weight: 500; color: var(--text3); cursor: pointer; border: none; background: transparent; border-bottom: 2px solid transparent; transition: all 0.15s; }
-    .meal-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(29,82,50,0.04); }
-    .meal-content { padding: 16px 18px; }
-    .meal-menu { font-size: 0.83rem; color: var(--text2); line-height: 2; }
-    .meal-menu span { display: block; }
-    .meal-cal { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+    .meal-content { padding: 16px 18px 18px; }
+    .meal-image-wrap { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface2); }
+    .meal-image { display: block; width: 100%; height: auto; }
+    .meal-empty { padding: 18px 14px; text-align: center; font-size: 0.83rem; color: var(--text3); background: var(--surface2); border: 1px dashed var(--border2); border-radius: var(--radius-sm); }
+    .meal-note { margin-top: 10px; font-size: 0.76rem; color: var(--text3); line-height: 1.6; }
+    .meal-browser-nav { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+    .meal-nav-btn { width: 34px; height: 34px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; transition: all 0.15s; }
+    .meal-nav-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: rgba(29,82,50,0.04); }
+    .meal-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .meal-browser-meta { flex: 1; min-width: 0; text-align: center; }
+    .meal-browser-range { font-size: 0.72rem; color: var(--text3); }
+    .meal-browser-date { margin-top: 2px; font-size: 0.88rem; font-weight: 700; color: var(--text); }
 
     /* ── Grid Layouts ── */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -1934,43 +1939,152 @@ function renderCalDetailPanel(dateKey, dateObj, evs) {
   document.getElementById('calAddMemo').value  = '';
 }
 
-// ── Meals ──
+// ── Meals (Instagram 사진 기반 브라우저) ──
+const MEAL_BROWSER_STATE = {
+  dates: [],
+  rowsByDate: {},
+  selectedDate: '',
+};
+
+function mealFormatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function mealParseDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function mealLabel(dateStr) {
+  const date = mealParseDate(dateStr);
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[date.getDay()]})`;
+}
+
+function mealShortLabel(dateStr) {
+  const date = mealParseDate(dateStr);
+  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+function getMealBrowserRange(baseDate = new Date()) {
+  const current = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  const day = current.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+
+  const currentMonday = new Date(current);
+  currentMonday.setDate(currentMonday.getDate() + mondayOffset);
+
+  const previousMonday = new Date(currentMonday);
+  previousMonday.setDate(previousMonday.getDate() - 7);
+
+  const currentFriday = new Date(currentMonday);
+  currentFriday.setDate(currentFriday.getDate() + 4);
+
+  const dates = [];
+  for (let cursor = new Date(previousMonday); cursor <= currentFriday; cursor.setDate(cursor.getDate() + 1)) {
+    const copy = new Date(cursor);
+    const dow = copy.getDay();
+    if (dow !== 0 && dow !== 6) {
+      dates.push(mealFormatDate(copy));
+    }
+  }
+
+  return {
+    from: mealFormatDate(previousMonday),
+    to: mealFormatDate(currentFriday),
+    dates,
+  };
+}
+
 async function loadMeals() {
   try {
-    // toISOString()은 UTC 기준 → 한국 시간(UTC+9)과 최대 9시간 차이로 날짜 오류 발생
-    // 로컬 날짜를 직접 구해서 사용
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    const res = await fetch(`/api/meals?date=${today}`, { credentials:'include' });
+    const range = getMealBrowserRange(new Date());
+    const res = await fetch(`/api/meals/range?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`, { credentials:'include' });
+    if (!res.ok) {
+      if (res.status === 401) { location.href = 'login.html'; return; }
+      throw new Error(`HTTP ${res.status}`);
+    }
     const data = await res.json();
-    renderMeals(data.meals || {}, today);
-  } catch(e) { console.error(e); }
+    const rowsByDate = {};
+    (data.rows || []).forEach(row => { rowsByDate[row.date] = row; });
+
+    MEAL_BROWSER_STATE.dates = range.dates;
+    MEAL_BROWSER_STATE.rowsByDate = rowsByDate;
+
+    const today = mealFormatDate(new Date());
+    const fallbackDate = range.dates.includes(today) ? today : range.dates[range.dates.length - 1];
+    MEAL_BROWSER_STATE.selectedDate =
+      MEAL_BROWSER_STATE.selectedDate && range.dates.includes(MEAL_BROWSER_STATE.selectedDate)
+        ? MEAL_BROWSER_STATE.selectedDate
+        : fallbackDate;
+
+    renderMeals();
+  } catch(e) {
+    console.error('[loadMeals]', e);
+    const wrap = document.getElementById('mealWrap');
+    if (wrap) wrap.innerHTML = `
+      <div class="meal-card">
+        <div class="meal-header"><h3>급식표</h3><span class="meal-date">불러오기 실패</span></div>
+        <div class="meal-content"><div class="meal-empty">급식 데이터를 불러오지 못했습니다.</div></div>
+      </div>
+    `;
+  }
 }
-function renderMeals(meals, date) {
+
+function moveMealDay(delta) {
+  const dates = MEAL_BROWSER_STATE.dates;
+  const currentIndex = dates.indexOf(MEAL_BROWSER_STATE.selectedDate);
+  if (currentIndex < 0) return;
+  const nextIndex = currentIndex + delta;
+  if (nextIndex < 0 || nextIndex >= dates.length) return;
+  MEAL_BROWSER_STATE.selectedDate = dates[nextIndex];
+  renderMeals();
+}
+
+function renderMeals() {
   const wrap = document.getElementById('mealWrap');
-  // new Date('YYYY-MM-DD')는 UTC 00:00 기준 파싱 → 로컬 시간으로 직접 파싱
-  const [y, m, d] = date.split('-').map(Number);
-  const d2 = new Date(y, m-1, d);
-  const dateStr = `${d2.getMonth()+1}월 ${d2.getDate()}일 (${['일','월','화','수','목','금','토'][d2.getDay()]})`;
-  const types = [{key:'breakfast',label:'조식'},{key:'lunch',label:'중식'},{key:'dinner',label:'석식'}];
+  const dates = MEAL_BROWSER_STATE.dates || [];
+
+  if (!dates.length) {
+    wrap.innerHTML = `
+      <div class="meal-card">
+        <div class="meal-header"><h3>급식표</h3><span class="meal-date">데이터 없음</span></div>
+        <div class="meal-content"><div class="meal-empty">표시할 급식표가 없습니다.</div></div>
+      </div>
+    `;
+    return;
+  }
+
+  const selectedDate = MEAL_BROWSER_STATE.selectedDate || dates[dates.length - 1];
+  const currentIndex = dates.indexOf(selectedDate);
+  const row = MEAL_BROWSER_STATE.rowsByDate[selectedDate] || null;
+  const hasImage = Boolean(row && row.image_url);
+  const emptyMessage = '해당 날짜 급식표가 아직 등록되지 않았습니다.';
+  const detailText = hasImage
+    ? [row.week_label, row.source_taken_at ? `업데이트: ${row.source_taken_at}` : ''].filter(Boolean).join(' · ')
+    : emptyMessage;
+
   wrap.innerHTML = `
     <div class="meal-card">
-      <div class="meal-header"><h3>오늘의 급식</h3><span class="meal-date">${dateStr}</span></div>
-      <div class="meal-tabs">${types.map((t,i) => `<button class="meal-tab ${i===1?'active':''}" onclick="switchMealTab(this,'${t.key}')">${t.label}</button>`).join('')}</div>
-      ${types.map(t => `<div class="meal-content" id="meal-${t.key}" style="${t.key==='lunch'?'':'display:none'}">${renderMealMenu(meals[t.key])}</div>`).join('')}
+      <div class="meal-header"><h3>급식표</h3><span class="meal-date">${mealLabel(selectedDate)}</span></div>
+      <div class="meal-browser-nav">
+        <button class="meal-nav-btn" onclick="moveMealDay(-1)" ${currentIndex <= 0 ? 'disabled' : ''} aria-label="이전 급식표">‹</button>
+        <div class="meal-browser-meta">
+          <div class="meal-browser-range">${mealShortLabel(dates[0])} ~ ${mealShortLabel(dates[dates.length - 1])}</div>
+          <div class="meal-browser-date">${currentIndex + 1} / ${dates.length}</div>
+        </div>
+        <button class="meal-nav-btn" onclick="moveMealDay(1)" ${currentIndex >= dates.length - 1 ? 'disabled' : ''} aria-label="다음 급식표">›</button>
+      </div>
+      <div class="meal-content">
+        ${hasImage
+          ? `<div class="meal-image-wrap">
+               <img class="meal-image" src="${row.image_url}" alt="${escHtml(selectedDate)} 급식표" loading="lazy" />
+             </div>`
+          : `<div class="meal-empty">${emptyMessage}</div>`}
+        <div class="meal-note">${escHtml(detailText)}</div>
+      </div>
     </div>
   `;
-}
-function renderMealMenu(meal) {
-  if (!meal || !meal.menu) return '<div style="color:var(--muted);font-size:0.83rem;padding:8px 0">급식 정보가 없습니다.</div>';
-  const items = Array.isArray(meal.menu) ? meal.menu : meal.menu.split('\n');
-  return `<div class="meal-menu">${items.map(i=>`<span>${escHtml(i.trim())}</span>`).join('')}</div>${meal.calories ? `<div class="meal-cal">🔥 ${meal.calories} kcal</div>` : ''}`;
-}
-function switchMealTab(btn, type) {
-  btn.closest('.meal-card').querySelectorAll('.meal-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  btn.closest('.meal-card').querySelectorAll('.meal-content').forEach(c => c.style.display = 'none');
-  document.getElementById(`meal-${type}`).style.display = '';
 }
 
 // ── Profile ──

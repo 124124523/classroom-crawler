@@ -125,7 +125,7 @@ try {
 // ── 급식 sync ─────────────────────────────────────────
 let syncMeals = null;
 try {
-  syncMeals = require('./syncMeals').syncCurrentAndNextMonth;
+  syncMeals = require('./syncMeals').syncInstagramMealImages;
 } catch (e) {
   console.warn('[pipeline] mealSync 로드 실패:', e.message);
 }
@@ -183,12 +183,18 @@ async function runPipeline() {
 cron.schedule('0 */3 * * *', runPipeline, { timezone: 'Asia/Seoul' });
 console.log('[scheduler] 3시간 주기 파이프라인 등록 완료');
 
-// 매일 오전 7시 급식 단독 sync (급식표가 전날 등록되는 경우 대비)
+// 매일 오전 7시 급식 사진 단독 sync (Instagram → Cloudinary → DB)
 cron.schedule('0 7 * * *', async () => {
-  console.log('[mealCron] 매일 07:00 급식 sync 실행');
-  if (syncMeals) await syncMeals().catch(e => console.error('[mealCron]', e.message));
+  if (syncMeals) {
+    try {
+      const mr = await syncMeals();
+      console.log(`[meal-cron] 완료: upsert ${mr.upserted}건, 업로드 ${mr.uploaded}건, 실패 ${mr.failed}건`);
+    } catch (e) {
+      console.error('[meal-cron] 오류:', e.message);
+    }
+  }
 }, { timezone: 'Asia/Seoul' });
-console.log('[scheduler] 매일 07:00 급식 sync 등록 완료');
+console.log('[scheduler] 매일 07:00 급식 사진 sync 등록 완료');
 
 // ── SPA 폴백 ──────────────────────────────────────────
 app.get('/{*path}', (req, res) => {

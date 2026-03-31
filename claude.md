@@ -5,12 +5,12 @@
 Google Classroom에서 과제를 자동 크롤링하여 학생별 수강 분반에 맞게 표시한다.
 
 ## 기술 스택
-- **Backend**: Node.js + Express
+- **Backend**: Node.js + Express 5.2.1
 - **Database**: MySQL on Railway (`dateStrings: true` 필수)
 - **Frontend**: 바닐라 HTML/CSS/JS (프레임워크 없음, SPA 아님)
 - **크롤러**: Google Classroom API (googleapis 패키지)
 - **이미지**: Cloudinary (업로드/저장)
-- **급식**: NEIS 공식 API + Instagram 급식 사진 크롤링
+- **급식**: Instagram 급식 사진 기반 (`meal_day_images` 테이블)
 - **배포**: Railway (git push → 자동 배포)
 
 ## 프로젝트 구조
@@ -20,15 +20,15 @@ classroom-crawler/
 │   ├── db.js              ← MySQL 커넥션 풀 (dateStrings: true 필수!)
 │   ├── server.js          ← Express 서버 + 크론 스케줄러
 │   ├── sync.js            ← coursework → assignments 동기화
-│   ├── syncMeals.js       ← NEIS API → school_meals 동기화
-│   ├── mealDayImages.js   ← 급식 사진 DB 모델
+│   ├── syncMeals.js       ← (구) NEIS API 동기화 — 현재 비활성
+│   ├── mealDayImages.js   ← 급식 사진 DB 모델 (meal_day_images 테이블 자동 생성)
 │   └── routes/
 │       ├── login.js       ← 로그인 (세션 기반)
 │       ├── assignments.js ← 수행평가 CRUD + 완료 상태
 │       ├── notices.js     ← 공지 CRUD + 읽음 처리
 │       ├── comments.js    ← 공지/과제 댓글
 │       ├── subjects.js    ← 과목/분반 관리
-│       ├── meals.js       ← 급식 메뉴 + 사진 API
+│       ├── meals.js       ← 급식 사진 API (Instagram 기반)
 │       ├── Timetable.js   ← 시간표/개인일정/완료 토글
 │       ├── upload.js      ← Cloudinary 이미지 업로드
 │       ├── classroom.js   ← Google OAuth + 크롤링 트리거
@@ -62,7 +62,12 @@ GET/POST/DELETE /api/timetable/personal  ← 개인 일정
 POST            /api/timetable/complete  ← 과제 완료 토글
 GET/POST        /api/timetable/image     ← 시간표 이미지
 
-GET/POST/DELETE /api/meals       ← 급식 메뉴/사진
+GET    /api/meals?date=YYYY-MM-DD              ← 특정 날짜 급식 사진 (로그인 필요)
+GET    /api/meals/range?from=&to=              ← 날짜 범위 급식 사진 (로그인 필요)
+GET    /api/meals/list                         ← 전체 목록 (관리자 전용)
+POST   /api/meals                              ← 급식 사진 등록 (관리자 전용)
+DELETE /api/meals/:id                          ← 급식 사진 삭제 (관리자 전용)
+
 POST /api/upload/single          ← 이미지 1장 업로드
 POST /api/upload/multiple        ← 이미지 여러 장 업로드
 
@@ -83,8 +88,8 @@ POST /api/admin/sync-meals       ← 급식 동기화
 - **personal_events**: 학생 개인 일정
 - **coursework**: Google Classroom에서 크롤링한 원본 과제 데이터
 - **tokens**: Google OAuth 토큰 (31명, 86개 분반 완전 커버)
-- **school_meals**: NEIS 급식 메뉴
-- **meal_day_images**: Instagram 급식 사진
+- **school_meals**: (구) NEIS 급식 메뉴 — 현재 UI에서 미사용
+- **meal_day_images**: Instagram 급식 사진 (date UNIQUE, 서버 시작 시 자동 생성)
 
 ## 크롤링 파이프라인
 ```
@@ -98,6 +103,18 @@ POST /api/admin/sync-meals       ← 급식 동기화
      → course_name으로 class_id 매핑
      → 기존 과제도 deadline 항상 갱신
      → 중복 삽입 방지 (class_id + title + DATE(deadline))
+```
+
+## 급식 시스템 (Instagram 사진 기반)
+```
+meal_day_images 테이블에 날짜별 1장 이미지 저장 (UNIQUE KEY: date)
+  ← POST /api/meals 로 수동 등록 (관리자)
+  ← 또는 syncInstagramMealImages() 구현 후 cron에 연결 예정
+
+student.html 급식 브라우저:
+  - getMealBrowserRange(): 지난주 월~금 + 이번주 월~금 (최대 10일)
+  - /api/meals/range?from=&to= 로 해당 범위 일괄 조회
+  - ‹ › 버튼으로 날짜 이동, 이미지 없는 날은 빈 메시지 표시
 ```
 
 ## 사용자 역할
@@ -150,12 +167,31 @@ TT_DATA 키 형식: "이름|3-반번호" (예: "김재민|3-6")
 git push origin main → Railway 자동 배포.
 배포 후 서버가 재시작되면서 runPipeline() 자동 실행 (크롤링+sync).
 
+### 6. 인증 미들웨어 (API 보호)
+모든 API 라우트에 반드시 미들웨어를 붙인다.
+- `requireLogin` → 로그인한 사용자만 허용 (401 반환)
+- `requireAdmin` → role === 'admin' 만 허용 (403 반환)
+새 라우트 추가 시 누락 시 누구나 접근 가능해지므로 반드시 확인.
+
+### 7. completed 필드 비교 (truthy 함정)
+DB에서 completed 컬럼 값이 문자열 `"0"`으로 올 수 있다.
+`if (a.completed)` 는 `"0"`을 truthy로 판단 → 완료 상태 오작동.
+반드시 `Number(a.completed) === 1` 로 비교할 것.
+
+### 8. fetch 응답 처리 순서
+`res.ok` 체크 → 401이면 `location.href = 'login.html'` → 그 다음 `res.json()`.
+`res.ok` 없이 바로 `res.json()` 하면 에러 응답도 파싱 시도 → 런타임 오류 가능.
+
+### 9. onclick XSS (문자열 인라인 이벤트)
+`onclick="fn('${value}')"` 형태는 value에 `'` 가 포함되면 JS 오류 + XSS 위험.
+반드시 `onclick="fn(${JSON.stringify(escHtml(value))})"` 형태로 작성할 것.
+
 ## 환경변수 (Railway Variables)
 ```
 DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, CALLBACK_URL
 CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
-NEIS_API_KEY, NEIS_ATPT_CODE, NEIS_SCHOOL_CODE
+NEIS_API_KEY, NEIS_ATPT_CODE, NEIS_SCHOOL_CODE  ← (구 NEIS, 현재 미사용)
 SESSION_SECRET
 PORT
 ```
@@ -173,4 +209,6 @@ PORT
 2. **과제 시간이 전부 23:59** → auth.js에서 dueTime 파싱 안 됨 또는 sync.js에서 기존 과제 deadline 미갱신
 3. **과제 중복 등록** → 같은 과제가 다른 Google Classroom 섹션에 게시됨 (sync.js 중복 체크 필요)
 4. **동명이인 시간표 오류** → Object.keys(TT_DATA).find() 폴백이 첫 번째 키 반환
-5. **캘린더 드래그 목록에 완료 과제 표시** → completed 필터가 문자열 "0"을 truthy로 판단
+5. **완료 과제 필터 오작동** → `Number(a.completed) === 1` 대신 truthy 비교 사용
+6. **급식 이미지 안 보임** → meal_day_images 테이블에 데이터 없음 (POST /api/meals 로 수동 등록 필요)
+7. **API 401/403 오류** → 새 라우트에 requireLogin/requireAdmin 미들웨어 누락
