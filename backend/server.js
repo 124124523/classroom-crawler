@@ -20,6 +20,33 @@ app.use(session({
   cookie:            { maxAge: 1000 * 60 * 60 * 24 }, // 24시간
 }));
 
+// ── 실시간 접속자 추적 ────────────────────────────────
+// userId → 마지막 요청 시각 (Unix ms)
+const activeUsers = new Map();
+const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // 5분
+
+// 로그인된 API 요청마다 마지막 활동 시각 갱신
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') && req.session?.user?.id) {
+    activeUsers.set(req.session.user.id, Date.now());
+  }
+  next();
+});
+
+// GET /api/admin/active-users — 5분 이내 활동한 유저 수 (관리자 전용)
+app.get('/api/admin/active-users', (req, res) => {
+  if (req.session?.user?.role !== 'admin') {
+    return res.status(403).json({ message: '관리자 권한이 필요합니다.' });
+  }
+  const cutoff = Date.now() - ACTIVE_WINDOW_MS;
+  const users = [];
+  for (const [id, ts] of activeUsers) {
+    if (ts >= cutoff) users.push({ id, last_active: ts });
+    else activeUsers.delete(id); // 만료된 항목 정리
+  }
+  res.json({ count: users.length, users });
+});
+
 // ── API 라우트 ──────────────────────────────────────────
 app.use('/api/login',       require('./routes/login'));
 app.use('/api/notices',     require('./routes/notices'));

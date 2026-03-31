@@ -68,17 +68,34 @@ router.get('/:type/:refId', requireLogin, async (req, res) => {
   try {
     await ensureParentId(meta.table);
 
-    // 전체 댓글 (트리 구조용)
-    const [rows] = await db.query(
-      `SELECT c.id, c.${meta.fkCol} AS ref_id, c.writer, c.content, c.created_at,
-              IFNULL(c.parent_id, NULL) AS parent_id,
-              u.name AS user_name
-       FROM ${meta.table} c
-       LEFT JOIN users u ON u.id = c.writer
-       WHERE c.${meta.fkCol} = ?
-       ORDER BY COALESCE(c.parent_id, c.id), c.id ASC`,
-      [refId]
-    );
+    // 학생: 내 댓글 + 내 댓글에 달린 답글만 표시 (다른 학생 댓글 비표시)
+    // 교사/리더/관리자: 전체 댓글
+    let rows;
+    const SELECT_COLS = `c.id, c.${meta.fkCol} AS ref_id, c.writer, c.content, c.created_at,
+            IFNULL(c.parent_id, NULL) AS parent_id, u.name AS user_name`;
+    if (user.role === 'student') {
+      [rows] = await db.query(
+        `SELECT ${SELECT_COLS}
+         FROM ${meta.table} c LEFT JOIN users u ON u.id = c.writer
+         WHERE c.${meta.fkCol} = ?
+           AND (
+             c.writer = ?
+             OR c.parent_id IN (
+               SELECT id FROM ${meta.table} WHERE writer = ? AND ${meta.fkCol} = ?
+             )
+           )
+         ORDER BY COALESCE(c.parent_id, c.id), c.id ASC`,
+        [refId, user.id, user.id, refId]
+      );
+    } else {
+      [rows] = await db.query(
+        `SELECT ${SELECT_COLS}
+         FROM ${meta.table} c LEFT JOIN users u ON u.id = c.writer
+         WHERE c.${meta.fkCol} = ?
+         ORDER BY COALESCE(c.parent_id, c.id), c.id ASC`,
+        [refId]
+      );
+    }
 
     // 내가 읽지 않은 댓글 ID 목록
     let unreadIds = new Set();
@@ -166,8 +183,22 @@ router.get('/unread-summary', requireLogin, async (req, res) => {
               [user.id, user.id, user.id, type]
             );
           }
+        } else if (user.role === 'student') {
+          // 학생: 내 댓글에 달린 미읽음 답글만 카운트
+          await ensureParentId(meta.table);
+          [rows] = await db.query(
+            `SELECT COUNT(*) AS cnt
+             FROM ${meta.table} c
+             WHERE c.writer != ?
+               AND c.parent_id IS NOT NULL
+               AND c.parent_id IN (SELECT id FROM ${meta.table} WHERE writer = ?)
+               AND c.id NOT IN (
+                 SELECT comment_id FROM comment_reads WHERE user_id = ? AND ctype = ?
+               )`,
+            [user.id, user.id, user.id, type]
+          );
         } else {
-          // 학생/선생님/관리자: 기존 동작 (내가 쓴 것 & 읽은 것 제외)
+          // 선생님/관리자: 기존 동작 (내가 쓴 것 & 읽은 것 제외)
           [rows] = await db.query(
             `SELECT COUNT(*) AS cnt
              FROM ${meta.table} c

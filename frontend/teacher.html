@@ -89,6 +89,8 @@
     .t-comment-textarea { flex:1;padding:8px 12px;font-size:.84rem;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-body);resize:none; }
     .t-comment-textarea:focus { outline:none;border-color:var(--primary); }
     .t-comment-submit { padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);font-size:.8rem;font-weight:600;cursor:pointer; }
+    .t-reply-btn { font-size:.72rem;color:var(--text3);background:none;border:none;cursor:pointer;padding:3px 7px;border-radius:4px;margin-top:4px; }
+    .t-reply-btn:hover { background:var(--surface3);color:var(--primary); }
   </style>
 </head>
 <body>
@@ -330,9 +332,10 @@
         <div style="text-align:center;color:var(--muted);padding:24px">로딩 중...</div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
-        <div style="font-size:.75rem;font-weight:700;color:var(--text3);margin-bottom:8px;">댓글 (읽기 전용 — 선생님 계정)</div>
+        <div style="font-size:.75rem;font-weight:700;color:var(--text3);margin-bottom:8px;">답글 달기</div>
+        <div id="tReplyToLabel"></div>
         <div class="t-comment-input-row">
-          <textarea class="t-comment-textarea" id="tNoticeCommentInput" rows="2" placeholder="댓글 입력..."></textarea>
+          <textarea class="t-comment-textarea" id="tNoticeCommentInput" rows="2" placeholder="↩ 답글 버튼을 눌러 학생 댓글에 답변하세요..."></textarea>
           <button class="t-comment-submit" onclick="submitTeacherComment()">등록</button>
         </div>
       </div>
@@ -691,17 +694,37 @@ if (nZone) {
 let tCurrentNoticeId = null;
 let tCommentPage = 1;
 const T_PAGE_SIZE = 5;
+let tReplyToId = null;
 
 async function openNoticeComments(noticeId, title) {
   tCurrentNoticeId = noticeId; tCommentPage = 1;
   document.getElementById('tNoticeCommentTitle').textContent = `💬 ${title}`;
   document.getElementById('tNoticeCommentBackdrop').style.display = 'flex';
   document.getElementById('tNoticeCommentInput').value = '';
+  tCancelReply();
   await loadTeacherComments();
 }
 function closeNoticeComments() {
   document.getElementById('tNoticeCommentBackdrop').style.display = 'none';
   tCurrentNoticeId = null;
+  tCancelReply();
+}
+
+function tSetReplyTo(parentId, authorName) {
+  tReplyToId = parentId;
+  const input = document.getElementById('tNoticeCommentInput');
+  input.placeholder = `${authorName}님에게 답글...`;
+  input.focus();
+  const label = document.getElementById('tReplyToLabel');
+  label.innerHTML = `<div style="font-size:.72rem;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;">↩ <strong>${escHtml(authorName)}</strong>님에게 답글 <button onclick="tCancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:.7rem;margin-left:4px;">✕ 취소</button></div>`;
+}
+
+function tCancelReply() {
+  tReplyToId = null;
+  const input = document.getElementById('tNoticeCommentInput');
+  if (input) input.placeholder = '↩ 답글 버튼을 눌러 학생 댓글에 답변하세요...';
+  const label = document.getElementById('tReplyToLabel');
+  if (label) label.innerHTML = '';
 }
 async function loadTeacherComments(append = false) {
   const thread = document.getElementById('tNoticeThread');
@@ -721,7 +744,12 @@ async function loadTeacherComments(append = false) {
     const ex = document.getElementById('tCommentMore'); if(ex) ex.remove();
     thread.insertAdjacentHTML('beforeend', roots.map(root => {
       const childs = replies.filter(r=>r.parent_id===root.id);
-      return `<div class="t-comment-item"><div class="t-comment-header"><span class="t-comment-author">${escHtml(root.user_name||root.writer)}</span><span class="t-comment-time">${fmtDate(root.created_at)}</span></div><div class="t-comment-text">${escHtml(root.content)}</div></div>${childs.map(r=>`<div class="t-comment-item reply"><div style="font-size:.68rem;color:var(--text3)">↩ 답글</div><div class="t-comment-header"><span class="t-comment-author">${escHtml(r.user_name||r.writer)}</span><span class="t-comment-time">${fmtDate(r.created_at)}</span></div><div class="t-comment-text">${escHtml(r.content)}</div></div>`).join('')}`;
+      const authorJson = JSON.stringify(root.user_name||root.writer);
+      return `<div class="t-comment-item">
+        <div class="t-comment-header"><span class="t-comment-author">${escHtml(root.user_name||root.writer)}</span><span class="t-comment-time">${fmtDate(root.created_at)}</span></div>
+        <div class="t-comment-text">${escHtml(root.content)}</div>
+        <button class="t-reply-btn" onclick="tSetReplyTo(${root.id}, ${authorJson})">↩ 답글</button>
+      </div>${childs.map(r=>`<div class="t-comment-item reply"><div style="font-size:.68rem;color:var(--text3)">↩ 답글</div><div class="t-comment-header"><span class="t-comment-author">${escHtml(r.user_name||r.writer)}</span><span class="t-comment-time">${fmtDate(r.created_at)}</span></div><div class="t-comment-text">${escHtml(r.content)}</div></div>`).join('')}`;
     }).join(''));
     if (hasMore) thread.insertAdjacentHTML('beforeend', `<div id="tCommentMore" style="text-align:center;margin-top:6px"><button onclick="tCommentPage++;loadTeacherComments(true)" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:5px 14px;border-radius:var(--radius-sm);font-size:.78rem;cursor:pointer;">더 보기</button></div>`);
   } catch(e) {
@@ -733,13 +761,19 @@ async function loadTeacherComments(append = false) {
 async function submitTeacherComment() {
   const content = document.getElementById('tNoticeCommentInput').value.trim();
   if (!content || !tCurrentNoticeId) return;
+  if (!tReplyToId) {
+    showToast('↩ 답글 버튼을 눌러 학생 댓글에 답변하세요.', 'info');
+    return;
+  }
   try {
-    const res = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ type:'notice', ref_id: tCurrentNoticeId, content }) });
+    const body = { type: 'notice', ref_id: tCurrentNoticeId, content, parent_id: tReplyToId };
+    const res = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
     const data = await res.json();
     if (!res.ok) { showToast(data.message||'등록 실패','error'); return; }
     document.getElementById('tNoticeCommentInput').value = '';
+    tCancelReply();
     tCommentPage = 1; await loadTeacherComments();
-    showToast('댓글이 등록되었습니다.','success');
+    showToast('답글이 등록되었습니다.','success');
   } catch { showToast('등록 실패','error'); }
 }
 
