@@ -428,7 +428,7 @@ let noticeExistingImages = [];   // 수정 시 기존 이미지 URL 보관
     if (currentUser.role === 'teacher') { location.href = 'teacher.html'; return; }
 
     const nameEl = document.getElementById('sidebarName');
-    nameEl.textContent = currentUser.name || currentUser.username;
+    nameEl.textContent = currentUser.name || currentUser.id;
 
     // 배지: ID에 '_' 구분자 있으면 과목명_선생님 형태 → "교과 담당"으로 표시
     const leaderBadge = document.getElementById('leaderBadge');
@@ -436,7 +436,7 @@ let noticeExistingImages = [];   // 수정 시 기존 이미지 URL 보관
       leaderBadge.textContent = '교과 담당';
     }
     document.getElementById('avatarCircle').textContent =
-      (currentUser.name || currentUser.username || '?')[0].toUpperCase();
+      (currentUser.name || currentUser.id || '?')[0].toUpperCase();
 
     // Load classes I manage
     await loadMyClasses();
@@ -445,27 +445,32 @@ let noticeExistingImages = [];   // 수정 시 기존 이미지 URL 보관
     loadUnreadBadges();
     setInterval(loadUnreadBadges, 60000); // 60초마다 배지 갱신
   } catch(e) {
-    console.error(e);
-    showToast('초기화 실패', 'error');
+    console.error('[leader init]', e);
+    showToast('초기화 실패: ' + (e.message || '네트워크 오류'), 'error');
   }
 })();
 
 async function loadMyClasses() {
-  const res = await fetch('/api/subjects/my-classes', { credentials: 'include' });
-  if (!res.ok) { showToast('분반 정보 로딩 실패', 'error'); return; }
-  const data = await res.json();
-  myClasses = data.classes || data || [];
+  try {
+    const res = await fetch('/api/subjects/my-classes', { credentials: 'include' });
+    if (!res.ok) {
+      if (res.status === 401) { location.href = 'login.html'; return; }
+      showToast('분반 정보 로딩 실패', 'error'); return;
+    }
+    const data = await res.json();
+    myClasses = data.classes || data || [];
 
-  const label = document.getElementById('classLabel');
-  label.textContent = myClasses.map(c => (c.subject_name||'') + ' ' + (c.class_code||'') + '반').join(', ') || '분반 없음';
+    const label = document.getElementById('classLabel');
+    label.textContent = myClasses.map(c => (c.subject_name||'') + ' ' + (c.class_code||'') + '반').join(', ') || '분반 없음';
 
-  // Populate selects
-  ['assignClass','noticeClass'].forEach(id => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = myClasses.map(c =>
-      `<option value="${c.id}">${c.subject_name || ''} ${c.class_code || ''}반${c.teacher ? ' · '+c.teacher : ''}</option>`
-    ).join('') || '<option value="">분반 없음</option>';
-  });
+    // Populate selects
+    ['assignClass','noticeClass'].forEach(id => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = myClasses.map(c =>
+        `<option value="${c.id}">${c.subject_name || ''} ${c.class_code || ''}반${c.teacher ? ' · '+c.teacher : ''}</option>`
+      ).join('') || '<option value="">분반 없음</option>';
+    });
+  } catch(e) { showToast('분반 정보 로딩 실패', 'error'); }
 }
 
 async function loadAssignments() {
@@ -495,7 +500,7 @@ function renderAssignList() {
         <div class="manage-item-meta">
           <span>${escHtml(a.subject_name||'')}</span>
           <span class="badge ${a.type==='진로'?'badge-blue':'badge-green'}" style="font-size:0.68rem;padding:1px 7px">${a.type||'일반'}</span>
-          <span>마감: ${a.due_date ? new Date(a.due_date).toLocaleDateString('ko-KR') : '없음'}</span>
+          <span>마감: ${a.due_date ? new Date(a.due_date.replace(' ','T')).toLocaleDateString('ko-KR') : '없음'}</span>
         </div>
       </div>
       <div class="manage-item-actions">
@@ -781,7 +786,7 @@ function renderOverview() {
   document.getElementById('ovAssignCount').textContent = assignments.length;
   const urgent = assignments.filter(a => {
     if (!a.due_date) return false;
-    const d = Math.ceil((new Date(a.due_date) - new Date()) / 86400000);
+    const d = Math.ceil((new Date(a.due_date.replace(' ','T')) - new Date()) / 86400000);
     return d <= 3 && d >= 0;
   }).length;
   document.getElementById('ovUrgentCount').textContent = urgent;
@@ -790,7 +795,7 @@ function renderOverview() {
   ra.innerHTML = assignments.slice(0,4).map(a => `
     <div style="padding:9px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:0.82rem">
       <div style="font-weight:600;color:var(--text)">${escHtml(a.title)}</div>
-      <div style="color:var(--text3);font-size:0.72rem;margin-top:2px">${a.due_date ? '마감: ' + new Date(a.due_date).toLocaleDateString('ko-KR') : '기한 없음'}</div>
+      <div style="color:var(--text3);font-size:0.72rem;margin-top:2px">${a.due_date ? '마감: ' + new Date(a.due_date.replace(' ','T')).toLocaleDateString('ko-KR') : '기한 없음'}</div>
     </div>
   `).join('') || '<div style="color:var(--muted);font-size:0.83rem;padding:12px">없음</div>';
 }
@@ -825,7 +830,8 @@ function showSection(name) {
 
 function fmtDate(str) {
   if (!str) return '';
-  const d = new Date(str);
+  const d = new Date(str.replace(' ','T'));
+  if (isNaN(d)) return str.slice(0,10);
   return `${d.getMonth()+1}/${d.getDate()}`;
 }
 function escHtml(str) {

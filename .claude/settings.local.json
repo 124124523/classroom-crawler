@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(find frontend:*)",
+      "Bash(grep -n \"router\\\\.\\\\\\(get\\\\|post\\\\|put\\\\|delete\\\\\\)\" backend/routes/*.js)"
     ]
   }
 }

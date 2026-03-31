@@ -1190,7 +1190,7 @@ function formatDue(due, days) {
 async function toggleComplete(e, id) {
   e.stopPropagation();
   const a = assignments.find(x => x.id === id); if (!a) return;
-  const newVal = !a.completed;
+  const newVal = Number(a.completed) === 1 ? 0 : 1;
   try {
     const res = await fetch('/api/timetable/complete', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: id, completed: newVal }) });
     if (!res.ok) { showToast('업데이트 실패', 'error'); return; }
@@ -1208,12 +1208,12 @@ async function openAssignDetail(id) {
   const days = getDaysLeft(a.due_date);
   document.getElementById('assignDetailMeta').innerHTML = `
     <span>${a.subject_name || ''}</span><span>${a.type || ''}</span>
-    <span class="${days < 0 ? 'assign-due' : days <= 2 && !a.completed ? 'assign-due urgent' : days <= 5 && !a.completed ? 'assign-due soon' : 'assign-due'}">🗓 ${formatDue(a.due_date, days)}</span>
+    <span class="${days < 0 ? 'assign-due' : days <= 2 && Number(a.completed) !== 1 ? 'assign-due urgent' : days <= 5 && Number(a.completed) !== 1 ? 'assign-due soon' : 'assign-due'}">🗓 ${formatDue(a.due_date, days)}</span>
   `;
   document.getElementById('assignDetailContent').textContent = a.description || '내용 없음';
   const imgs = document.getElementById('assignDetailImages'); imgs.innerHTML = '';
   (a.images || []).forEach(url => { const img = document.createElement('img'); img.src = url; img.onclick = () => window.open(url,'_blank'); imgs.appendChild(img); });
-  updateModalCompleteBtn(a.completed);
+  updateModalCompleteBtn(Number(a.completed) === 1);
   document.getElementById('assignModal').style.display = 'flex';
   loadComments('assignment', id, 'assignCommentList');
 }
@@ -1228,13 +1228,13 @@ function updateModalCompleteBtn(isDone) {
 
 async function modalToggleComplete() {
   if (!currentAssign) return;
-  const newVal = !currentAssign.completed;
+  const newVal = Number(currentAssign.completed) === 1 ? 0 : 1;
   try {
     const res = await fetch('/api/timetable/complete', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ assignment_id: currentAssign.id, completed: newVal }) });
     if (!res.ok) { showToast('업데이트 실패', 'error'); return; }
     currentAssign.completed = newVal;
     const a = assignments.find(x => x.id === currentAssign.id); if (a) a.completed = newVal;
-    updateModalCompleteBtn(newVal);
+    updateModalCompleteBtn(Number(newVal) === 1);
     showToast(newVal ? '완료 처리했습니다.' : '미완료로 변경했습니다.', 'success');
     renderAssignBoard();
     if (document.getElementById('page-calendar').classList.contains('active')) renderCalendar();

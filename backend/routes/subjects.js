@@ -16,7 +16,7 @@ const CLASS_SELECT = `
   FROM classes cl
   JOIN subjects s ON cl.subject_id = s.id
 `;
-
+// 김규래 
 // GET /api/subjects
 router.get('/', requireLogin, async (req, res) => {
   const user = req.session.user;

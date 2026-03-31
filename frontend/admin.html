@@ -702,16 +702,16 @@ let allSubjects = [];
       return;
     }
 
-    document.getElementById('sidebarName').textContent = currentUser.name || currentUser.username;
+    document.getElementById('sidebarName').textContent = currentUser.name || currentUser.id;
     document.getElementById('avatarCircle').textContent =
-      (currentUser.name || currentUser.username || 'A')[0].toUpperCase();
+      (currentUser.name || currentUser.id || 'A')[0].toUpperCase();
 
     setHeaderDate();
     await loadDashboard();
     startActivePoller();
   } catch(e) {
-    console.error(e);
-    showToast('초기화 실패', 'error');
+    console.error('[admin init]', e);
+    showToast('초기화 실패: ' + (e.message || '네트워크 오류'), 'error');
   }
 })();
 
@@ -746,7 +746,7 @@ async function loadDashboard() {
       assigns.slice(0,5).map(a => `
         <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
           <div style="font-weight:600;color:var(--text)">${escHtml(a.title)}</div>
-          <div style="color:var(--text3);margin-top:1px">${escHtml(a.subject_name||'')} · ${a.due_date ? new Date(a.due_date).toLocaleDateString('ko-KR') : '기한없음'}</div>
+          <div style="color:var(--text3);margin-top:1px">${escHtml(a.subject_name||'')} · ${a.due_date ? new Date(a.due_date.replace(' ','T')).toLocaleDateString('ko-KR') : '기한없음'}</div>
         </div>
       `).join('') || '<div style="color:var(--muted);padding:12px 0;font-size:0.83rem">없음</div>';
 
@@ -786,9 +786,12 @@ function stopActivePoller() {
 // ── Users ──
 async function loadUsers() {
   if (allUsers.length) { renderUserTable(); return; }
-  const res = await fetch('/api/admin/users', { credentials: 'include' });
-  allUsers = (await res.json()).users || [];
-  renderUserTable();
+  try {
+    const res = await fetch('/api/admin/users', { credentials: 'include' });
+    if (!res.ok) { showToast('사용자 목록 로딩 실패', 'error'); return; }
+    allUsers = (await res.json()).users || [];
+    renderUserTable();
+  } catch { showToast('사용자 목록 로딩 실패', 'error'); }
 }
 
 function renderUserTable() {
@@ -802,8 +805,8 @@ function renderUserTable() {
       <td><span class="badge ${roleBadge[u.role]||'badge-gray'}">${roleLabel[u.role]||u.role}</span></td>
       <td style="color:var(--text3)">-</td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="resetPw('${escHtml(u.id)}', '${escHtml(u.id)}')">비번 초기화</button>
-        ${u.id !== currentUser.id ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteUser('${escHtml(u.id)}')">삭제</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="resetPw(${JSON.stringify(u.id)}, ${JSON.stringify(u.id)})">비번 초기화</button>
+        ${u.id !== currentUser.id ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteUser(${JSON.stringify(u.id)})">삭제</button>` : ''}
       </td>
     </tr>
   `).join('');
@@ -848,18 +851,24 @@ async function resetPw(id, username) {
 
 async function deleteUser(id) {
   if (!confirm('이 계정을 삭제하시겠습니까?')) return;
-  await fetch(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
-  showToast('삭제되었습니다.', 'success');
-  allUsers = [];
-  await loadUsers();
-  await loadDashboard();
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); showToast(d.message || '삭제 실패', 'error'); return; }
+    showToast('삭제되었습니다.', 'success');
+    allUsers = [];
+    await loadUsers();
+    await loadDashboard();
+  } catch { showToast('삭제 실패', 'error'); }
 }
 
 // ── Subjects ──
 async function loadSubjects() {
-  const res = await fetch('/api/subjects', { credentials: 'include' });
-  allSubjects = (await res.json()).subjects || [];
-  renderSubjTable();
+  try {
+    const res = await fetch('/api/subjects', { credentials: 'include' });
+    if (!res.ok) { showToast('과목 목록 로딩 실패', 'error'); return; }
+    allSubjects = (await res.json()).subjects || [];
+    renderSubjTable();
+  } catch { showToast('과목 목록 로딩 실패', 'error'); }
 }
 
 function renderSubjTable() {
@@ -904,9 +913,12 @@ async function addSubject() {
 
 async function deleteSubject(id) {
   if (!confirm('삭제하시겠습니까?')) return;
-  await fetch(`/api/subjects/${id}`, { method: 'DELETE', credentials: 'include' });
-  showToast('삭제되었습니다.', 'success');
-  await loadSubjects();
+  try {
+    const res = await fetch(`/api/subjects/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); showToast(d.message || '삭제 실패', 'error'); return; }
+    showToast('삭제되었습니다.', 'success');
+    await loadSubjects();
+  } catch { showToast('삭제 실패', 'error'); }
 }
 
 // ── Sync ──
@@ -1093,7 +1105,7 @@ function renderNoticeImgPreview() {
     const div = document.createElement('div');
     div.className = 'notice-img-thumb';
     div.innerHTML = `
-      <img src="${url}" onclick="window.open('${url}','_blank')" />
+      <img src="${escHtml(url)}" onclick="window.open(${JSON.stringify(url)},'_blank')" />
       <button class="rm-btn" onclick="removeExistingNoticeImg(${i})">✕</button>
     `;
     wrap.appendChild(div);
@@ -1151,7 +1163,7 @@ function renderAdminNotices() {
           <div style="font-size:0.8rem;color:var(--text3);white-space:pre-wrap;line-height:1.7;max-height:60px;overflow:hidden">${escHtml(n.content || '')}</div>
           ${imgs.length ? `
             <div class="notice-img-strip">
-              ${imgs.map(url => `<img src="${url}" onclick="window.open('${url}','_blank')" title="클릭해서 원본 보기" />`).join('')}
+              ${imgs.map(url => `<img src="${escHtml(url)}" onclick="window.open(${JSON.stringify(url)},'_blank')" title="클릭해서 원본 보기" />`).join('')}
             </div>` : ''}
           <div style="font-size:0.72rem;color:var(--muted);margin-top:6px">${fmtDate(n.created_at)} · 작성자: ${escHtml(n.writer || '-')}${imgs.length ? ` · 사진 ${imgs.length}장` : ''}</div>
         </div>
@@ -1216,6 +1228,7 @@ async function saveNotice() {
     noticeUploadedFiles.forEach(f => form.append('images', f.file));
     try {
       const res  = await fetch('/api/upload/multiple', { method: 'POST', credentials: 'include', body: form });
+      if (!res.ok) { showToast('이미지 업로드 실패', 'error'); return; }
       const data = await res.json();
       newUrls = data.urls || [];
     } catch {
@@ -1228,23 +1241,24 @@ async function saveNotice() {
   const images = [...noticeExistingUrls, ...newUrls];
 
   try {
+    let res;
     if (editingNoticeId) {
-      await fetch(`/api/notices/${editingNoticeId}`, {
+      res = await fetch(`/api/notices/${editingNoticeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ title, content, class_id: null, images })
       });
-      showToast('공지가 수정되었습니다.', 'success');
     } else {
-      await fetch('/api/notices', {
+      res = await fetch('/api/notices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ title, content, images })
       });
-      showToast('전체 공지가 등록되었습니다.', 'success');
     }
+    if (!res.ok) { const d = await res.json().catch(()=>({})); showToast(d.message || '저장 실패', 'error'); return; }
+    showToast(editingNoticeId ? '공지가 수정되었습니다.' : '전체 공지가 등록되었습니다.', 'success');
     clearNoticeForm();
     await loadAdminNotices();
     await loadDashboard();
@@ -1254,7 +1268,8 @@ async function saveNotice() {
 async function deleteAdminNotice(id) {
   if (!confirm('이 공지를 삭제하시겠습니까?')) return;
   try {
-    await fetch(`/api/notices/${id}`, { method: 'DELETE', credentials: 'include' });
+    const res = await fetch(`/api/notices/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) { const d = await res.json().catch(()=>({})); showToast(d.message || '삭제 실패', 'error'); return; }
     showToast('삭제되었습니다.', 'success');
     await loadAdminNotices();
     await loadDashboard();

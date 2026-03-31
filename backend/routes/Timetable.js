@@ -125,7 +125,7 @@ router.post('/complete', requireLogin, async (req, res) => {
   if (!id) return res.status(400).json({ message: 'target_id가 필요합니다.' });
 
   try {
-    if (completed) {
+    if (Number(completed) === 1) {
       await db.query(
         'INSERT IGNORE INTO completions (user_id, target_type, target_id) VALUES (?, ?, ?)',
         [userId, type, id]
@@ -145,7 +145,7 @@ router.post('/complete', requireLogin, async (req, res) => {
 });
 
 // GET /api/timetable/image/:userId — 시간표 이미지 조회
-router.get('/image/:userId', async (req, res) => {
+router.get('/image/:userId', requireLogin, async (req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT image_url, file_type, file_name FROM timetables WHERE user_id = ?',
@@ -158,7 +158,7 @@ router.get('/image/:userId', async (req, res) => {
 });
 
 // POST /api/timetable/image/:userId — 시간표 이미지 업로드
-router.post('/image/:userId', async (req, res) => {
+router.post('/image/:userId', requireLogin, async (req, res) => {
   try { await runMulter(req, res); }
   catch (e) {
     if (e.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: '파일이 20MB를 초과합니다.' });

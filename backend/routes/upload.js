@@ -16,6 +16,11 @@ const upload = multer({
   limits:  { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
+function requireLogin(req, res, next) {
+  if (!req.session?.user) return res.status(401).json({ message: '로그인이 필요합니다.' });
+  next();
+}
+
 function runSingle(req, res) {
   return new Promise((resolve, reject) => {
     upload.single('image')(req, res, err => err ? reject(err) : resolve());
@@ -40,7 +45,7 @@ async function uploadBuffer(buffer, mime, folder) {
 // ================================================================
 // POST /api/upload/single  (이미지 1장)
 // ================================================================
-router.post('/single', async (req, res) => {
+router.post('/single', requireLogin, async (req, res) => {
   try { await runSingle(req, res); }
   catch (e) { return res.status(400).json({ error: e.message }); }
 
@@ -61,7 +66,7 @@ router.post('/single', async (req, res) => {
 // ================================================================
 // POST /api/upload/multiple  (이미지 여러 장)
 // ================================================================
-router.post('/multiple', async (req, res) => {
+router.post('/multiple', requireLogin, async (req, res) => {
   try { await runMultiple(req, res); }
   catch (e) { return res.status(400).json({ error: e.message }); }
 
@@ -81,7 +86,7 @@ router.post('/multiple', async (req, res) => {
 // ================================================================
 // POST /api/upload  (단일, 기존 호환용)
 // ================================================================
-router.post('/', async (req, res) => {
+router.post('/', requireLogin, async (req, res) => {
   try { await runSingle(req, res); }
   catch (e) { return res.status(400).json({ error: e.message }); }
 
