@@ -247,6 +247,12 @@
         수행평가 관리
         <span id="assignUnreadBadge" class="nav-badge" style="display:none">0</span>
       </div>
+      <div class="nav-item" onclick="showSection('profile')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        프로필
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -376,6 +382,28 @@
         </div>
       </div>
 
+
+      <!-- PROFILE -->
+      <div class="section-page" id="page-profile">
+        <div style="display:flex;flex-direction:column;gap:20px;max-width:480px">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+              <div style="width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700" id="profileAvatar">?</div>
+              <div>
+                <div style="font-size:1rem;font-weight:700;color:var(--text)" id="profileName">-</div>
+                <div style="font-size:.78rem;color:var(--text3)" id="profileId">-</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title"><div class="dot" style="background:var(--orange)"></div>비밀번호 변경</div></div>
+            <div class="form-group"><label class="form-label">현재 비밀번호</label><input class="form-input" type="password" id="curPwInput" placeholder="현재 비밀번호" /></div>
+            <div class="form-group"><label class="form-label">새 비밀번호</label><input class="form-input" type="password" id="newPwInput" placeholder="새 비밀번호" /></div>
+            <div class="form-group"><label class="form-label">새 비밀번호 확인</label><input class="form-input" type="password" id="newPwConfirmInput" placeholder="새 비밀번호 다시 입력" /></div>
+            <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,var(--orange),#B8732A)" onclick="changePassword()">비밀번호 변경</button>
+          </div>
+        </div>
+      </div>
 
     </main>
   </div>
@@ -811,7 +839,8 @@ function showSection(name) {
     const navItem = document.querySelector(`.nav-item[onclick*="'${name}'"]`);
     if (navItem) navItem.classList.add('active');
   }
-  const titles = { overview:'개요', assignments:'수행평가 관리' };
+  const titles = { overview:'개요', assignments:'수행평가 관리', profile:'프로필' };
+  if (name === 'profile') renderProfile();
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
   // 탭 진입 시 해당 탭의 미읽음 댓글 DB 기반 일괄 읽음 처리
@@ -1100,6 +1129,29 @@ function fmtCommentTime(str) {
   if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
   if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;
   return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+// ── 프로필 ──
+function renderProfile() {
+  const name = currentUser.name || currentUser.id || '-';
+  document.getElementById('profileAvatar').textContent = (name[0] || '?').toUpperCase();
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileId').textContent = `ID: ${currentUser.id || '-'} · 교과 담당`;
+}
+
+async function changePassword() {
+  const current_password = document.getElementById('curPwInput').value;
+  const new_password     = document.getElementById('newPwInput').value;
+  const confirm_password = document.getElementById('newPwConfirmInput').value;
+  if (!current_password || !new_password || !confirm_password) { showToast('모든 필드를 입력하세요.', 'error'); return; }
+  if (new_password !== confirm_password) { showToast('새 비밀번호가 일치하지 않습니다.', 'error'); return; }
+  try {
+    const res = await fetch('/api/me/password', { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ current_password, new_password }) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.message||'변경 실패', 'error'); return; }
+    showToast('비밀번호가 변경되었습니다.', 'success');
+    ['curPwInput','newPwInput','newPwConfirmInput'].forEach(id => document.getElementById(id).value = '');
+  } catch { showToast('변경 실패', 'error'); }
 }
 
 </script>

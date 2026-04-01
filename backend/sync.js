@@ -131,6 +131,12 @@ async function parseCourseName(courseName) {
   const bracketMatch = courseName.match(/[(\（]([A-Za-z])\d*반?[)\）]/i);
   if (bracketMatch) matchedClass = bracketMatch[1].toUpperCase();
 
+  // "알파벳반" 패턴 (괄호 밖): A반, B반_선생님
+  if (!matchedClass) {
+    const banMatch = courseName.match(/[\s_]([A-Z])반/i);
+    if (banMatch) matchedClass = banMatch[1].toUpperCase();
+  }
+
   // "알파벳-class" 패턴: B-class, A-class
   if (!matchedClass) {
     const dashClass = courseName.match(/([A-Z])-class/i);

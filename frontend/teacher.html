@@ -137,6 +137,25 @@
         </svg>
         수행 성실도
       </div>
+      <div class="nav-section-label">학교</div>
+      <div class="nav-item" onclick="showSection('timetable', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        수업 시간표
+      </div>
+      <div class="nav-item" onclick="showSection('meals', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+        급식
+      </div>
+      <div class="nav-item" onclick="showSection('profile', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        프로필
+      </div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="logout()">로그아웃</button>
@@ -213,6 +232,72 @@
           </div>
           <div class="form-card-body" id="statsContent">
             <div style="text-align:center;color:var(--muted);padding:24px">로딩 중...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIMETABLE (수업 시간표) -->
+      <div class="section-page" id="page-timetable">
+        <div class="card" style="max-width:800px">
+          <div class="card-header">
+            <div class="card-title"><div class="dot"></div>수업 시간표</div>
+            <span style="font-size:.78rem;color:var(--text3)" id="ttClassLabel"></span>
+          </div>
+          <div id="ttContent" style="overflow-x:auto;">
+            <div style="text-align:center;padding:32px;color:var(--muted)"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEALS (급식) -->
+      <div class="section-page" id="page-meals">
+        <div class="card" style="max-width:560px;margin:0 auto">
+          <div class="card-header">
+            <div class="card-title"><div class="dot" style="background:var(--orange)"></div>급식표</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <button class="btn btn-ghost btn-sm" onclick="moveMealDay(-1)">◀ 이전</button>
+            <span style="font-weight:600;font-size:.9rem" id="mealDateLabel">-</span>
+            <button class="btn btn-ghost btn-sm" onclick="moveMealDay(1)">다음 ▶</button>
+          </div>
+          <div id="mealContent" style="text-align:center;min-height:200px;">
+            <div style="color:var(--muted);padding:32px">로딩 중...</div>
+          </div>
+          <div style="text-align:center;margin-top:8px">
+            <span style="font-size:.72rem;color:var(--text3)" id="mealRangeLabel"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE (프로필) -->
+      <div class="section-page" id="page-profile">
+        <div style="display:flex;flex-direction:column;gap:20px;max-width:480px">
+          <!-- 사용자 정보 -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+              <div style="width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700" id="profileAvatar">T</div>
+              <div>
+                <div style="font-size:1rem;font-weight:700;color:var(--text)" id="profileName">-</div>
+                <div style="font-size:.78rem;color:var(--text3)" id="profileId">-</div>
+              </div>
+            </div>
+          </div>
+          <!-- 비밀번호 변경 -->
+          <div class="card">
+            <div class="card-header"><div class="card-title"><div class="dot" style="background:var(--orange)"></div>비밀번호 변경</div></div>
+            <div class="form-group">
+              <label class="form-label">현재 비밀번호</label>
+              <input class="form-input" type="password" id="curPwInput" placeholder="현재 비밀번호" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">새 비밀번호</label>
+              <input class="form-input" type="password" id="newPwInput" placeholder="새 비밀번호" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">새 비밀번호 확인</label>
+              <input class="form-input" type="password" id="newPwConfirmInput" placeholder="새 비밀번호 다시 입력" />
+            </div>
+            <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,var(--orange),#B8732A)" onclick="changePassword()">비밀번호 변경</button>
           </div>
         </div>
       </div>
@@ -417,8 +502,11 @@ function showSection(name, el) {
   document.getElementById(`page-${name}`).classList.add('active');
   const navEl = el || (typeof event !== 'undefined' && event?.currentTarget);
   if (navEl && navEl.classList) navEl.classList.add('active');
-  const titles = { notices:'반 공지', stats:'수행 성실도' };
+  const titles = { notices:'반 공지', stats:'수행 성실도', timetable:'수업 시간표', meals:'급식', profile:'프로필' };
   if (name === 'stats') loadCompletionStats();
+  if (name === 'timetable') loadTeacherTimetable();
+  if (name === 'meals' && !mealState.dates.length) loadMeals();
+  if (name === 'profile') renderProfile();
   document.getElementById('pageTitle').textContent = titles[name] || name;
   if (window.innerWidth <= 768) closeSidebar();
 }
@@ -628,6 +716,116 @@ async function submitTeacherComment() {
     tCommentPage = 1; await loadTeacherComments();
     showToast('답글이 등록되었습니다.','success');
   } catch { showToast('등록 실패','error'); }
+}
+
+// ── 수업 시간표 (담당 분반 기반) ──
+async function loadTeacherTimetable() {
+  const wrap = document.getElementById('ttContent');
+  const label = document.getElementById('ttClassLabel');
+  wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted)"><span class="spinner"></span></div>';
+  try {
+    const res = await fetch('/api/subjects/classes/all', { credentials:'include' });
+    if (!res.ok) { wrap.innerHTML = '<div style="color:var(--red);padding:16px;text-align:center">로딩 실패</div>'; return; }
+    const classes = await res.json();
+    const myClasses = classes.filter(c => c.teacher === currentUser.name);
+    if (!myClasses.length) {
+      label.textContent = '';
+      wrap.innerHTML = '<div style="color:var(--muted);padding:24px;text-align:center">담당 분반이 없습니다.</div>';
+      return;
+    }
+    label.textContent = `${myClasses.length}개 분반 담당`;
+
+    // 분반 목록을 카드로 표시
+    wrap.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;">
+      ${myClasses.map(c => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <div style="width:36px;height:36px;border-radius:8px;background:${c.category==='진로'?'rgba(31,95,138,.1)':'rgba(27,72,50,.1)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="font-size:.8rem;font-weight:700;color:${c.category==='진로'?'var(--blue)':'var(--primary)'}">${escHtml(c.class_code)}</span>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.88rem;font-weight:600;color:var(--text)">${escHtml(c.subject_name)} ${escHtml(c.class_code)}반</div>
+            <div style="font-size:.72rem;color:var(--text3)">${c.category==='진로'?'진로':'일반'} 과목</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  } catch { wrap.innerHTML = '<div style="color:var(--red);padding:16px;text-align:center">로딩 실패</div>'; }
+}
+
+// ── 급식 브라우저 ──
+const mealState = { dates: [], data: {}, idx: 0 };
+
+function getMealRange() {
+  const today = new Date();
+  const dow = today.getDay() || 7;
+  const mon = new Date(today); mon.setDate(today.getDate() - dow + 1);
+  // 지난주 월~이번주 금 (10일)
+  const prevMon = new Date(mon); prevMon.setDate(mon.getDate() - 7);
+  const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+  const dates = [];
+  for (let d = new Date(prevMon); d <= fri; d.setDate(d.getDate() + 1)) {
+    const dw = d.getDay();
+    if (dw >= 1 && dw <= 5) dates.push(d.toISOString().slice(0,10));
+  }
+  return { dates, from: dates[0], to: dates[dates.length-1] };
+}
+
+async function loadMeals() {
+  const { dates, from, to } = getMealRange();
+  mealState.dates = dates;
+  try {
+    const res = await fetch(`/api/meals/range?from=${from}&to=${to}`, { credentials:'include' });
+    if (!res.ok) { document.getElementById('mealContent').innerHTML = '<div style="color:var(--muted);padding:24px">급식 정보를 불러올 수 없습니다.</div>'; return; }
+    const data = await res.json();
+    (data.meals || data || []).forEach(m => { mealState.data[m.date?.slice(0,10)] = m; });
+  } catch {}
+  // 오늘 또는 가장 최근 날짜 선택
+  const today = new Date().toISOString().slice(0,10);
+  mealState.idx = Math.max(0, dates.findIndex(d => d >= today));
+  renderMealDay();
+}
+
+function moveMealDay(delta) {
+  mealState.idx = Math.max(0, Math.min(mealState.dates.length - 1, mealState.idx + delta));
+  renderMealDay();
+}
+
+function renderMealDay() {
+  const date = mealState.dates[mealState.idx];
+  const meal = mealState.data[date];
+  const days = ['일','월','화','수','목','금','토'];
+  const d = new Date(date + 'T00:00:00');
+  document.getElementById('mealDateLabel').textContent = `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  document.getElementById('mealRangeLabel').textContent = `${mealState.dates[0]?.slice(5)} ~ ${mealState.dates[mealState.dates.length-1]?.slice(5)}`;
+  const wrap = document.getElementById('mealContent');
+  if (meal && meal.image_url) {
+    wrap.innerHTML = `<img src="${escHtml(meal.image_url)}" style="width:100%;border-radius:var(--radius);border:1px solid var(--border)" />`;
+  } else {
+    wrap.innerHTML = '<div style="color:var(--muted);padding:32px">급식 사진이 없습니다.</div>';
+  }
+}
+
+// ── 프로필 ──
+function renderProfile() {
+  const name = currentUser.name || currentUser.id || '-';
+  document.getElementById('profileAvatar').textContent = (name[0] || 'T').toUpperCase();
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileId').textContent = `ID: ${currentUser.id || '-'} · ${homeroom ? homeroom+'반 담임' : '선생님'}`;
+}
+
+async function changePassword() {
+  const current_password = document.getElementById('curPwInput').value;
+  const new_password     = document.getElementById('newPwInput').value;
+  const confirm_password = document.getElementById('newPwConfirmInput').value;
+  if (!current_password || !new_password || !confirm_password) { showToast('모든 필드를 입력하세요.', 'error'); return; }
+  if (new_password !== confirm_password) { showToast('새 비밀번호가 일치하지 않습니다.', 'error'); return; }
+  try {
+    const res = await fetch('/api/me/password', { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ current_password, new_password }) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.message||'변경 실패', 'error'); return; }
+    showToast('비밀번호가 변경되었습니다.', 'success');
+    ['curPwInput','newPwInput','newPwConfirmInput'].forEach(id => document.getElementById(id).value = '');
+  } catch { showToast('변경 실패', 'error'); }
 }
 
 </script>

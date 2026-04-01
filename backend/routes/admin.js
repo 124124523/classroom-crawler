@@ -89,8 +89,8 @@ router.get('/coverage', requireAdmin, async (req, res) => {
       SELECT t.user_id, u.name, u.id AS student_id,
              GROUP_CONCAT(e.class_id ORDER BY e.class_id) AS class_ids
       FROM tokens t
-      LEFT JOIN users u ON u.id = t.user_id
-      LEFT JOIN enrollments e ON e.user_id = u.id
+      LEFT JOIN users u ON u.id COLLATE utf8mb4_unicode_ci = t.user_id COLLATE utf8mb4_unicode_ci
+      LEFT JOIN enrollments e ON e.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
       WHERE u.role = 'student'
       GROUP BY t.user_id, u.name, u.id
     `);
