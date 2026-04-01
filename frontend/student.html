@@ -122,9 +122,12 @@
     .meal-nav-btn { width: 34px; height: 34px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; transition: all 0.15s; }
     .meal-nav-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: rgba(29,82,50,0.04); }
     .meal-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .meal-browser-meta { flex: 1; min-width: 0; text-align: center; }
-    .meal-browser-range { font-size: 0.72rem; color: var(--text3); }
-    .meal-browser-date { margin-top: 2px; font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .meal-browser-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+    .meal-browser-range { font-size: 0.76rem; font-weight: 700; color: var(--text3); }
+    .meal-browser-date { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .meal-today-btn { min-width: 54px; height: 30px; padding: 0 14px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; transition: all 0.15s; }
+    .meal-today-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: rgba(29,82,50,0.04); }
+    .meal-today-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
     /* ── Grid Layouts ── */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -1740,6 +1743,24 @@ async function loadMeals() {
   }
 }
 
+function getMealWeekLabel(selectedDate, dates) {
+  const currentIndex = dates.indexOf(selectedDate);
+  if (currentIndex < 0) return '이번 주';
+  return currentIndex < Math.ceil(dates.length / 2) ? '지난 주' : '이번 주';
+}
+
+function goToTodayMeal() {
+  const dates = MEAL_BROWSER_STATE.dates || [];
+  const today = mealFormatDate(new Date());
+  if (!dates.includes(today)) {
+    showToast('오늘은 급식이 없는 날이에요.', 'info');
+    return;
+  }
+  if (MEAL_BROWSER_STATE.selectedDate === today) return;
+  MEAL_BROWSER_STATE.selectedDate = today;
+  renderMeals();
+}
+
 function moveMealDay(delta) {
   const dates = MEAL_BROWSER_STATE.dates;
   const currentIndex = dates.indexOf(MEAL_BROWSER_STATE.selectedDate);
@@ -1766,6 +1787,9 @@ function renderMeals() {
 
   const selectedDate = MEAL_BROWSER_STATE.selectedDate || dates[dates.length - 1];
   const currentIndex = dates.indexOf(selectedDate);
+  const weekLabel = getMealWeekLabel(selectedDate, dates);
+  const todayDate = mealFormatDate(new Date());
+  const canSelectToday = dates.includes(todayDate);
   const row = MEAL_BROWSER_STATE.rowsByDate[selectedDate] || null;
   const hasImage = Boolean(row && row.image_url);
   const emptyMessage = '해당 날짜 급식표가 아직 등록되지 않았습니다.';
@@ -1777,12 +1801,15 @@ function renderMeals() {
     <div class="meal-card">
       <div class="meal-header"><h3>급식표</h3><span class="meal-date">${mealLabel(selectedDate)}</span></div>
       <div class="meal-browser-nav">
-        <button class="meal-nav-btn" onclick="moveMealDay(-1)" ${currentIndex <= 0 ? 'disabled' : ''} aria-label="이전 급식표">‹</button>
+        <button type="button" class="meal-nav-btn" onclick="moveMealDay(-1)" ${currentIndex <= 0 ? 'disabled' : ''} aria-label="이전 급식표">‹</button>
         <div class="meal-browser-meta">
-          <div class="meal-browser-range">${mealShortLabel(dates[0])} ~ ${mealShortLabel(dates[dates.length - 1])}</div>
-          <div class="meal-browser-date">${currentIndex + 1} / ${dates.length}</div>
+          <div class="meal-browser-range">${weekLabel}</div>
+          <div class="meal-browser-date">
+            <span>${mealShortLabel(selectedDate)}</span>
+            <button type="button" class="meal-today-btn" onclick="goToTodayMeal()" ${(canSelectToday && selectedDate === todayDate) ? 'disabled' : ''} aria-label="오늘 급식표 보기">오늘</button>
+          </div>
         </div>
-        <button class="meal-nav-btn" onclick="moveMealDay(1)" ${currentIndex >= dates.length - 1 ? 'disabled' : ''} aria-label="다음 급식표">›</button>
+        <button type="button" class="meal-nav-btn" onclick="moveMealDay(1)" ${currentIndex >= dates.length - 1 ? 'disabled' : ''} aria-label="다음 급식표">›</button>
       </div>
       <div class="meal-content">
         ${hasImage

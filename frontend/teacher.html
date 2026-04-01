@@ -92,6 +92,27 @@
     .t-reply-btn { font-size:.72rem;color:var(--text3);background:none;border:none;cursor:pointer;padding:3px 7px;border-radius:4px;margin-top:4px; }
     .t-reply-btn:hover { background:var(--surface3);color:var(--primary); }
     .item-comment-badge { position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:var(--red);color:#fff;font-size:.6rem;font-weight:700;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none; }
+
+    /* ── Meals ── */
+    .meal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .meal-header { background: var(--primary) !important; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
+    .meal-header h3 { font-family: var(--font-display); font-size: 1rem; color: #FFFFFF !important; }
+    .meal-date { font-size: 0.75rem; color: rgba(255,255,255,0.65) !important; }
+    .meal-content { padding: 16px 18px 18px; }
+    .meal-image-wrap { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface2); }
+    .meal-image { display: block; width: 100%; height: auto; }
+    .meal-empty { padding: 18px 14px; text-align: center; font-size: 0.83rem; color: var(--text3); background: var(--surface2); border: 1px dashed var(--border2); border-radius: var(--radius-sm); }
+    .meal-note { margin-top: 10px; font-size: 0.76rem; color: var(--text3); line-height: 1.6; }
+    .meal-browser-nav { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+    .meal-nav-btn { width: 34px; height: 34px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; transition: all 0.15s; }
+    .meal-nav-btn:hover:not(:disabled) { border-color: var(--primary) !important; color: var(--primary) !important; background: rgba(29,82,50,0.04); }
+    .meal-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .meal-browser-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+    .meal-browser-range { font-size: 0.76rem; font-weight: 700; color: var(--text3); }
+    .meal-browser-date { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .meal-today-btn { min-width: 54px; height: 30px; padding: 0 14px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; transition: all 0.15s; }
+    .meal-today-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: rgba(29,82,50,0.04); }
+    .meal-today-btn:disabled { opacity: 0.45; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -251,21 +272,8 @@
 
       <!-- MEALS (급식) -->
       <div class="section-page" id="page-meals">
-        <div class="card" style="max-width:560px;margin:0 auto">
-          <div class="card-header">
-            <div class="card-title"><div class="dot" style="background:var(--orange)"></div>급식표</div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <button class="btn btn-ghost btn-sm" onclick="moveMealDay(-1)">◀ 이전</button>
-            <span style="font-weight:600;font-size:.9rem" id="mealDateLabel">-</span>
-            <button class="btn btn-ghost btn-sm" onclick="moveMealDay(1)">다음 ▶</button>
-          </div>
-          <div id="mealContent" style="text-align:center;min-height:200px;">
-            <div style="color:var(--muted);padding:32px">로딩 중...</div>
-          </div>
-          <div style="text-align:center;margin-top:8px">
-            <span style="font-size:.72rem;color:var(--text3)" id="mealRangeLabel"></span>
-          </div>
+        <div style="max-width: 480px;" id="mealWrap">
+          <div style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem;"><span class="spinner"></span></div>
         </div>
       </div>
 
@@ -505,7 +513,7 @@ function showSection(name, el) {
   const titles = { notices:'반 공지', stats:'수행 성실도', timetable:'수업 시간표', meals:'급식', profile:'프로필' };
   if (name === 'stats') loadCompletionStats();
   if (name === 'timetable') loadTeacherTimetable();
-  if (name === 'meals' && !mealState.dates.length) loadMeals();
+  if (name === 'meals' && !MEAL_BROWSER_STATE.dates.length) loadMeals();
   if (name === 'profile') renderProfile();
   document.getElementById('pageTitle').textContent = titles[name] || name;
   if (window.innerWidth <= 768) closeSidebar();
@@ -753,56 +761,135 @@ async function loadTeacherTimetable() {
 }
 
 // ── 급식 브라우저 ──
-const mealState = { dates: [], data: {}, idx: 0 };
+const MEAL_BROWSER_STATE = { dates: [], rowsByDate: {}, selectedDate: '' };
+
+function mealFormatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+function mealParseDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function mealLabel(dateStr) {
+  const date = mealParseDate(dateStr);
+  const dayNames = ['일','월','화','수','목','금','토'];
+  return `${date.getMonth()+1}월 ${date.getDate()}일 (${dayNames[date.getDay()]})`;
+}
+function mealShortLabel(dateStr) {
+  const date = mealParseDate(dateStr);
+  return `${date.getMonth()+1}월 ${date.getDate()}일`;
+}
+function getMealWeekLabel(selectedDate, dates) {
+  const currentIndex = dates.indexOf(selectedDate);
+  if (currentIndex < 0) return '이번 주';
+  return currentIndex < Math.ceil(dates.length / 2) ? '지난 주' : '이번 주';
+}
 
 function getMealRange() {
-  const today = new Date();
-  const dow = today.getDay() || 7;
-  const mon = new Date(today); mon.setDate(today.getDate() - dow + 1);
-  // 지난주 월~이번주 금 (10일)
-  const prevMon = new Date(mon); prevMon.setDate(mon.getDate() - 7);
-  const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+  const current = new Date();
+  const day = current.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const currentMonday = new Date(current.getFullYear(), current.getMonth(), current.getDate());
+  currentMonday.setDate(currentMonday.getDate() + mondayOffset);
+  const previousMonday = new Date(currentMonday);
+  previousMonday.setDate(previousMonday.getDate() - 7);
+  const currentFriday = new Date(currentMonday);
+  currentFriday.setDate(currentFriday.getDate() + 4);
   const dates = [];
-  for (let d = new Date(prevMon); d <= fri; d.setDate(d.getDate() + 1)) {
-    const dw = d.getDay();
-    if (dw >= 1 && dw <= 5) dates.push(d.toISOString().slice(0,10));
+  for (let cursor = new Date(previousMonday); cursor <= currentFriday; cursor.setDate(cursor.getDate() + 1)) {
+    const copy = new Date(cursor);
+    const dow = copy.getDay();
+    if (dow !== 0 && dow !== 6) dates.push(mealFormatDate(copy));
   }
-  return { dates, from: dates[0], to: dates[dates.length-1] };
+  return { dates, from: mealFormatDate(previousMonday), to: mealFormatDate(currentFriday) };
 }
 
 async function loadMeals() {
-  const { dates, from, to } = getMealRange();
-  mealState.dates = dates;
   try {
-    const res = await fetch(`/api/meals/range?from=${from}&to=${to}`, { credentials:'include' });
-    if (!res.ok) { document.getElementById('mealContent').innerHTML = '<div style="color:var(--muted);padding:24px">급식 정보를 불러올 수 없습니다.</div>'; return; }
+    const range = getMealRange();
+    const res = await fetch(`/api/meals/range?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`, { credentials:'include' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    (data.rows || data.meals || data || []).forEach(m => { mealState.data[m.date?.slice(0,10)] = m; });
-  } catch {}
-  // 오늘 또는 가장 최근 날짜 선택
-  const today = new Date().toISOString().slice(0,10);
-  mealState.idx = Math.max(0, dates.findIndex(d => d >= today));
-  renderMealDay();
+    const rowsByDate = {};
+    (data.rows || data.meals || data || []).forEach(m => { if (m.date) rowsByDate[m.date.slice(0,10)] = m; });
+    MEAL_BROWSER_STATE.dates = range.dates;
+    MEAL_BROWSER_STATE.rowsByDate = rowsByDate;
+    const today = mealFormatDate(new Date());
+    const fallbackDate = range.dates.includes(today) ? today : range.dates[range.dates.length - 1];
+    MEAL_BROWSER_STATE.selectedDate =
+      MEAL_BROWSER_STATE.selectedDate && range.dates.includes(MEAL_BROWSER_STATE.selectedDate)
+        ? MEAL_BROWSER_STATE.selectedDate : fallbackDate;
+    renderMeals();
+  } catch(e) {
+    console.error('[loadMeals]', e);
+    const wrap = document.getElementById('mealWrap');
+    if (wrap) wrap.innerHTML = `
+      <div class="meal-card">
+        <div class="meal-header"><h3>급식표</h3><span class="meal-date">불러오기 실패</span></div>
+        <div class="meal-content"><div class="meal-empty">급식 데이터를 불러오지 못했습니다.</div></div>
+      </div>`;
+  }
+}
+
+function goToTodayMeal() {
+  const dates = MEAL_BROWSER_STATE.dates || [];
+  const today = mealFormatDate(new Date());
+  if (!dates.includes(today)) { showToast('오늘은 급식이 없는 날이에요.', 'info'); return; }
+  if (MEAL_BROWSER_STATE.selectedDate === today) return;
+  MEAL_BROWSER_STATE.selectedDate = today;
+  renderMeals();
 }
 
 function moveMealDay(delta) {
-  mealState.idx = Math.max(0, Math.min(mealState.dates.length - 1, mealState.idx + delta));
-  renderMealDay();
+  const dates = MEAL_BROWSER_STATE.dates;
+  const currentIndex = dates.indexOf(MEAL_BROWSER_STATE.selectedDate);
+  if (currentIndex < 0) return;
+  const nextIndex = currentIndex + delta;
+  if (nextIndex < 0 || nextIndex >= dates.length) return;
+  MEAL_BROWSER_STATE.selectedDate = dates[nextIndex];
+  renderMeals();
 }
 
-function renderMealDay() {
-  const date = mealState.dates[mealState.idx];
-  const meal = mealState.data[date];
-  const days = ['일','월','화','수','목','금','토'];
-  const d = new Date(date + 'T00:00:00');
-  document.getElementById('mealDateLabel').textContent = `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
-  document.getElementById('mealRangeLabel').textContent = `${mealState.dates[0]?.slice(5)} ~ ${mealState.dates[mealState.dates.length-1]?.slice(5)}`;
-  const wrap = document.getElementById('mealContent');
-  if (meal && meal.image_url) {
-    wrap.innerHTML = `<img src="${escHtml(meal.image_url)}" style="width:100%;border-radius:var(--radius);border:1px solid var(--border)" />`;
-  } else {
-    wrap.innerHTML = '<div style="color:var(--muted);padding:32px">급식 사진이 없습니다.</div>';
+function renderMeals() {
+  const wrap = document.getElementById('mealWrap');
+  const dates = MEAL_BROWSER_STATE.dates || [];
+  if (!dates.length) {
+    wrap.innerHTML = `<div class="meal-card"><div class="meal-header"><h3>급식표</h3><span class="meal-date">데이터 없음</span></div><div class="meal-content"><div class="meal-empty">표시할 급식표가 없습니다.</div></div></div>`;
+    return;
   }
+  const selectedDate = MEAL_BROWSER_STATE.selectedDate || dates[dates.length - 1];
+  const currentIndex = dates.indexOf(selectedDate);
+  const weekLabel = getMealWeekLabel(selectedDate, dates);
+  const todayDate = mealFormatDate(new Date());
+  const canSelectToday = dates.includes(todayDate);
+  const row = MEAL_BROWSER_STATE.rowsByDate[selectedDate] || null;
+  const hasImage = Boolean(row && row.image_url);
+  const emptyMessage = '해당 날짜 급식표가 아직 등록되지 않았습니다.';
+  const detailText = hasImage
+    ? [row.week_label, row.source_taken_at ? `업데이트: ${row.source_taken_at}` : ''].filter(Boolean).join(' · ')
+    : emptyMessage;
+
+  wrap.innerHTML = `
+    <div class="meal-card">
+      <div class="meal-header"><h3>급식표</h3><span class="meal-date">${mealLabel(selectedDate)}</span></div>
+      <div class="meal-browser-nav">
+        <button type="button" class="meal-nav-btn" onclick="moveMealDay(-1)" ${currentIndex <= 0 ? 'disabled' : ''} aria-label="이전 급식표">‹</button>
+        <div class="meal-browser-meta">
+          <div class="meal-browser-range">${weekLabel}</div>
+          <div class="meal-browser-date">
+            <span>${mealShortLabel(selectedDate)}</span>
+            <button type="button" class="meal-today-btn" onclick="goToTodayMeal()" ${(canSelectToday && selectedDate === todayDate) ? 'disabled' : ''} aria-label="오늘 급식표 보기">오늘</button>
+          </div>
+        </div>
+        <button type="button" class="meal-nav-btn" onclick="moveMealDay(1)" ${currentIndex >= dates.length - 1 ? 'disabled' : ''} aria-label="다음 급식표">›</button>
+      </div>
+      <div class="meal-content">
+        ${hasImage
+          ? `<div class="meal-image-wrap"><img class="meal-image" src="${row.image_url}" alt="${escHtml(selectedDate)} 급식표" loading="lazy" /></div>`
+          : `<div class="meal-empty">${emptyMessage}</div>`}
+        <div class="meal-note">${escHtml(detailText)}</div>
+      </div>
+    </div>`;
 }
 
 // ── 프로필 ──
