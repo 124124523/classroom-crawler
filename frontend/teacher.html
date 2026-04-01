@@ -777,7 +777,7 @@ async function loadMeals() {
     const res = await fetch(`/api/meals/range?from=${from}&to=${to}`, { credentials:'include' });
     if (!res.ok) { document.getElementById('mealContent').innerHTML = '<div style="color:var(--muted);padding:24px">급식 정보를 불러올 수 없습니다.</div>'; return; }
     const data = await res.json();
-    (data.meals || data || []).forEach(m => { mealState.data[m.date?.slice(0,10)] = m; });
+    (data.rows || data.meals || data || []).forEach(m => { mealState.data[m.date?.slice(0,10)] = m; });
   } catch {}
   // 오늘 또는 가장 최근 날짜 선택
   const today = new Date().toISOString().slice(0,10);
