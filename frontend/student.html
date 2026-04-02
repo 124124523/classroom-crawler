@@ -1463,18 +1463,21 @@ async function loadEvents() {
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let calSelectedDate = null;
-let schoolSchedule = []; // NEIS 학사일정 캐시
-let scheduleLoadedMonth = ''; // 이미 로드한 월 ('YYYY-MM')
+let schoolSchedule = []; // 현재 월 학사일정
+const scheduleCache = {}; // 월별 캐시 ('YYYY-MM' → events[])
 
 async function loadSchoolSchedule(year, month) {
   const key = `${year}-${String(month+1).padStart(2,'0')}`;
-  if (scheduleLoadedMonth === key) return;
+  if (scheduleCache[key]) {
+    schoolSchedule = scheduleCache[key];
+    return;
+  }
   try {
     const res = await fetch(`/api/schedule?year=${year}&month=${month+1}`, { credentials: 'include' });
     if (!res.ok) return;
     const data = await res.json();
     schoolSchedule = data.events || [];
-    scheduleLoadedMonth = key;
+    scheduleCache[key] = schoolSchedule;
   } catch { /* 무시 */ }
 }
 
@@ -1482,7 +1485,6 @@ function calMove(dir) {
   calMonth += dir;
   if (calMonth < 0)  { calMonth = 11; calYear--; }
   if (calMonth > 11) { calMonth = 0;  calYear++; }
-  scheduleLoadedMonth = ''; // 월 변경 시 학사일정 다시 로드
   renderCalendar();
 }
 async function calAddEvent() {

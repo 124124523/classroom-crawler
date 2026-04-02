@@ -186,6 +186,9 @@ try {
   console.warn('[pipeline] mealSync 로드 실패:', e.message);
 }
 
+// ── 학사일정 sync ─────────────────────────────────────
+const { syncScheduleRange } = require('./schoolSchedule');
+
 // 동시 실행 방지 락
 let pipelineRunning = false;
 
@@ -228,6 +231,14 @@ async function runPipeline() {
       } catch (e) {
         console.error('[pipeline] 급식 sync 오류:', e.message);
       }
+    }
+
+    // Step 4: NEIS → school_schedule 테이블 (학사일정)
+    try {
+      const sr = await syncScheduleRange();
+      console.log(`[pipeline] 학사일정 sync 완료: ${sr.total}건`);
+    } catch (e) {
+      console.error('[pipeline] 학사일정 sync 오류:', e.message);
     }
   } finally {
     pipelineRunning = false;
