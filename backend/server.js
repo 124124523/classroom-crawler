@@ -25,31 +25,31 @@ app.use(session({
 const activeUsers = new Map();
 const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // 5분
 
-// 일별 접속 기록용 Set (오늘 이미 기록된 유저 ID)
-const todayLoggedUsers = new Set();
-let todayDateStr = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+// 시간별 접속 기록용 Set (이번 시간에 이미 기록된 유저 ID)
+const hourLoggedUsers = new Set();
+let currentHourKey = '';
 
-// 로그인된 API 요청마다 마지막 활동 시각 갱신 + 일별 접속 기록
+// 로그인된 API 요청마다 마지막 활동 시각 갱신 + 시간별 접속 기록
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/') && req.session?.user?.id) {
     const userId = req.session.user.id;
     activeUsers.set(userId, Date.now());
 
-    // 일별 고유 접속자 기록 (DB에 INSERT)
-    const nowDateStr = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
-    if (nowDateStr !== todayDateStr) {
-      todayLoggedUsers.clear();
-      todayDateStr = nowDateStr;
+    // 시간별 고유 접속자 기록 (DB에 INSERT)
+    const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const hourKey = kst.toISOString().slice(0, 13); // 'YYYY-MM-DDTHH'
+    if (hourKey !== currentHourKey) {
+      hourLoggedUsers.clear();
+      currentHourKey = hourKey;
     }
-    if (!todayLoggedUsers.has(userId)) {
-      todayLoggedUsers.add(userId);
-      // KST 기준 날짜 문자열 (YYYY-MM-DD)
-      const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-      const dateKey = kst.toISOString().slice(0, 10);
+    const userHourKey = `${hourKey}|${userId}`;
+    if (!hourLoggedUsers.has(userHourKey)) {
+      hourLoggedUsers.add(userHourKey);
+      const accessHour = kst.toISOString().slice(0, 10) + ' ' + kst.toISOString().slice(11, 13) + ':00:00';
       pool.query(
-        'INSERT INTO daily_access_logs (access_date, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = user_id',
-        [dateKey, userId]
-      ).catch(() => {}); // 중복 무시
+        'INSERT INTO hourly_access_logs (access_hour, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = user_id',
+        [accessHour, userId]
+      ).catch(() => {});
     }
   }
   next();
@@ -273,14 +273,14 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`✅ 서버 실행 중: PORT=${PORT}`);
 
-  // ── daily_access_logs 테이블 자동 생성 ──
+  // ── hourly_access_logs 테이블 자동 생성 ──
   try {
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS daily_access_logs (
+      CREATE TABLE IF NOT EXISTS hourly_access_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        access_date DATE NOT NULL,
+        access_hour DATETIME NOT NULL,
         user_id VARCHAR(50) NOT NULL,
-        UNIQUE KEY uq_date_user (access_date, user_id)
+        UNIQUE KEY uq_hour_user (access_hour, user_id)
       )
     `);
   } catch {}

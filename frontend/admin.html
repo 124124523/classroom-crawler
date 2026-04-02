@@ -631,13 +631,13 @@
       <div class="section-page" id="page-access">
         <div class="card" style="margin-bottom:20px">
           <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-            <div class="card-title"><div class="dot"></div>일별 접속자 추이</div>
+            <div class="card-title"><div class="dot"></div>시간별 접속자 추이</div>
             <div style="display:flex;align-items:center;gap:8px">
               <select id="accessDaysSelect" class="form-input" style="width:auto;padding:5px 10px;font-size:0.8rem" onchange="loadAccessStats()">
+                <option value="1" selected>오늘</option>
+                <option value="3">최근 3일</option>
                 <option value="7">최근 7일</option>
                 <option value="14">최근 14일</option>
-                <option value="30" selected>최근 30일</option>
-                <option value="60">최근 60일</option>
               </select>
             </div>
           </div>
@@ -1050,7 +1050,7 @@ function showToast(msg, type = 'info') {
 }
 // ── Access Stats (접속 통계 그래프) ──
 async function loadAccessStats() {
-  const days = document.getElementById('accessDaysSelect')?.value || 30;
+  const days = document.getElementById('accessDaysSelect')?.value || 1;
   try {
     const res = await fetch(`/api/admin/access-stats?days=${days}`, { credentials: 'include' });
     if (!res.ok) return;
@@ -1071,19 +1071,26 @@ function renderAccessChart(stats, days) {
   const W = rect.width, H = rect.height;
   ctx.clearRect(0, 0, W, H);
 
-  // 날짜 범위 생성 (최근 N일)
-  const dateMap = {};
-  stats.forEach(s => { dateMap[s.access_date.slice(0,10)] = s.count; });
+  // 시간 범위 생성 (최근 N일 × 24시간)
+  const hourMap = {};
+  stats.forEach(s => {
+    // access_hour: 'YYYY-MM-DD HH:00:00'
+    const key = s.access_hour.slice(0, 13); // 'YYYY-MM-DD HH'
+    hourMap[key] = s.count;
+  });
   const labels = [], values = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.now() + 9*60*60*1000 - i * 86400000);
-    const key = d.toISOString().slice(0,10);
+  const totalHours = days * 24;
+  const now = new Date(Date.now() + 9*60*60*1000);
+  for (let i = totalHours - 1; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 3600000);
+    const key = d.toISOString().slice(0, 13); // 'YYYY-MM-DDTHH'
+    const mapKey = key.replace('T', ' ');      // 'YYYY-MM-DD HH'
     labels.push(key);
-    values.push(dateMap[key] || 0);
+    values.push(hourMap[mapKey] || 0);
   }
 
   const maxVal = Math.max(...values, 1);
-  const padL = 44, padR = 16, padT = 20, padB = 40;
+  const padL = 44, padR = 16, padT = 20, padB = 44;
   const chartW = W - padL - padR, chartH = H - padT - padB;
 
   // 스타일
@@ -1109,7 +1116,7 @@ function renderAccessChart(stats, days) {
 
   if (values.length < 2) return;
 
-  const barWidth = Math.max(2, chartW / values.length - 2);
+  const barWidth = Math.max(1, chartW / values.length - 1);
   const gap = (chartW - barWidth * values.length) / (values.length + 1);
 
   // 막대 그래프
@@ -1118,11 +1125,10 @@ function renderAccessChart(stats, days) {
     const barH = (v / maxVal) * chartH;
     const y = padT + chartH - barH;
 
-    // 막대
     ctx.fillStyle = primaryColor;
     ctx.globalAlpha = 0.75;
     ctx.beginPath();
-    const r = Math.min(3, barWidth / 2);
+    const r = Math.min(2, barWidth / 2);
     ctx.moveTo(x, y + r);
     ctx.arcTo(x, y, x + r, y, r);
     ctx.arcTo(x + barWidth, y, x + barWidth, y + r, r);
@@ -1133,22 +1139,30 @@ function renderAccessChart(stats, days) {
     ctx.globalAlpha = 1;
   });
 
-  // X축 레이블 (간격 조절)
+  // X축 레이블
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = textColor;
   ctx.font = '10px sans-serif';
-  const labelStep = Math.max(1, Math.floor(values.length / 10));
+  // 1일=24칸이면 3시간 간격, 여러 날이면 자동 조절
+  const labelStep = Math.max(1, Math.floor(values.length / 12));
   values.forEach((v, i) => {
     if (i % labelStep !== 0 && i !== values.length - 1) return;
     const x = padL + gap + i * (barWidth + gap) + barWidth / 2;
-    const parts = labels[i].split('-');
-    ctx.fillText(`${+parts[1]}/${+parts[2]}`, x, padT + chartH + 8);
+    const parts = labels[i].split('T');
+    const datePart = parts[0].slice(5); // 'MM-DD'
+    const hour = parts[1] + '시';
+    if (days <= 1) {
+      ctx.fillText(hour, x, padT + chartH + 6);
+    } else {
+      ctx.fillText(datePart, x, padT + chartH + 4);
+      ctx.fillText(hour, x, padT + chartH + 16);
+    }
   });
 
   // 꺾은선 오버레이
   ctx.strokeStyle = primaryColor;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.lineJoin = 'round';
   ctx.beginPath();
   values.forEach((v, i) => {
@@ -1158,35 +1172,40 @@ function renderAccessChart(stats, days) {
   });
   ctx.stroke();
 
-  // 점
-  values.forEach((v, i) => {
-    const x = padL + gap + i * (barWidth + gap) + barWidth / 2;
-    const y = padT + chartH - (v / maxVal) * chartH;
-    ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-    ctx.strokeStyle = primaryColor;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  });
+  // 점 (데이터 포인트가 적을 때만)
+  if (values.length <= 48) {
+    values.forEach((v, i) => {
+      const x = padL + gap + i * (barWidth + gap) + barWidth / 2;
+      const y = padT + chartH - (v / maxVal) * chartH;
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.strokeStyle = primaryColor;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  }
 
   // 요약 통계
   const total = values.reduce((a, b) => a + b, 0);
-  const avg = (total / values.length).toFixed(1);
+  const avg = (total / values.filter(v => v > 0).length || 0).toFixed(1);
   const max = Math.max(...values);
-  const today = values[values.length - 1];
+  const currentHour = values[values.length - 1];
+  // 피크 시간대 찾기
+  const peakIdx = values.indexOf(max);
+  const peakLabel = peakIdx >= 0 ? labels[peakIdx].split('T')[1] + '시' : '-';
   const summaryEl = document.getElementById('accessSummary');
   if (summaryEl) {
     summaryEl.innerHTML = [
-      { label: '오늘 접속자', value: today, color: 'var(--primary)' },
-      { label: '기간 평균', value: avg, color: 'var(--blue)' },
-      { label: '최대 접속자', value: max, color: 'var(--orange)' },
-      { label: '총 접속 (연인원)', value: total, color: 'var(--text2)' },
+      { label: '현재 시간대', value: currentHour + '명', color: 'var(--primary)' },
+      { label: '시간당 평균', value: avg + '명', color: 'var(--blue)' },
+      { label: '피크 시간대', value: `${peakLabel} (${max}명)`, color: 'var(--orange)' },
+      { label: '총 접속 (연인원)', value: total + '명', color: 'var(--text2)' },
     ].map(s => `
       <div class="stat-card" style="flex:1;min-width:120px;padding:14px">
         <div class="label">${s.label}</div>
-        <div class="value" style="font-size:1.4rem;color:${s.color}">${s.value}</div>
+        <div class="value" style="font-size:1.3rem;color:${s.color}">${s.value}</div>
       </div>
     `).join('');
   }
