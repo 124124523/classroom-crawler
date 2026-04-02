@@ -153,6 +153,24 @@ router.get('/coverage', requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/admin/access-stats — 일별 접속 통계 (최근 N일)
+router.get('/access-stats', requireAdmin, async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 90);
+    const [rows] = await db.query(`
+      SELECT access_date, COUNT(DISTINCT user_id) AS count
+      FROM daily_access_logs
+      WHERE access_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+      GROUP BY access_date
+      ORDER BY access_date ASC
+    `, [days]);
+    res.json({ stats: rows });
+  } catch (err) {
+    console.error('[admin/access-stats]', err.message);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
 // POST /api/admin/sync-meals — Instagram 급식 사진 수동 동기화
 router.post('/sync-meals', requireAdmin, async (req, res) => {
   try {

@@ -248,6 +248,7 @@
     .cal-event-chip.type-assign.진로 { background: rgba(31,95,138,0.1); color: var(--blue); }
     .cal-event-chip.type-assign.completed { background: rgba(100,120,110,0.08); color: var(--muted); text-decoration: line-through; }
     .cal-event-chip.type-personal { background: rgba(194,101,45,0.12); color: var(--orange); }
+    .cal-event-chip.type-schedule { background: rgba(185,28,28,0.1); color: var(--red); }
     .cal-more { font-size: 0.63rem; color: var(--text3); padding: 1px 4px; }
     .cal-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
     @media (max-width: 1100px) { .cal-layout { grid-template-columns: 1fr; } .cal-right-col { display: none; } .cal-right-col.mobile-show { display: flex; } }
@@ -688,6 +689,7 @@
             <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent)"></div> 수행평가 (일반)</div>
             <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blue)"></div> 수행평가 (진로)</div>
             <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--orange)"></div> 개인 일정</div>
+            <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red)"></div> 학사일정</div>
           </div>
         </div>
 
@@ -1461,11 +1463,26 @@ async function loadEvents() {
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let calSelectedDate = null;
+let schoolSchedule = []; // NEIS 학사일정 캐시
+let scheduleLoadedMonth = ''; // 이미 로드한 월 ('YYYY-MM')
+
+async function loadSchoolSchedule(year, month) {
+  const key = `${year}-${String(month+1).padStart(2,'0')}`;
+  if (scheduleLoadedMonth === key) return;
+  try {
+    const res = await fetch(`/api/schedule?year=${year}&month=${month+1}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    schoolSchedule = data.events || [];
+    scheduleLoadedMonth = key;
+  } catch { /* 무시 */ }
+}
 
 function calMove(dir) {
   calMonth += dir;
   if (calMonth < 0)  { calMonth = 11; calYear--; }
   if (calMonth > 11) { calMonth = 0;  calYear++; }
+  scheduleLoadedMonth = ''; // 월 변경 시 학사일정 다시 로드
   renderCalendar();
 }
 async function calAddEvent() {
@@ -1562,6 +1579,13 @@ function personalEvRowInner(id, title, desc) {
 }
 function buildCalEvMap() {
   const evMap = {};
+  // 학사일정 (NEIS)
+  schoolSchedule.forEach(s => {
+    if (!s.date) return;
+    const key = s.date.slice(0,10);
+    if (!evMap[key]) evMap[key] = [];
+    evMap[key].push({ kind:'schedule', item:s });
+  });
   // 수행평가 마감일 기준으로 캘린더에 자동 표시
   assignments.forEach(a => {
     if (!a.due_date) return;
@@ -1579,7 +1603,8 @@ function buildCalEvMap() {
   return evMap;
 }
 
-function renderCalendar() {
+async function renderCalendar() {
+  await loadSchoolSchedule(calYear, calMonth);
   const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById('calMonthLabel').textContent = `${calYear}년 ${monthNames[calMonth]}`;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1610,7 +1635,7 @@ function renderCalendar() {
       cell.innerHTML = `
         <div class="cal-day-num">${dateNum}</div>
         <div class="cal-events">
-          ${shown.map(e => e.kind==='assign' ? `<div class="cal-event-chip type-assign ${e.item.type==='진로'?'진로':''} ${Number(e.item.completed)===1?'completed':''}">${escHtml(e.item.subject_name||'')} ${escHtml(e.item.title)}</div>` : `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`).join('')}
+          ${shown.map(e => e.kind==='assign' ? `<div class="cal-event-chip type-assign ${e.item.type==='진로'?'진로':''} ${Number(e.item.completed)===1?'completed':''}">${escHtml(e.item.subject_name||'')} ${escHtml(e.item.title)}</div>` : e.kind==='schedule' ? `<div class="cal-event-chip type-schedule">${escHtml(e.item.name)}</div>` : `<div class="cal-event-chip type-personal">${escHtml(e.item.title)}</div>`).join('')}
           ${more > 0 ? `<div class="cal-more">+${more}개 더</div>` : ''}
         </div>
       `;
@@ -1640,6 +1665,9 @@ function renderCalDetailPanel(dateKey, dateObj, evs) {
       if (e.kind === 'assign') {
         const a = e.item; const dotColor = a.type === '진로' ? 'var(--blue)' : 'var(--accent)';
         return `<div class="cal-detail-item" onclick="openAssignDetail(${a.id})"><div class="cal-detail-dot" style="background:${dotColor}"></div><div><div class="cal-detail-title">${escHtml(a.title)}</div><div class="cal-detail-sub">${escHtml(a.subject_name||'')} · ${fmtDate(a.due_date)}</div></div></div>`;
+      } else if (e.kind === 'schedule') {
+        const s = e.item;
+        return `<div class="cal-detail-item" style="cursor:default"><div class="cal-detail-dot" style="background:var(--red);margin-top:5px;flex-shrink:0"></div><div><div class="cal-detail-title">${escHtml(s.name)}</div><div class="cal-detail-sub">학사일정${s.classYn ? ' · ' + escHtml(s.classYn) : ''}</div></div></div>`;
       } else {
         const ev = e.item;
         return `<div class="cal-detail-item" id="cal-ev-row-${ev.id}" style="cursor:default;align-items:flex-start">${personalEvRowInner(ev.id, ev.title, ev.description||'')}</div>`;

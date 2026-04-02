@@ -346,6 +346,12 @@
         </svg>
         분반 커버리지
       </div>
+      <div class="nav-item" onclick="showSection('access')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        접속 통계
+      </div>
       <div class="nav-item" onclick="showSection('notices')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -618,6 +624,27 @@
             </div>
             <div id="coverageMissing">-</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ACCESS STATS -->
+      <div class="section-page" id="page-access">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <div class="card-title"><div class="dot"></div>일별 접속자 추이</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <select id="accessDaysSelect" class="form-input" style="width:auto;padding:5px 10px;font-size:0.8rem" onchange="loadAccessStats()">
+                <option value="7">최근 7일</option>
+                <option value="14">최근 14일</option>
+                <option value="30" selected>최근 30일</option>
+                <option value="60">최근 60일</option>
+              </select>
+            </div>
+          </div>
+          <div style="position:relative;width:100%;height:320px;margin-top:12px">
+            <canvas id="accessChart" style="width:100%;height:100%"></canvas>
+          </div>
+          <div id="accessSummary" style="display:flex;gap:20px;margin-top:16px;flex-wrap:wrap"></div>
         </div>
       </div>
 
@@ -987,7 +1014,7 @@ function showSection(name) {
   document.getElementById(`page-${name}`).classList.add('active');
   if (event && event.currentTarget) event.currentTarget.classList.add('active');
 
-  const titles = { dashboard:'전체 현황', users:'계정 관리', subjects:'과목/분반 관리', sync:'크롤러 동기화', coverage:'분반 커버리지', notices:'전체 공지', profile:'프로필' };
+  const titles = { dashboard:'전체 현황', users:'계정 관리', subjects:'과목/분반 관리', sync:'크롤러 동기화', coverage:'분반 커버리지', access:'접속 통계', notices:'전체 공지', profile:'프로필' };
   if (name === 'profile') renderProfile();
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
@@ -996,6 +1023,7 @@ function showSection(name) {
   if (name === 'subjects') loadSubjects();
   if (name === 'sync')     checkAuthStatus();
   if (name === 'coverage') loadCoverage();
+  if (name === 'access')   loadAccessStats();
   if (name === 'notices')  loadAdminNotices();
 
   // 모바일에서 네비 클릭 시 사이드바 자동 닫기
@@ -1020,6 +1048,155 @@ function showToast(msg, type = 'info') {
   c.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
+// ── Access Stats (접속 통계 그래프) ──
+async function loadAccessStats() {
+  const days = document.getElementById('accessDaysSelect')?.value || 30;
+  try {
+    const res = await fetch(`/api/admin/access-stats?days=${days}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const { stats } = await res.json();
+    renderAccessChart(stats, +days);
+  } catch(e) { console.error('[access-stats]', e); }
+}
+
+function renderAccessChart(stats, days) {
+  const canvas = document.getElementById('accessChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // 날짜 범위 생성 (최근 N일)
+  const dateMap = {};
+  stats.forEach(s => { dateMap[s.access_date.slice(0,10)] = s.count; });
+  const labels = [], values = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() + 9*60*60*1000 - i * 86400000);
+    const key = d.toISOString().slice(0,10);
+    labels.push(key);
+    values.push(dateMap[key] || 0);
+  }
+
+  const maxVal = Math.max(...values, 1);
+  const padL = 44, padR = 16, padT = 20, padB = 40;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+
+  // 스타일
+  const style = getComputedStyle(document.documentElement);
+  const primaryColor = style.getPropertyValue('--primary').trim() || '#1D5232';
+  const borderColor = style.getPropertyValue('--border').trim() || '#e0e0e0';
+  const textColor = style.getPropertyValue('--text3').trim() || '#999';
+
+  // Y축 그리드
+  const ySteps = 5;
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= ySteps; i++) {
+    const val = Math.round(maxVal / ySteps * i);
+    const y = padT + chartH - (chartH * i / ySteps);
+    ctx.fillStyle = textColor;
+    ctx.fillText(val, padL - 8, y);
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+  }
+
+  if (values.length < 2) return;
+
+  const barWidth = Math.max(2, chartW / values.length - 2);
+  const gap = (chartW - barWidth * values.length) / (values.length + 1);
+
+  // 막대 그래프
+  values.forEach((v, i) => {
+    const x = padL + gap + i * (barWidth + gap);
+    const barH = (v / maxVal) * chartH;
+    const y = padT + chartH - barH;
+
+    // 막대
+    ctx.fillStyle = primaryColor;
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    const r = Math.min(3, barWidth / 2);
+    ctx.moveTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.arcTo(x + barWidth, y, x + barWidth, y + r, r);
+    ctx.lineTo(x + barWidth, padT + chartH);
+    ctx.lineTo(x, padT + chartH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // X축 레이블 (간격 조절)
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = textColor;
+  ctx.font = '10px sans-serif';
+  const labelStep = Math.max(1, Math.floor(values.length / 10));
+  values.forEach((v, i) => {
+    if (i % labelStep !== 0 && i !== values.length - 1) return;
+    const x = padL + gap + i * (barWidth + gap) + barWidth / 2;
+    const parts = labels[i].split('-');
+    ctx.fillText(`${+parts[1]}/${+parts[2]}`, x, padT + chartH + 8);
+  });
+
+  // 꺾은선 오버레이
+  ctx.strokeStyle = primaryColor;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  values.forEach((v, i) => {
+    const x = padL + gap + i * (barWidth + gap) + barWidth / 2;
+    const y = padT + chartH - (v / maxVal) * chartH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // 점
+  values.forEach((v, i) => {
+    const x = padL + gap + i * (barWidth + gap) + barWidth / 2;
+    const y = padT + chartH - (v / maxVal) * chartH;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = primaryColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  // 요약 통계
+  const total = values.reduce((a, b) => a + b, 0);
+  const avg = (total / values.length).toFixed(1);
+  const max = Math.max(...values);
+  const today = values[values.length - 1];
+  const summaryEl = document.getElementById('accessSummary');
+  if (summaryEl) {
+    summaryEl.innerHTML = [
+      { label: '오늘 접속자', value: today, color: 'var(--primary)' },
+      { label: '기간 평균', value: avg, color: 'var(--blue)' },
+      { label: '최대 접속자', value: max, color: 'var(--orange)' },
+      { label: '총 접속 (연인원)', value: total, color: 'var(--text2)' },
+    ].map(s => `
+      <div class="stat-card" style="flex:1;min-width:120px;padding:14px">
+        <div class="label">${s.label}</div>
+        <div class="value" style="font-size:1.4rem;color:${s.color}">${s.value}</div>
+      </div>
+    `).join('');
+  }
+}
+
+// 창 크기 변경 시 차트 리사이즈
+window.addEventListener('resize', () => {
+  if (document.getElementById('page-access')?.classList.contains('active')) loadAccessStats();
+});
+
 // ── Coverage ──
 async function loadCoverage() {
   const summary = document.getElementById('coverageSummary');

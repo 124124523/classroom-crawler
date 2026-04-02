@@ -25,10 +25,32 @@ app.use(session({
 const activeUsers = new Map();
 const ACTIVE_WINDOW_MS = 5 * 60 * 1000; // 5분
 
-// 로그인된 API 요청마다 마지막 활동 시각 갱신
+// 일별 접속 기록용 Set (오늘 이미 기록된 유저 ID)
+const todayLoggedUsers = new Set();
+let todayDateStr = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+
+// 로그인된 API 요청마다 마지막 활동 시각 갱신 + 일별 접속 기록
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/') && req.session?.user?.id) {
-    activeUsers.set(req.session.user.id, Date.now());
+    const userId = req.session.user.id;
+    activeUsers.set(userId, Date.now());
+
+    // 일별 고유 접속자 기록 (DB에 INSERT)
+    const nowDateStr = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+    if (nowDateStr !== todayDateStr) {
+      todayLoggedUsers.clear();
+      todayDateStr = nowDateStr;
+    }
+    if (!todayLoggedUsers.has(userId)) {
+      todayLoggedUsers.add(userId);
+      // KST 기준 날짜 문자열 (YYYY-MM-DD)
+      const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const dateKey = kst.toISOString().slice(0, 10);
+      pool.query(
+        'INSERT INTO daily_access_logs (access_date, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = user_id',
+        [dateKey, userId]
+      ).catch(() => {}); // 중복 무시
+    }
   }
   next();
 });
@@ -57,6 +79,7 @@ app.use('/api/meals',       require('./routes/meals'));
 app.use('/api/timetable',   require('./routes/Timetable'));
 app.use('/api/upload',      require('./routes/upload'));
 app.use('/api/classroom',   require('./routes/classroom'));
+app.use('/api/schedule',    require('./routes/schedule'));
 app.use('/api/admin',       require('./routes/admin'));
 
 // ── 세션 확인 / 로그아웃 ───────────────────────────────
@@ -238,6 +261,18 @@ app.get('/{*path}', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`✅ 서버 실행 중: PORT=${PORT}`);
+
+  // ── daily_access_logs 테이블 자동 생성 ──
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS daily_access_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        access_date DATE NOT NULL,
+        user_id VARCHAR(50) NOT NULL,
+        UNIQUE KEY uq_date_user (access_date, user_id)
+      )
+    `);
+  } catch {}
 
   // ── class_num 컬럼 자동 추가 (학생 반번호, 선생님 담임반) ──
   try {
