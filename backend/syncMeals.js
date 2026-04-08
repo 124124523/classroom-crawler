@@ -79,19 +79,29 @@ function inferSchoolWeekYear(postYear, postMonth, captionMonth) {
 }
 
 // 특정 연월의 n번째 주 월~금 날짜 배열 반환 (UTC 기준)
+// 학교 관행: 1일이 속한 주(부분 주 포함)를 첫째 주로 계산
+// 단, 토/일 시작이면 다음 월요일을 첫째 주로 간주
 function getWeekDates(year, month, ordinal) {
   const firstDay = new Date(Date.UTC(year, month - 1, 1));
-  const firstMondayOffset = (1 - firstDay.getUTCDay() + 7) % 7;
-  const monday = new Date(Date.UTC(
-    year, month - 1,
-    1 + firstMondayOffset + (ordinal - 1) * 7
-  ));
+  const dow = firstDay.getUTCDay(); // 0=일, 1=월, ..., 6=토
 
-  // 해당 월을 벗어나면 빈 배열
-  if ((monday.getUTCMonth() + 1) !== month) return [];
+  let firstWeekMondayDate;
+  if (dow === 0) {
+    firstWeekMondayDate = 2;          // 일요일 → 다음날 월요일
+  } else if (dow === 6) {
+    firstWeekMondayDate = 3;          // 토요일 → 모레 월요일
+  } else {
+    firstWeekMondayDate = 1 - (dow - 1); // 월~금 → 해당 주 월요일 (이전 달일 수 있음)
+  }
+
+  const monday = new Date(Date.UTC(year, month - 1, firstWeekMondayDate + (ordinal - 1) * 7));
+  const friday = new Date(monday.getTime() + 4 * 86400000);
+
+  // 월~금 중 하나라도 해당 월에 포함되어야 함
+  if ((monday.getUTCMonth() + 1) !== month && (friday.getUTCMonth() + 1) !== month) return [];
 
   return Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(monday.getTime() + i * 24 * 60 * 60 * 1000);
+    const d = new Date(monday.getTime() + i * 86400000);
     return formatDateUtc(d);
   });
 }
