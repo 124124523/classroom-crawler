@@ -247,7 +247,6 @@ async function syncSingleWeek(weeklyPost) {
       throw new Error(`${weeklyPost.code} 슬라이드 ${slideIndex} 이미지 URL 없음`);
     }
     console.log(`[mealSync] 슬라이드 ${slideIndex} (${date}): imageUrl 확인됨 (${imageUrl.slice(0, 80)}...)`);
-  }
 
     const existing = existingByDate.get(date);
 
