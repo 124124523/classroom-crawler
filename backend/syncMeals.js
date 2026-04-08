@@ -124,7 +124,7 @@ function collectLatestWeeklyMealPosts(items) {
 
   for (const item of items) {
     const caption = getCaptionText(item);
-    if (!caption.includes('급식')) continue;
+    if (!caption.includes('급식') && !caption.includes('석식')) continue;
 
     const match = caption.match(WEEK_LABEL_RE);
     if (!match) continue;

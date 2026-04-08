@@ -246,9 +246,9 @@ async function runPipeline() {
   }
 }
 
-// 3시간마다 실행 (한국 시간)
-cron.schedule('0 */3 * * *', runPipeline, { timezone: 'Asia/Seoul' });
-console.log('[scheduler] 3시간 주기 파이프라인 등록 완료');
+// 12시간마다 실행 (한국 시간)
+cron.schedule('0 */12 * * *', runPipeline, { timezone: 'Asia/Seoul' });
+console.log('[scheduler] 12시간 주기 파이프라인 등록 완료');
 
 // 매일 오전 7시 급식 사진 단독 sync (Instagram → Cloudinary → DB)
 cron.schedule('0 7 * * *', async () => {
