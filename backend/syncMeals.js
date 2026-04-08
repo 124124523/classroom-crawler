@@ -116,6 +116,7 @@ function getBestImageUrl(media) {
 
 async function fetchInstagramFeed(count = INSTAGRAM_FEED_COUNT) {
   const url = `https://www.instagram.com/api/v1/feed/user/${INSTAGRAM_USERNAME}/username/?count=${count}`;
+  console.log(`[mealSync] Instagram API 호출: ${url}`);
   const res = await fetch(url, {
     headers: {
       'User-Agent':       'Mozilla/5.0',
@@ -124,7 +125,11 @@ async function fetchInstagramFeed(count = INSTAGRAM_FEED_COUNT) {
       'Referer':          `https://www.instagram.com/${INSTAGRAM_USERNAME}/`,
     },
   });
-  if (!res.ok) throw new Error(`Instagram feed 요청 실패: ${res.status}`);
+  console.log(`[mealSync] Instagram API 응답: status=${res.status}, ok=${res.ok}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '(응답 본문 읽기 실패)');
+    throw new Error(`Instagram feed 요청 실패: ${res.status} — ${body.slice(0, 300)}`);
+  }
   return res.json();
 }
 
@@ -134,14 +139,28 @@ function collectLatestWeeklyMealPosts(items) {
 
   for (const item of items) {
     const caption = getCaptionText(item);
-    if (!caption.includes('급식') && !caption.includes('석식')) continue;
+    const captionPreview = caption.slice(0, 80).replace(/\n/g, ' ');
 
+    // 급식/석식 키워드 필터
+    if (!caption.includes('급식') && !caption.includes('석식')) {
+      console.log(`[mealSync] 스킵 ${item.code}: 급식/석식 키워드 없음 — "${captionPreview}"`);
+      continue;
+    }
+
+    // 주차 패턴 매칭
     const match = caption.match(WEEK_LABEL_RE);
-    if (!match) continue;
+    if (!match) {
+      console.log(`[mealSync] 스킵 ${item.code}: 주차 패턴 불일치 — "${captionPreview}"`);
+      continue;
+    }
 
-    // 캐러셀(슬라이드 6장)이어야 함: 표지 1장 + 월~금 5장
-    if (item.media_type !== 8 || !Array.isArray(item.carousel_media) || item.carousel_media.length !== 6) {
-      console.log(`[mealSync] 스킵 ${item.code}: 캐러셀 슬라이드 수 불일치`);
+    // 캐러셀 검증
+    if (item.media_type !== 8 || !Array.isArray(item.carousel_media)) {
+      console.log(`[mealSync] 스킵 ${item.code}: 캐러셀 아님 (media_type=${item.media_type})`);
+      continue;
+    }
+    if (item.carousel_media.length !== 6) {
+      console.log(`[mealSync] 스킵 ${item.code}: 슬라이드 ${item.carousel_media.length}장 (6장 필요) — "${captionPreview}"`);
       continue;
     }
 
@@ -152,8 +171,10 @@ function collectLatestWeeklyMealPosts(items) {
     const year         = inferSchoolWeekYear(postParts.year, postParts.month, captionMonth);
     const weekDates    = getWeekDates(year, captionMonth, ordinal);
 
+    console.log(`[mealSync] 후보 ${item.code}: "${captionPreview}" → ${year}년 ${captionMonth}월 ${ordinalText}주(ordinal=${ordinal}) → dates=${JSON.stringify(weekDates)}`);
+
     if (weekDates.length !== 5) {
-      console.log(`[mealSync] 스킵 ${item.code}: ${captionMonth}월 ${ordinalText} 주 날짜 산출 실패`);
+      console.log(`[mealSync] 스킵 ${item.code}: ${captionMonth}월 ${ordinalText} 주 날짜 산출 실패 (${weekDates.length}개)`);
       continue;
     }
 
@@ -208,8 +229,10 @@ async function uploadInstagramImageToCloudinary(imageUrl, publicId) {
 // ── 주 단위 sync ──────────────────────────────────────
 
 async function syncSingleWeek(weeklyPost) {
+  console.log(`[mealSync] syncSingleWeek 시작: ${weeklyPost.week_label} (${weeklyPost.code}), dates=${JSON.stringify(weeklyPost.week_dates)}`);
   const existingRows  = await getMealImagesByDates(weeklyPost.week_dates);
   const existingByDate = new Map(existingRows.map(row => [row.date, row]));
+  console.log(`[mealSync] DB 기존 데이터: ${existingRows.length}건 (${[...existingByDate.keys()].join(', ')})`);
 
   let upserted = 0, uploaded = 0, reused = 0;
 
@@ -220,8 +243,11 @@ async function syncSingleWeek(weeklyPost) {
     const imageUrl   = getBestImageUrl(media);
 
     if (!imageUrl) {
+      console.error(`[mealSync] 슬라이드 ${slideIndex} (${date}): image_versions2 없음. media keys=${JSON.stringify(Object.keys(media || {}))}`);
       throw new Error(`${weeklyPost.code} 슬라이드 ${slideIndex} 이미지 URL 없음`);
     }
+    console.log(`[mealSync] 슬라이드 ${slideIndex} (${date}): imageUrl 확인됨 (${imageUrl.slice(0, 80)}...)`);
+  }
 
     const existing = existingByDate.get(date);
 
@@ -269,6 +295,15 @@ async function syncInstagramMealImages() {
   console.log('[mealSync] Instagram 급식 사진 sync 시작');
   const feed  = await fetchInstagramFeed();
   const items = Array.isArray(feed?.items) ? feed.items : [];
+  console.log(`[mealSync] 피드 아이템 ${items.length}건 수신`);
+
+  if (!items.length) {
+    console.warn('[mealSync] ⚠ 피드 아이템이 0건입니다. Instagram API 응답 구조:', JSON.stringify(Object.keys(feed || {})));
+    if (feed && !feed.items) {
+      console.warn('[mealSync] ⚠ feed.items 없음. 전체 응답 키:', JSON.stringify(feed).slice(0, 500));
+    }
+  }
+
   const weeklyPosts = collectLatestWeeklyMealPosts(items);
   console.log(`[mealSync] 피드 ${items.length}건 스캔, 주별 게시물 ${weeklyPosts.length}개`);
 

@@ -223,14 +223,17 @@ async function runPipeline() {
       }
     }
 
-    // Step 3: NEIS → school_meals 테이블
+    // Step 3: Instagram → meal_day_images 테이블
     if (syncMeals) {
       try {
         const mr = await syncMeals();
-        console.log(`[pipeline] 급식 sync 완료: ${mr.total}건 처리, 실패 ${mr.failed}건`);
+        console.log(`[pipeline] 급식 sync 완료: upsert ${mr.upserted}건, 업로드 ${mr.uploaded}건, 재사용 ${mr.reused}건, 실패 ${mr.failed}건`);
       } catch (e) {
         console.error('[pipeline] 급식 sync 오류:', e.message);
+        console.error('[pipeline] 급식 sync 스택:', e.stack);
       }
+    } else {
+      console.warn('[pipeline] syncMeals 모듈이 로드되지 않음 — 급식 sync 건너뜀');
     }
 
     // Step 4: NEIS → school_schedule 테이블 (학사일정)
