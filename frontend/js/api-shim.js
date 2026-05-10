@@ -164,9 +164,20 @@ route('GET', '/api/assignments', async ({ search }) => {
     };
   });
 
+  // 마감 3일 지난 과제는 목록에서 제외 (KST 기준)
+  const cutoffMs = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const filtered = result.filter(a => {
+    if (!a.deadline) return true;  // 마감 없는 과제는 유지
+    // KST 문자열을 Date 로 파싱: 'YYYY-MM-DD HH:MM:SS' → ISO
+    const iso = a.deadline.replace(' ', 'T') + '+09:00';
+    const t = Date.parse(iso);
+    if (isNaN(t)) return true;  // 파싱 실패 시 유지
+    return t >= cutoffMs;
+  });
+
   // deadline 기준 오름차순
-  result.sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''));
-  return json(result);
+  filtered.sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''));
+  return json(filtered);
 });
 
 route('POST', '/api/assignments', async ({ body }) => {
