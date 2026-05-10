@@ -219,15 +219,19 @@ export async function hasClassroomConsent() {
 }
 
 // Google OAuth 동의 화면으로 이동 — 동의 완료 시 oauth-callback.html 로 redirect
+// state 는 OAuth 명세상 ASCII 만 허용되므로 한글 ID 대신 random nonce 사용 (sessionStorage 로 검증)
 export function startClassroomConsent(legacyId) {
+  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessionStorage.setItem('oauth_state', nonce);
+  sessionStorage.setItem('oauth_legacy_id', legacyId);
   const params = new URLSearchParams({
     client_id: GOOGLE_OAUTH.clientId,
     redirect_uri: GOOGLE_OAUTH.redirectUri,
     response_type: 'code',
     scope: GOOGLE_OAUTH.scopes.join(' '),
     access_type: 'offline',
-    prompt: 'consent',  // refresh_token 강제 발급
-    state: legacyId,    // CSRF 방지 + 콜백에서 사용자 식별
+    prompt: 'consent',
+    state: nonce,
   });
   location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }

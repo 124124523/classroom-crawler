@@ -76,7 +76,7 @@
       card.innerHTML = `
         <div class="icon">⚠️</div>
         <h1>동의 처리 실패</h1>
-        <p class="err">${msg}</p>
+        <div class="err" style="text-align:left;">${msg}</div>
         <p style="margin-top:14px;"><a href="classroom-consent.html" style="color:#fff;">다시 시도</a> · <a href="student.html" style="color:#fff;">건너뛰기</a></p>
       `;
     }
@@ -90,11 +90,21 @@
       const mapping = await getMyMapping();
       if (!mapping) { location.href = 'profile-link.html'; return; }
 
-      // CSRF 체크: state 가 본인 legacyId 와 일치해야 함
-      if (state !== mapping.legacyId) {
-        showError('인증 상태값이 일치하지 않습니다.');
+      // CSRF 체크: state 가 sessionStorage 에 저장한 nonce 와 일치해야 함
+      const storedNonce = sessionStorage.getItem('oauth_state');
+      const storedLegacyId = sessionStorage.getItem('oauth_legacy_id');
+      if (!storedNonce || state !== storedNonce) {
+        showError('보안 검증 실패: 동의 흐름을 처음부터 다시 시도해주세요.');
         return;
       }
+      // legacyId 가 sessionStorage 의 것과 매핑의 것이 일치하는지도 확인
+      if (storedLegacyId !== mapping.legacyId) {
+        showError('계정 매핑 불일치: 다시 로그인 후 시도해주세요.');
+        return;
+      }
+      // 사용 후 정리
+      sessionStorage.removeItem('oauth_state');
+      sessionStorage.removeItem('oauth_legacy_id');
 
       // pendingTokens 컬렉션에 코드 저장 (GitHub Actions 가 5분 안에 교환)
       try {
