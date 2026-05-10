@@ -3,14 +3,20 @@
 //   $ node crawler/run.js
 
 require('dotenv').config();
+const { exchangePendingTokens } = require('./exchangeTokens');
 const { crawlAll } = require('./auth');
 const { syncCourseworkToAssignments } = require('./sync');
 
 (async () => {
   const t0 = Date.now();
   try {
+    // 1) 새로 동의한 학생들의 OAuth 코드 → access/refresh 토큰 교환
+    await exchangePendingTokens();
+    // 2) 모든 토큰 (선생/학생) 으로 Classroom 크롤
     const c = await crawlAll();
+    // 3) coursework → assignments 동기화
     const s = await syncCourseworkToAssignments();
+
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     console.log(`\n=== 완료 (${elapsed}초) ===`);
     console.log(`크롤: upsert ${c.upserted}, 스킵 ${c.skipped}, 실패 ${c.failed}`);

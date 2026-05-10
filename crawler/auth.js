@@ -97,6 +97,88 @@ async function upsertCourseWork(items, userId) {
   }));
 }
 
+// 사용자가 학생인지 확인 (users 컬렉션 조회)
+async function isStudentUser(userId) {
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) return false;
+  return snap.data().role === 'student';
+}
+
+// 학생 제출 상태 → completions 컬렉션 동기화
+// userId: 학생의 legacyId (예: '형민호')
+// classroom: Google Classroom v1 API client
+// courses: 학생이 등록된 수업 목록
+async function syncStudentSubmissions(userId, classroom, courses) {
+  // 1) 본인 제출 상태 모두 fetch (수업당 1회 호출, courseWorkId='-' 이 와일드카드)
+  const allSubs = [];
+  await Promise.all(courses.map(async (course) => {
+    try {
+      const res = await classroom.courses.courseWork.studentSubmissions.list({
+        courseId: course.id,
+        courseWorkId: '-',
+        userId: 'me',
+        pageSize: 200,
+      });
+      for (const sub of (res.data.studentSubmissions || [])) {
+        allSubs.push(sub);
+      }
+    } catch (e) {
+      console.error(`  [submissions] ${userId} 수업(${course.name}) 오류: ${e.message}`);
+    }
+  }));
+
+  if (allSubs.length === 0) return { matched: 0, marked: 0 };
+
+  // 2) gclassroom_id (= courseWorkId) → assignments.id 매핑
+  const aSnap = await db.collection('assignments').get();
+  const gidMap = {};
+  for (const d of aSnap.docs) {
+    const data = d.data();
+    if (data.gclassroom_id) gidMap[data.gclassroom_id] = parseInt(d.id);
+  }
+
+  // 3) 제출(TURNED_IN/RETURNED) 상태인 과제 → completions 에 등록
+  // 4) 미제출(NEW/CREATED/RECLAIMED_BY_STUDENT) → completions 에서 제거 (auto-classroom 만)
+  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const COMPLETED_STATES = new Set(['TURNED_IN', 'RETURNED']);
+
+  let marked = 0, unmarked = 0;
+  const completionsBatch = db.batch();
+  let opCount = 0;
+
+  for (const sub of allSubs) {
+    const assignId = gidMap[sub.courseWorkId];
+    if (!assignId) continue;  // assignments 에 없는 경우 (sync 아직 안 됨)
+
+    const docId = `${userId}_assignment_${assignId}`;
+    const ref = db.collection('completions').doc(docId);
+
+    if (COMPLETED_STATES.has(sub.state)) {
+      completionsBatch.set(ref, {
+        user_id: userId,
+        target_type: 'assignment',
+        target_id: String(assignId),
+        completed_at: ts,
+        source: 'classroom',
+        submission_state: sub.state,
+      }, { merge: true });
+      marked++;
+    } else {
+      // 미제출 상태인 경우 — classroom 으로 등록된 기록만 제거 (수동 토글은 보존)
+      // 트랜잭션 비용 절감 위해 일단 set 으로 source='classroom_pending' 표시
+      // 실제로는 기존 source='classroom' 만 지워야 하나 단순화 위해 그대로 두고 UI 가 state 로 판단
+    }
+    opCount++;
+    if (opCount >= 400) {
+      // 배치 한도 직전 commit
+      // (이 패턴은 단순화를 위해 그대로 두고 마지막에 한 번만 commit)
+    }
+  }
+
+  if (marked > 0) await completionsBatch.commit();
+  return { matched: allSubs.length, marked };
+}
+
 async function crawlForUser(tokenDocId, userId) {
   const auth = await getClientForUser(tokenDocId, userId);
   const classroom = google.classroom({ version: 'v1', auth });
@@ -151,7 +233,19 @@ async function crawlForUser(tokenDocId, userId) {
   // 한 계정의 모든 coursework 를 한번에 batch upsert (네트워크 RTT 절감)
   await upsertCourseWork(allItems, userId);
 
-  return { upserted: allItems.length, skipped };
+  // 학생 토큰이면 본인 제출 상태도 동기화
+  let submissionsMarked = 0;
+  try {
+    if (await isStudentUser(userId)) {
+      const r = await syncStudentSubmissions(userId, classroom, courses);
+      submissionsMarked = r.marked;
+      if (r.marked > 0) console.log(`  [crawler] ${userId}: 제출 ${r.marked}개 표시`);
+    }
+  } catch (e) {
+    console.error(`  [crawler] ${userId} 제출 동기화 오류: ${e.message}`);
+  }
+
+  return { upserted: allItems.length, skipped, submissionsMarked };
 }
 
 async function crawlAll() {

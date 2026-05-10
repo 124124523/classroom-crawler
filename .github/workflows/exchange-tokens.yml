@@ -1,0 +1,33 @@
+name: OAuth 코드 → 토큰 교환
+
+on:
+  # 5분마다 (auth code 가 10분 안에 만료되므로)
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+# 동시 실행 방지 (이전 run 이 끝날 때까지 대기)
+concurrency:
+  group: exchange-tokens
+  cancel-in-progress: false
+
+jobs:
+  exchange:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci --omit=dev || npm install --omit=dev
+
+      - name: 토큰 교환
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node crawler/exchangeTokens.js

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>동의 완료 처리 중...</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      min-height: 100vh; margin: 0;
+      background-color: #1B4832;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size: 40px 40px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; color: #fff;
+      font-family: var(--font-body, 'Pretendard', sans-serif);
+    }
+    .card {
+      width: 100%; max-width: 480px; text-align: center;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px; padding: 50px 36px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 12px; }
+    p { font-size: 0.92rem; color: rgba(255,255,255,0.75); line-height: 1.6; }
+    .icon { font-size: 56px; margin-bottom: 16px; }
+    .spinner {
+      display: inline-block;
+      width: 48px; height: 48px;
+      border: 4px solid rgba(255,255,255,0.18);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err { color: #ffb0b0; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="spinner"></div>
+    <h1>동의 처리 중...</h1>
+    <p>잠시만 기다려주세요.</p>
+  </div>
+
+  <script type="module">
+    import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
+    import { db, GOOGLE_OAUTH } from './js/firebase-init.js';
+    import { getCurrentUser, getMyMapping, redirectToRolePage } from './js/auth.js';
+
+    const card = document.getElementById('card');
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const error = params.get('error');
+
+    function showSuccess() {
+      card.innerHTML = `
+        <div class="icon">✅</div>
+        <h1>동의 완료</h1>
+        <p>최대 5분 이내에 자동 동기화됩니다.<br>이후부터 본인 과제 제출 상태가 자동 추적됩니다.</p>
+        <p style="margin-top:14px;font-size:0.82rem;opacity:0.6;">3초 후 대시보드로 이동...</p>
+      `;
+      setTimeout(async () => {
+        const m = await getMyMapping();
+        if (m) redirectToRolePage(m.role);
+        else location.href = 'login.html';
+      }, 3000);
+    }
+
+    function showError(msg) {
+      card.innerHTML = `
+        <div class="icon">⚠️</div>
+        <h1>동의 처리 실패</h1>
+        <p class="err">${msg}</p>
+        <p style="margin-top:14px;"><a href="classroom-consent.html" style="color:#fff;">다시 시도</a> · <a href="student.html" style="color:#fff;">건너뛰기</a></p>
+      `;
+    }
+
+    (async () => {
+      if (error) { showError('Google 동의가 취소되었습니다: ' + error); return; }
+      if (!code || !state) { showError('잘못된 콜백 요청입니다.'); return; }
+
+      const user = await getCurrentUser();
+      if (!user) { location.href = 'login.html'; return; }
+      const mapping = await getMyMapping();
+      if (!mapping) { location.href = 'profile-link.html'; return; }
+
+      // CSRF 체크: state 가 본인 legacyId 와 일치해야 함
+      if (state !== mapping.legacyId) {
+        showError('인증 상태값이 일치하지 않습니다.');
+        return;
+      }
+
+      // pendingTokens 컬렉션에 코드 저장 (GitHub Actions 가 5분 안에 교환)
+      try {
+        await setDoc(doc(db, 'pendingTokens', mapping.legacyId), {
+          user_id: mapping.legacyId,
+          code,
+          redirect_uri: GOOGLE_OAUTH.redirectUri,
+          requested_at: new Date().toISOString(),
+        });
+        showSuccess();
+      } catch (e) {
+        console.error(e);
+        showError('서버에 저장 실패: ' + e.message);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -31,6 +31,13 @@ async function ctx() {
   return { user, mapping, legacyId: mapping.legacyId, role: mapping.role };
 }
 
+// 학생이 Classroom 동의했는지 (tokens 컬렉션에 본인 토큰이 있는지)
+async function userHasClassroomToken(legacyId) {
+  const q = query(collection(db, 'tokens'), where('user_id', '==', legacyId));
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
+
 // ─── 라우터 ─────────────────────────────────────────────────
 const routes = [];
 function route(method, pattern, handler) { routes.push({ method, pattern, handler }); }
@@ -74,12 +81,14 @@ const nowIso = () => new Date().toISOString().replace('T', ' ').slice(0, 19);
 // ─────────────────────────────────────────────────────────────
 route('GET', '/api/me', async () => {
   const c = await ctx();
+  const hasConsent = c.role === 'student' ? await userHasClassroomToken(c.legacyId) : false;
   return json({
     id: c.legacyId,
     role: c.role,
     name: c.mapping.name,
     class_num: c.mapping.classNum,
     email: c.user.email,
+    has_classroom_consent: hasConsent,
   });
 });
 
@@ -166,16 +175,19 @@ route('GET', '/api/assignments', async ({ search }) => {
 
   // 마감 3일 지난 과제는 목록에서 제외 (KST 기준)
   const cutoffMs = Date.now() - 3 * 24 * 60 * 60 * 1000;
-  const filtered = result.filter(a => {
-    if (!a.deadline) return true;  // 마감 없는 과제는 유지
-    // KST 문자열을 Date 로 파싱: 'YYYY-MM-DD HH:MM:SS' → ISO
+  let filtered = result.filter(a => {
+    if (!a.deadline) return true;
     const iso = a.deadline.replace(' ', 'T') + '+09:00';
     const t = Date.parse(iso);
-    if (isNaN(t)) return true;  // 파싱 실패 시 유지
+    if (isNaN(t)) return true;
     return t >= cutoffMs;
   });
 
-  // deadline 기준 오름차순
+  // 학생 + Classroom 동의 → 완료된 과제는 목록에서 자동 숨김
+  if (c.role === 'student' && await userHasClassroomToken(c.legacyId)) {
+    filtered = filtered.filter(a => Number(a.completed) !== 1);
+  }
+
   filtered.sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''));
   return json(filtered);
 });

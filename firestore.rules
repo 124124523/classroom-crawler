@@ -133,12 +133,19 @@ service cloud.firestore {
       allow write: if hasMapping() && userId == getMyLegacyId();
     }
 
-    // ─── 크롤러/토큰 (관리자만) ─────────────────────────────
+    // ─── 크롤러/토큰 ─────────────────────────────────────
     match /coursework/{id} {
       allow read, write: if isAdmin();
     }
     match /tokens/{id} {
-      allow read, write: if isAdmin();
+      // 본인 토큰만 read 가능 (Phase 2: 학생도 본인 토큰 존재여부 확인)
+      allow read: if hasMapping() && resource.data.user_id == getMyLegacyId();
+      allow write: if false;  // Admin SDK (GitHub Actions) 만 쓰기
+    }
+    // 동의 직후 임시 보관되는 OAuth 코드. 본인 docId 만 쓰기 가능, 5분 안에 GH Actions 가 교환 후 삭제.
+    match /pendingTokens/{userId} {
+      allow read, create, update: if hasMapping() && userId == getMyLegacyId();
+      allow delete: if false;  // Admin SDK 만 삭제
     }
 
     // ─── 급식 사진/학사 일정 (인증 read, admin write) ───────

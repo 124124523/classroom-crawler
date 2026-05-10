@@ -16,7 +16,7 @@ import {
   collection, query, where, getDocs,
 } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
 
-import { auth, db, isSchoolEmail, SCHOOL_DOMAIN } from './firebase-init.js';
+import { auth, db, isSchoolEmail, SCHOOL_DOMAIN, GOOGLE_OAUTH } from './firebase-init.js';
 
 // 현재 로그인된 사용자의 매핑(legacyId, role 등) 캐시
 let _cachedMapping = null;
@@ -203,4 +203,31 @@ export function redirectToRolePage(role) {
     student: 'student.html',
   };
   location.href = map[role] || 'student.html';
+}
+
+// ─────────────────────────────────────────────────────────────
+// Classroom 동의 (Phase 2)
+// ─────────────────────────────────────────────────────────────
+
+// 이미 Classroom 동의(토큰 등록)했는지 확인
+export async function hasClassroomConsent() {
+  const mapping = await getMyMapping();
+  if (!mapping) return false;
+  const q = query(collection(db, 'tokens'), where('user_id', '==', mapping.legacyId));
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
+
+// Google OAuth 동의 화면으로 이동 — 동의 완료 시 oauth-callback.html 로 redirect
+export function startClassroomConsent(legacyId) {
+  const params = new URLSearchParams({
+    client_id: GOOGLE_OAUTH.clientId,
+    redirect_uri: GOOGLE_OAUTH.redirectUri,
+    response_type: 'code',
+    scope: GOOGLE_OAUTH.scopes.join(' '),
+    access_type: 'offline',
+    prompt: 'consent',  // refresh_token 강제 발급
+    state: legacyId,    // CSRF 방지 + 콜백에서 사용자 식별
+  });
+  location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }

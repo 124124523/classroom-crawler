@@ -30,3 +30,14 @@ export const CLOUDINARY = {
   cloudName: 'dkmistqkh',
   uploadPreset: 'schoolboard_unsigned',
 };
+
+// Google OAuth (Classroom 동의용) - Phase 2
+// client_id 는 공개 가능한 값. client_secret 은 GitHub Actions 에만 보관.
+export const GOOGLE_OAUTH = {
+  clientId: '524858649664-1ipu9bksc884989tgrlob83t324mslq7.apps.googleusercontent.com',
+  redirectUri: 'https://crawler-10edc.web.app/oauth-callback.html',
+  scopes: [
+    'https://www.googleapis.com/auth/classroom.courses.readonly',
+    'https://www.googleapis.com/auth/classroom.coursework.me',
+  ],
+};
