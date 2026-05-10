@@ -1,0 +1,68 @@
+name: SchoolBoard 자동화
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'    # 5분마다 - OAuth 토큰 교환
+    - cron: '0 */3 * * *'    # 3시간마다 - Classroom 크롤링 + 동기화
+    - cron: '0 16 * * *'     # 매일 새벽 1시 KST - NEIS 학사일정
+  workflow_dispatch:
+    inputs:
+      task:
+        description: '실행할 작업'
+        type: choice
+        options: [all, exchange, crawl, neis]
+        default: all
+
+concurrency:
+  group: schoolboard-${{ github.event.schedule || github.event.inputs.task }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci --omit=dev || npm install --omit=dev
+
+      # 토큰 교환: 5분 cron 또는 수동(all/exchange) 또는 3시간 크롤 시작 시
+      - name: OAuth 코드 → 토큰 교환
+        if: |
+          github.event.schedule == '*/5 * * * *' ||
+          github.event.schedule == '0 */3 * * *' ||
+          github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'exchange')
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node crawler/exchangeTokens.js
+
+      # Classroom 크롤링 + 동기화: 3시간 cron 또는 수동(all/crawl)
+      - name: Classroom 크롤링 + 동기화
+        if: |
+          github.event.schedule == '0 */3 * * *' ||
+          github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'crawl')
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          CALLBACK_URL: ${{ secrets.CALLBACK_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node crawler/run.js
+
+      # NEIS 학사일정: 매일 cron 또는 수동(all/neis)
+      - name: NEIS 학사일정 동기화
+        if: |
+          github.event.schedule == '0 16 * * *' ||
+          github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'neis')
+        env:
+          NEIS_API_KEY: ${{ secrets.NEIS_API_KEY }}
+          NEIS_ATPT_CODE: ${{ secrets.NEIS_ATPT_CODE }}
+          NEIS_SCHOOL_CODE: ${{ secrets.NEIS_SCHOOL_CODE }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node crawler/syncNeisSchedule.js
