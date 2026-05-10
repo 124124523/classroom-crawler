@@ -6,7 +6,8 @@ require('dotenv').config();
 const { google } = require('googleapis');
 const { db } = require('./firestore');
 
-const PARALLEL_LIMIT = 5;
+const PARALLEL_LIMIT = 10;
+const FS_BATCH_LIMIT = 450;  // Firestore 배치 한도 500, 여유 50
 
 function getOAuthClient() {
   return new google.auth.OAuth2(
@@ -67,25 +68,33 @@ function parseDueDate(dueDate, dueTime) {
 }
 
 // coursework upsert (Firestore: coursework/{coursework_id})
+// 큰 배열은 450개씩 쪼개서 병렬 commit
 async function upsertCourseWork(items, userId) {
   if (!items.length) return;
-  const batch = db.batch();
-  for (const item of items) {
-    const ref = db.collection('coursework').doc(item.coursework_id);
-    batch.set(ref, {
-      coursework_id: item.coursework_id,
-      course_id: item.course_id,
-      course_name: item.course_name,
-      title: item.title,
-      description: item.description,
-      due_date: item.due_date,
-      state: item.state,
-      link: item.link,
-      fetched_by: userId,
-      fetched_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
-    }, { merge: true });
+  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const chunks = [];
+  for (let i = 0; i < items.length; i += FS_BATCH_LIMIT) {
+    chunks.push(items.slice(i, i + FS_BATCH_LIMIT));
   }
-  await batch.commit();
+  await Promise.all(chunks.map(chunk => {
+    const batch = db.batch();
+    for (const item of chunk) {
+      const ref = db.collection('coursework').doc(item.coursework_id);
+      batch.set(ref, {
+        coursework_id: item.coursework_id,
+        course_id: item.course_id,
+        course_name: item.course_name,
+        title: item.title,
+        description: item.description,
+        due_date: item.due_date,
+        state: item.state,
+        link: item.link,
+        fetched_by: userId,
+        fetched_at: ts,
+      }, { merge: true });
+    }
+    return batch.commit();
+  }));
 }
 
 async function crawlForUser(tokenDocId, userId) {
@@ -106,8 +115,10 @@ async function crawlForUser(tokenDocId, userId) {
   ];
   console.log(`  [crawler] ${userId}: 수업 ${courses.length}개`);
 
-  let upserted = 0, skipped = 0;
+  let skipped = 0;
+  const allItems = [];
 
+  // 모든 수업의 coursework 를 병렬로 fetch (네트워크 병렬화)
   await Promise.all(courses.map(async (course) => {
     try {
       const cwRes = await classroom.courses.courseWork.list({
@@ -117,12 +128,11 @@ async function crawlForUser(tokenDocId, userId) {
         pageSize: 50,
       });
 
-      const toUpsert = [];
       for (const cw of (cwRes.data.courseWork || [])) {
         const dueDate = parseDueDate(cw.dueDate, cw.dueTime);
         if (!dueDate) { skipped++; continue; }
         if (dueDate.slice(0, 10) < cutoff) { skipped++; continue; }
-        toUpsert.push({
+        allItems.push({
           coursework_id: cw.id,
           course_id: course.id,
           course_name: course.name,
@@ -133,15 +143,15 @@ async function crawlForUser(tokenDocId, userId) {
           link: cw.alternateLink || null,
         });
       }
-
-      await upsertCourseWork(toUpsert, userId);
-      upserted += toUpsert.length;
     } catch (e) {
       console.error(`  [crawler] ${userId} 수업(${course.name}) 오류: ${e.message}`);
     }
   }));
 
-  return { upserted, skipped };
+  // 한 계정의 모든 coursework 를 한번에 batch upsert (네트워크 RTT 절감)
+  await upsertCourseWork(allItems, userId);
+
+  return { upserted: allItems.length, skipped };
 }
 
 async function crawlAll() {
