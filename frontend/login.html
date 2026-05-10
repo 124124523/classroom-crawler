@@ -271,16 +271,16 @@
 
         <div class="form-eyebrow">Authentication</div>
         <div class="form-title">로그인</div>
-        <div class="form-subtitle">아이디와 비밀번호를 입력하세요.</div>
+        <div class="form-subtitle">학교 이메일과 비밀번호를 입력하세요.</div>
 
-        <div class="login-error" id="loginError">아이디 또는 비밀번호를 확인해주세요.</div>
+        <div class="login-error" id="loginError">이메일 또는 비밀번호를 확인해주세요.</div>
 
-        <form id="loginForm" onsubmit="handleLogin(event)">
+        <form id="loginForm">
           <div class="field-block">
-            <div class="field-heading">아이디 &mdash; ID</div>
+            <div class="field-heading">이메일 &mdash; Email</div>
             <div class="input-row">
-              <div class="input-prefix">ID</div>
-              <input type="text" id="userId" placeholder="아이디 입력" autocomplete="username" required />
+              <div class="input-prefix">@</div>
+              <input type="email" id="email" placeholder="example@dshs.kr" autocomplete="username" required />
             </div>
           </div>
           <div class="field-block">
@@ -294,6 +294,15 @@
             <span id="loginBtnText">로그인</span>
           </button>
         </form>
+
+        <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+          <a href="register.html" style="display:block;text-align:center;padding:12px;background:#F4F7F5;border:1px solid #D9E2DC;border-radius:8px;color:#1B4832;text-decoration:none;font-size:0.92rem;font-weight:700;">
+            계정이 없으신가요? 회원가입 →
+          </a>
+          <a href="#" id="resetLink" style="display:block;text-align:center;font-size:0.82rem;color:#6b7c72;text-decoration:underline;">
+            비밀번호를 잊으셨나요?
+          </a>
+        </div>
         </div>
 
       </div>
@@ -302,25 +311,35 @@
 
   <div id="toast-container"></div>
 
-  <script>
+  <script type="module">
+    import { sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
+    import { auth, isSchoolEmail, SCHOOL_DOMAIN } from './js/firebase-init.js';
+    import { login, getCurrentUser, getMyMapping, redirectToRolePage } from './js/auth.js';
+
+    // 이미 로그인된 사용자는 자동 리다이렉트
     (async () => {
-      try {
-        const res = await fetch('/api/me', { credentials: 'include' });
-        if (res.ok) { const data = await res.json(); redirect(data.role); }
-      } catch {}
+      const user = await getCurrentUser();
+      if (user && user.emailVerified) {
+        const mapping = await getMyMapping();
+        if (mapping) redirectToRolePage(mapping.role);
+        else location.href = 'profile-link.html';
+      }
     })();
 
-    function redirect(role) {
-      const map = { student:'student.html', leader:'leader.html', admin:'admin.html', teacher:'teacher.html' };
-      location.href = map[role] || 'student.html';
-    }
+    // ?msg=verify 쿼리 파라미터 처리 (회원가입 직후 안내)
+    (() => {
+      const params = new URLSearchParams(location.search);
+      if (params.get('msg') === 'verify') {
+        showToast('이메일 인증 메일을 확인하고 링크를 클릭한 뒤 다시 로그인하세요.', 'info');
+      }
+    })();
 
-    async function handleLogin(e) {
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('loginBtn');
       const txt = document.getElementById('loginBtnText');
       const err = document.getElementById('loginError');
-      const id  = document.getElementById('userId').value.trim();
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
 
       btn.disabled = true;
@@ -328,34 +347,57 @@
       err.style.display = 'none';
 
       try {
-        const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ id, password }) });
-        const data = await res.json();
-        if (data.success) {
-          showToast('로그인 성공!', 'success');
-          setTimeout(() => redirect(data.role), 500);
-        } else {
-          err.textContent = data.message || '아이디 또는 비밀번호를 확인해주세요.';
-          err.style.display = 'block';
-          btn.disabled = false;
-          txt.textContent = '로그인';
-        }
-      } catch {
-        err.textContent = '서버에 연결할 수 없습니다.';
+        await login(email, password);
+        showToast('로그인 성공!', 'success');
+        const mapping = await getMyMapping();
+        setTimeout(() => {
+          if (mapping) redirectToRolePage(mapping.role);
+          else location.href = 'profile-link.html';
+        }, 500);
+      } catch (e2) {
+        err.textContent = friendlyError(e2);
         err.style.display = 'block';
         btn.disabled = false;
         txt.textContent = '로그인';
       }
+    });
+
+    document.getElementById('resetLink').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      if (!isSchoolEmail(email)) {
+        showToast(`먼저 학교 이메일(${SCHOOL_DOMAIN})을 입력하세요.`, 'error');
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showToast('비밀번호 재설정 링크를 이메일로 보냈습니다.', 'success');
+      } catch (e2) {
+        showToast(friendlyError(e2), 'error');
+      }
+    });
+
+    function friendlyError(e) {
+      const code = e?.code || '';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        return '이메일 또는 비밀번호를 확인해주세요.';
+      }
+      if (code === 'auth/too-many-requests') {
+        return '너무 많은 시도가 있어 잠시 차단되었습니다. 잠시 후 다시 시도해주세요.';
+      }
+      if (code === 'auth/network-request-failed') {
+        return '네트워크 연결을 확인해주세요.';
+      }
+      return e?.message || '로그인에 실패했습니다.';
     }
 
     function showToast(msg, type='info') {
       const c = document.getElementById('toast-container');
       const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
-      c.appendChild(t); setTimeout(() => t.remove(), 3000);
+      c.appendChild(t); setTimeout(() => t.remove(), 3500);
     }
 
-    document.getElementById('password').addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('loginForm').requestSubmit();
-    });
+    window.showToast = showToast;
   </script>
 </body>
 </html>

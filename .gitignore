@@ -15,3 +15,16 @@ Thumbs.db
 # 에디터 설정
 .vscode/
 .idea/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Firebase 서비스 계정 키 (절대 커밋 금지!)
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
+# SQL 덤프 파일 (학생 비밀번호 평문 포함, 절대 커밋 금지!)
+db 파일/

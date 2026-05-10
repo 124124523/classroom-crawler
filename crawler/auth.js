@@ -1,45 +1,52 @@
-// crawler/auth.js
+// crawler/auth.js (Firestore 버전)
+// 기존 MySQL 코드를 그대로 Firestore Admin SDK 호출로 치환
+// CALLBACK_URL 은 토큰 갱신에는 필요 없으므로 기본값 OK
+
 require('dotenv').config();
 const { google } = require('googleapis');
-const pool = require('./db');
+const { db } = require('./firestore');
 
-// ── 병렬 처리 동시 실행 수 제한 ──────────────────────
-// Google API 호출 제한 대비 한 번에 최대 5명씩 병렬 처리
 const PARALLEL_LIMIT = 5;
 
 function getOAuthClient() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.CALLBACK_URL
+    process.env.CALLBACK_URL || 'urn:ietf:wg:oauth:2.0:oob'
   );
 }
 
-async function getClientForUser(userId) {
-  const [rows] = await pool.query('SELECT * FROM tokens WHERE user_id = ?', [userId]);
-  if (rows.length === 0) throw new Error(`토큰 없음: ${userId}`);
+async function getClientForUser(tokenDocId, userId) {
+  const ref = db.collection('tokens').doc(String(tokenDocId));
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error(`토큰 없음: ${userId}`);
+  const t = snap.data();
 
   const oauth2Client = getOAuthClient();
   oauth2Client.setCredentials({
-    access_token:  rows[0].access_token,
-    refresh_token: rows[0].refresh_token,
-    expiry_date:   rows[0].token_expiry ? new Date(rows[0].token_expiry).getTime() : null,
+    access_token: t.access_token,
+    refresh_token: t.refresh_token,
+    expiry_date: t.token_expiry ? new Date(t.token_expiry).getTime() : null,
   });
 
-  // 토큰 만료 시 자동 갱신 후 DB 업데이트
+  // 만료 시 자동 갱신 → Firestore 업데이트
   oauth2Client.on('tokens', async (newTokens) => {
-    await pool.query(
-      'UPDATE tokens SET access_token=?, token_expiry=? WHERE user_id=?',
-      [newTokens.access_token, new Date(newTokens.expiry_date), userId]
-    );
+    try {
+      const upd = {
+        updated_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      };
+      if (newTokens.access_token) upd.access_token = newTokens.access_token;
+      if (newTokens.expiry_date) upd.token_expiry = new Date(newTokens.expiry_date).toISOString().replace('T', ' ').slice(0, 19);
+      await ref.update(upd);
+    } catch (e) {
+      console.warn(`  [crawler] 토큰 갱신 저장 실패 (${userId}): ${e.message}`);
+    }
   });
 
   return oauth2Client;
 }
 
-// ── 마감일+시간 파싱 ──────────────────────────────────
-// Google Classroom API: dueDate={year,month,day}, dueTime={hours,minutes} (UTC)
-// → KST(UTC+9) 변환 후 'YYYY-MM-DD HH:MM:00' 형식 반환
+// dueDate(UTC) + dueTime(UTC) → KST 'YYYY-MM-DD HH:MM:00'
 function parseDueDate(dueDate, dueTime) {
   if (!dueDate) return null;
   const { year, month, day } = dueDate;
@@ -47,7 +54,6 @@ function parseDueDate(dueDate, dueTime) {
   if (dueTime && (dueTime.hours != null || dueTime.minutes != null)) {
     const utcH = dueTime.hours || 0;
     const utcM = dueTime.minutes || 0;
-    // UTC → KST 변환
     const utc = new Date(Date.UTC(year, month - 1, day, utcH, utcM));
     const kst = new Date(utc.getTime() + 9 * 60 * 60 * 1000);
     const ky = kst.getUTCFullYear();
@@ -57,76 +63,38 @@ function parseDueDate(dueDate, dueTime) {
     const ki = String(kst.getUTCMinutes()).padStart(2, '0');
     return `${ky}-${km}-${kd} ${kh}:${ki}:00`;
   }
-
-  // dueTime 없으면 23:59 KST
   return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')} 23:59:00`;
 }
 
-// ── 오늘 날짜 (KST) ───────────────────────────────────
-function getTodayKST() {
-  const now = new Date();
-  // UTC+9
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10); // YYYY-MM-DD
-}
-
-// ── 한 수업의 coursework 배치 upsert (deadlock 재시도 포함) ─────────────────
-async function batchUpsertCourseWork(items, userId) {
+// coursework upsert (Firestore: coursework/{coursework_id})
+async function upsertCourseWork(items, userId) {
   if (!items.length) return;
-
-  const values = items.map(item => [
-    item.coursework_id,
-    item.course_id,
-    item.course_name,
-    item.title,
-    item.description,
-    item.due_date,
-    item.state,
-    item.link,
-    userId,
-  ]);
-
-  const sql = `INSERT INTO coursework
-       (coursework_id, course_id, course_name, title, description,
-        due_date, state, link, fetched_by)
-     VALUES ?
-     ON DUPLICATE KEY UPDATE
-       course_name = VALUES(course_name),
-       title       = VALUES(title),
-       description = VALUES(description),
-       due_date    = VALUES(due_date),
-       state       = VALUES(state),
-       link        = VALUES(link),
-       fetched_by  = VALUES(fetched_by)`;
-
-  // Deadlock 발생 시 최대 3회 재시도 (지수 백오프)
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      await pool.query(sql, [values]);
-      return;
-    } catch (e) {
-      const isDeadlock = e.code === 'ER_LOCK_DEADLOCK' || (e.message && e.message.includes('Deadlock'));
-      if (isDeadlock && attempt < 3) {
-        const delay = attempt * 200; // 200ms, 400ms
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      throw e;
-    }
+  const batch = db.batch();
+  for (const item of items) {
+    const ref = db.collection('coursework').doc(item.coursework_id);
+    batch.set(ref, {
+      coursework_id: item.coursework_id,
+      course_id: item.course_id,
+      course_name: item.course_name,
+      title: item.title,
+      description: item.description,
+      due_date: item.due_date,
+      state: item.state,
+      link: item.link,
+      fetched_by: userId,
+      fetched_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+    }, { merge: true });
   }
+  await batch.commit();
 }
 
-// ── 한 계정의 coursework 크롤링 ───────────────────────
-async function crawlForUser(userId) {
-  const auth      = await getClientForUser(userId);
+async function crawlForUser(tokenDocId, userId) {
+  const auth = await getClientForUser(tokenDocId, userId);
   const classroom = google.classroom({ version: 'v1', auth });
 
-  // 1개월 전 날짜 (KST 기준) — 이보다 오래된 마감 과제는 스킵
   const cutoff = new Date(Date.now() + 9*60*60*1000 - 30*24*60*60*1000)
     .toISOString().slice(0, 10);
 
-  // ACTIVE + ARCHIVED 모두 가져오기
-  // → 보관된 수업에도 현재 유효한 과제가 있을 수 있음
   const [activeRes, archivedRes] = await Promise.all([
     classroom.courses.list({ studentId: 'me', courseStates: ['ACTIVE'],   pageSize: 50 }),
     classroom.courses.list({ studentId: 'me', courseStates: ['ARCHIVED'], pageSize: 50 }),
@@ -136,47 +104,38 @@ async function crawlForUser(userId) {
     ...(activeRes.data.courses  || []),
     ...(archivedRes.data.courses || []),
   ];
-  console.log(`  [crawler] ${userId}: 수업 ${courses.length}개 (활성+보관)`);
+  console.log(`  [crawler] ${userId}: 수업 ${courses.length}개`);
 
   let upserted = 0, skipped = 0;
 
-  // ── 각 수업의 coursework를 병렬로 가져오기 ────────────
   await Promise.all(courses.map(async (course) => {
     try {
       const cwRes = await classroom.courses.courseWork.list({
-        courseId:         course.id,
-        courseWorkStates: ['PUBLISHED'], // 게시된 과제만 (DRAFT 제외)
-        orderBy:          'dueDate asc',
-        pageSize:         50,
+        courseId: course.id,
+        courseWorkStates: ['PUBLISHED'],
+        orderBy: 'dueDate asc',
+        pageSize: 50,
       });
 
       const toUpsert = [];
-
       for (const cw of (cwRes.data.courseWork || [])) {
         const dueDate = parseDueDate(cw.dueDate, cw.dueTime);
-
-        // 마감일 없는 과제 스킵
         if (!dueDate) { skipped++; continue; }
-
-        // 1개월 이전 마감 과제 스킵 (날짜 부분만 비교)
         if (dueDate.slice(0, 10) < cutoff) { skipped++; continue; }
-
         toUpsert.push({
           coursework_id: cw.id,
-          course_id:     course.id,
-          course_name:   course.name,
-          title:         cw.title,
-          description:   cw.description || null,
-          due_date:      dueDate,
-          state:         cw.state || 'PUBLISHED',
-          link:          cw.alternateLink || null,
+          course_id: course.id,
+          course_name: course.name,
+          title: cw.title,
+          description: cw.description || null,
+          due_date: dueDate,
+          state: cw.state || 'PUBLISHED',
+          link: cw.alternateLink || null,
         });
       }
 
-      // 배치 upsert — 수업 1개당 DB 쿼리 1번
-      await batchUpsertCourseWork(toUpsert, userId);
+      await upsertCourseWork(toUpsert, userId);
       upserted += toUpsert.length;
-
     } catch (e) {
       console.error(`  [crawler] ${userId} 수업(${course.name}) 오류: ${e.message}`);
     }
@@ -185,42 +144,39 @@ async function crawlForUser(userId) {
   return { upserted, skipped };
 }
 
-// ── 전체 크롤링 (병렬 처리) ───────────────────────────
 async function crawlAll() {
   console.log(`[crawler] 시작: ${new Date().toLocaleString('ko-KR')}`);
 
-  const [tokenRows] = await pool.query('SELECT user_id FROM tokens');
-  if (!tokenRows.length) {
-    console.warn('[crawler] tokens 테이블이 비어 있습니다. 구글 인증을 먼저 진행하세요.');
+  const tokSnap = await db.collection('tokens').get();
+  if (tokSnap.empty) {
+    console.warn('[crawler] tokens 컬렉션이 비어 있음');
     return { upserted: 0, skipped: 0, failed: 0 };
   }
+  const tokens = tokSnap.docs.map(d => ({ id: d.id, user_id: d.data().user_id }));
 
   let totalUpserted = 0, totalSkipped = 0, totalFailed = 0;
 
-  // ── PARALLEL_LIMIT 명씩 나눠서 병렬 처리 ─────────────
-  for (let i = 0; i < tokenRows.length; i += PARALLEL_LIMIT) {
-    const batch = tokenRows.slice(i, i + PARALLEL_LIMIT);
-
+  for (let i = 0; i < tokens.length; i += PARALLEL_LIMIT) {
+    const batch = tokens.slice(i, i + PARALLEL_LIMIT);
     const results = await Promise.allSettled(
-      batch.map(({ user_id }) => crawlForUser(user_id))
+      batch.map(({ id, user_id }) => crawlForUser(id, user_id))
     );
-
     results.forEach((result, idx) => {
-      const userId = batch[idx].user_id;
+      const { user_id } = batch[idx];
       if (result.status === 'fulfilled') {
         const { upserted, skipped } = result.value;
         totalUpserted += upserted;
-        totalSkipped  += skipped;
-        console.log(`  [crawler] ${userId}: upsert ${upserted}개, 스킵 ${skipped}개`);
+        totalSkipped += skipped;
+        console.log(`  [crawler] ${user_id}: upsert ${upserted}, 스킵 ${skipped}`);
       } else {
-        console.error(`  [crawler] ${userId} 실패: ${result.reason?.message}`);
+        console.error(`  [crawler] ${user_id} 실패: ${result.reason?.message}`);
         totalFailed++;
       }
     });
   }
 
-  console.log(`[crawler] 완료 → upsert ${totalUpserted}개, 스킵 ${totalSkipped}개, 실패 ${totalFailed}개`);
+  console.log(`[crawler] 완료 → upsert ${totalUpserted}, 스킵 ${totalSkipped}, 실패 ${totalFailed}`);
   return { upserted: totalUpserted, skipped: totalSkipped, failed: totalFailed };
 }
 
-module.exports = { getOAuthClient, getClientForUser, crawlAll };
+module.exports = { crawlAll };

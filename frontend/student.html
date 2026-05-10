@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SchoolBoard — 학생</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- API shim: /api/* fetch 호출을 Firestore SDK 호출로 변환 -->
+  <script src="js/pre-shim.js"></script>
+  <script type="module" src="js/api-shim.js"></script>
   <style>
     /* ── Light Theme Overrides ── */
     .meal-header { background: var(--primary) !important; }

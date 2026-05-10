@@ -1,0 +1,154 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── 헬퍼 함수 ───────────────────────────────────────────
+    // 학교 이메일 + 인증 완료된 사용자만 인증 상태로 인정
+    function isAuthed() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@dshs[.]kr');
+    }
+    function isVerified() {
+      return isAuthed();  // 별칭 (가독성)
+    }
+    function getMapping() {
+      return get(/databases/$(database)/documents/userMappings/$(request.auth.uid)).data;
+    }
+    function getRole() {
+      return getMapping().role;
+    }
+    function getMyLegacyId() {
+      return getMapping().legacyId;
+    }
+    function hasMapping() {
+      return isAuthed() && exists(/databases/$(database)/documents/userMappings/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return hasMapping() && getRole() == 'admin';
+    }
+    function isStaff() {
+      return hasMapping() && getRole() in ['admin', 'teacher', 'leader'];
+    }
+
+    // ─── userMappings: Firebase UID ↔ legacy 학생 ID 매핑 ─────
+    match /userMappings/{uid} {
+      // 본인 매핑만 읽기 가능
+      allow read: if isAuthed() && request.auth.uid == uid;
+
+      // 회원가입 시 1회 생성: 본인 UID로만, 미점유 legacyId 만, role 일치 검증
+      allow create: if isVerified()
+        && request.auth.uid == uid
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.legacyId))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.legacyId)).data.firebase_uid == null
+        && request.resource.data.role == get(/databases/$(database)/documents/users/$(request.resource.data.legacyId)).data.role;
+
+      // 매핑은 변경/삭제 불가 (관리자는 Admin SDK로 직접 처리)
+      allow update, delete: if false;
+    }
+
+    // ─── users: 학생/선생/관리자 프로필 ──────────────────────
+    match /users/{userId} {
+      // 모든 인증 사용자는 read 가능 (이름+반 매칭 + 역할 표시)
+      allow read: if isAuthed();
+
+      // 본인이 firebase_uid + email 만 1회 설정 가능 (회원가입 매칭)
+      // 또는 admin이 모든 필드 변경 가능
+      allow update: if (
+        isVerified()
+        && resource.data.firebase_uid == null
+        && request.resource.data.firebase_uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firebase_uid', 'email'])
+      ) || isAdmin();
+
+      allow create, delete: if isAdmin();
+    }
+
+    // ─── 과목/분반/수강 (admin만 수정) ──────────────────────
+    match /subjects/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+    match /classes/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+    match /enrollments/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+
+    // ─── 수행평가/공지 (스태프만 작성) ──────────────────────
+    match /assignments/{id} {
+      allow read: if isAuthed();
+      allow write: if isStaff();
+    }
+    match /notices/{id} {
+      allow read: if isAuthed();
+      allow write: if isStaff();
+    }
+
+    // ─── 댓글 (본인 것만 작성/수정) ─────────────────────────
+    match /assignment_comments/{id} {
+      allow read: if isAuthed();
+      allow create: if hasMapping() && request.resource.data.writer == getMyLegacyId();
+      allow update: if hasMapping() && resource.data.writer == getMyLegacyId();
+      allow delete: if hasMapping() && (resource.data.writer == getMyLegacyId() || isAdmin());
+    }
+    match /notice_comments/{id} {
+      allow read: if isAuthed();
+      allow create: if hasMapping() && request.resource.data.writer == getMyLegacyId();
+      allow update: if hasMapping() && resource.data.writer == getMyLegacyId();
+      allow delete: if hasMapping() && (resource.data.writer == getMyLegacyId() || isAdmin());
+    }
+
+    // ─── 읽음/완료 (본인 것만) ──────────────────────────────
+    match /comment_reads/{id} {
+      allow read: if hasMapping() && resource.data.user_id == getMyLegacyId();
+      allow create: if hasMapping() && request.resource.data.user_id == getMyLegacyId();
+      allow update, delete: if false;
+    }
+    match /notice_reads/{id} {
+      allow read: if hasMapping() && resource.data.user_id == getMyLegacyId();
+      allow create: if hasMapping() && request.resource.data.user_id == getMyLegacyId();
+      allow update, delete: if false;
+    }
+    match /completions/{id} {
+      allow read: if hasMapping() && resource.data.user_id == getMyLegacyId();
+      allow create, update: if hasMapping() && request.resource.data.user_id == getMyLegacyId();
+      allow delete: if hasMapping() && resource.data.user_id == getMyLegacyId();
+    }
+
+    // ─── 개인 일정 (본인 것만) ──────────────────────────────
+    match /personal_events/{id} {
+      allow read: if hasMapping() && resource.data.user_id == getMyLegacyId();
+      allow create: if hasMapping() && request.resource.data.user_id == getMyLegacyId();
+      allow update, delete: if hasMapping() && resource.data.user_id == getMyLegacyId();
+    }
+
+    // ─── 시간표 (본인 것만 수정) ────────────────────────────
+    match /timetables/{userId} {
+      allow read: if isAuthed();
+      allow write: if hasMapping() && userId == getMyLegacyId();
+    }
+
+    // ─── 크롤러/토큰 (관리자만) ─────────────────────────────
+    match /coursework/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /tokens/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── 급식 사진/학사 일정 (인증 read, admin write) ───────
+    match /meal_day_images/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+    match /school_schedule/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+  }
+}

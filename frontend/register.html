@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>회원가입 — SchoolBoard</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      min-height: 100vh;
+      background-color: #1B4832;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size: 40px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #fff;
+      font-family: var(--font-body, 'Pretendard', sans-serif);
+    }
+    .card {
+      width: 100%;
+      max-width: 460px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 40px 36px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    }
+    .card h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin: 0 0 6px;
+    }
+    .card .subtitle {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 28px;
+    }
+    .field {
+      margin-bottom: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 14px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus {
+      border-color: rgba(255,255,255,0.5);
+    }
+    .field .hint {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 4px;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      margin-top: 14px;
+      background: #fff;
+      color: #1B4832;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .error-box {
+      display: none;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      background: rgba(220,80,80,0.18);
+      border: 1px solid rgba(220,80,80,0.4);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #ffd0d0;
+    }
+    .footer-link {
+      margin-top: 22px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.65);
+    }
+    .footer-link a {
+      color: #fff;
+      text-decoration: underline;
+    }
+    .verify-success {
+      display: none;
+      padding: 16px;
+      background: rgba(80,180,120,0.15);
+      border: 1px solid rgba(80,180,120,0.4);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .verify-success strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #b6f5cc;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>회원가입</h1>
+    <div class="subtitle">학교 이메일로 가입한 뒤, 이메일 인증을 마치고 로그인하세요.</div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="verify-success" id="verifySuccess">
+      <strong>가입 완료!</strong>
+      <span id="verifyMsg"></span>
+      <div style="margin-top:12px;">
+        <a href="login.html" style="color:#fff;text-decoration:underline;">로그인으로 이동</a>
+      </div>
+    </div>
+
+    <form id="registerForm">
+      <div class="field">
+        <label for="email">학교 이메일</label>
+        <input type="email" id="email" placeholder="example@dshs.kr" required autocomplete="username" />
+        <div class="hint">@dshs.kr 도메인만 사용 가능합니다.</div>
+      </div>
+      <div class="field">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" placeholder="6자 이상" minlength="6" required autocomplete="new-password" />
+      </div>
+      <div class="field">
+        <label for="passwordConfirm">비밀번호 확인</label>
+        <input type="password" id="passwordConfirm" placeholder="비밀번호 다시 입력" minlength="6" required autocomplete="new-password" />
+      </div>
+      <button type="submit" class="submit-btn" id="submitBtn">가입하기</button>
+    </form>
+
+    <div class="footer-link">
+      이미 계정이 있나요? <a href="login.html">로그인</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { register } from './js/auth.js';
+    import { isSchoolEmail, SCHOOL_DOMAIN } from './js/firebase-init.js';
+
+    const form = document.getElementById('registerForm');
+    const btn = document.getElementById('submitBtn');
+    const err = document.getElementById('errorBox');
+    const success = document.getElementById('verifySuccess');
+    const verifyMsg = document.getElementById('verifyMsg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.style.display = 'none';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('passwordConfirm').value;
+
+      if (!isSchoolEmail(email)) {
+        showError(`학교 이메일(${SCHOOL_DOMAIN})만 사용할 수 있습니다.`);
+        return;
+      }
+      if (password !== confirm) {
+        showError('비밀번호가 일치하지 않습니다.');
+        return;
+      }
+      if (password.length < 6) {
+        showError('비밀번호는 6자 이상이어야 합니다.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '가입 중...';
+
+      try {
+        await register(email, password);
+        form.style.display = 'none';
+        success.style.display = 'block';
+        verifyMsg.textContent = `${email} 로 인증 메일을 보냈습니다. 메일의 링크를 클릭한 뒤 로그인해주세요.`;
+      } catch (e2) {
+        btn.disabled = false;
+        btn.textContent = '가입하기';
+        showError(friendlyError(e2));
+      }
+    });
+
+    function showError(msg) {
+      err.textContent = msg;
+      err.style.display = 'block';
+    }
+
+    function friendlyError(e) {
+      const code = e?.code || '';
+      if (code === 'auth/email-already-in-use') return '이미 가입된 이메일입니다.';
+      if (code === 'auth/invalid-email') return '이메일 형식이 잘못되었습니다.';
+      if (code === 'auth/weak-password') return '비밀번호가 너무 약합니다 (6자 이상).';
+      if (code === 'auth/network-request-failed') return '네트워크 연결을 확인해주세요.';
+      return e?.message || '가입에 실패했습니다.';
+    }
+  </script>
+</body>
+</html>
