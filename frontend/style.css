@@ -205,3 +205,16 @@ h3{font-size:1.1rem;font-weight:600}
 }
 .hamburger{display:none;flex-direction:column;gap:4px;padding:6px;cursor:pointer;background:none;border:none}
 .hamburger span{width:22px;height:2px;background:var(--text2);border-radius:2px;transition:.2s}
+/* 댓글 시스템 비활성화 (자기 과제 체크 용도로만 사용하므로 불필요) */
+.comment-list, .comment-input-wrap, .comment-item,
+.comment-section, .comment-toggle,
+[id$="CommentList"], [id$="CommentInput"],
+.unread-badge, .com-count, .unread-count {
+  display: none !important;
+}
+
+/* 동의 학생의 수동 완료 체크 토글 숨김 (자동 추적이므로 불필요) */
+body[data-consented="true"] .check-btn,
+body[data-consented="true"] .modal-complete-btn {
+  display: none !important;
+}

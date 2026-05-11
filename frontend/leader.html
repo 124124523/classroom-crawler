@@ -242,7 +242,8 @@
         </svg>
         개요
       </div>
-      <div class="nav-item" onclick="showSection('assignments')">
+      <!-- 과제 작성은 Google Classroom 에서 직접 진행하도록 안내 (이 페이지는 비활성) -->
+      <div class="nav-item" style="display:none" onclick="showSection('assignments')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
         </svg>
@@ -305,7 +306,7 @@
 
         <!-- Recent -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-          <div class="card">
+          <div class="card" style="display:none">
             <div class="card-header">
               <div class="card-title"><div class="dot"></div>최근 과제</div>
               <button class="btn btn-ghost btn-sm" onclick="showSection('assignments')">전체 보기</button>

@@ -933,6 +933,11 @@ let readNoticeIds  = getReadSet('readNoticeIds');
     if (currentUser.role === 'teacher')  { location.href = 'teacher.html'; return; }
     if (currentUser.role === 'leader')   { location.href = 'leader.html';  return; }
 
+    // Classroom 동의 학생은 자동 추적 → 수동 체크 토글 숨김 (CSS 가 [data-consented=true] 인 페이지의 토글 숨김)
+    if (currentUser.has_classroom_consent) {
+      document.body.setAttribute('data-consented', 'true');
+    }
+
     // 시간표용: 이름 기반으로 homeroom 추출
     window._currentUser = currentUser;
     (function() {

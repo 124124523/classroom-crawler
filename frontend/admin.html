@@ -348,7 +348,8 @@
         </svg>
         분반 커버리지
       </div>
-      <div class="nav-item" onclick="showSection('access')">
+      <!-- 접속 통계: 로그 수집 미구현으로 비활성화 -->
+      <div class="nav-item" style="display:none" onclick="showSection('access')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
         </svg>
@@ -411,7 +412,8 @@
             <div class="value" id="statSubj" style="color:var(--orange)">-</div>
             <div class="sub">운영 중</div>
           </div>
-          <div class="stat-card" style="position:relative">
+          <!-- 실시간 접속자: 로그 수집 미구현으로 비활성화 -->
+          <div class="stat-card" style="position:relative;display:none">
             <div class="label" style="display:flex;align-items:center;gap:6px">
               <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--primary);animation:pulse 2s infinite"></span>
               실시간 접속자
