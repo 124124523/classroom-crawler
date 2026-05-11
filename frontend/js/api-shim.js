@@ -217,6 +217,7 @@ route('GET', '/api/assignments', async ({ search }) => {
       writer: a.writer,
       class_id: a.class_id,
       deadline: a.deadline,
+      due_date: a.deadline,  // 프론트 캘린더 호환 (consented 학생 뷰와 동일 필드)
       image_urls: a.image_urls,
       gclassroom_id: a.gclassroom_id,
       created_at: a.created_at,
