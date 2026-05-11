@@ -38,6 +38,57 @@ async function userHasClassroomToken(legacyId) {
   return !snap.empty;
 }
 
+// 학생 본인 coursework 만 조회 (동의된 학생용 단순 모드)
+async function listStudentOwnCoursework(legacyId) {
+  const [cwSnap, compSnap] = await Promise.all([
+    getDocs(query(collection(db, 'coursework'), where('fetched_by', '==', legacyId))),
+    getDocs(query(
+      collection(db, 'completions'),
+      where('user_id', '==', legacyId),
+      where('target_type', '==', 'coursework')
+    )),
+  ]);
+
+  // 완료된 coursework_id 셋
+  const completedSet = new Set();
+  compSnap.docs.forEach(d => completedSet.add(d.data().target_id));
+
+  const cutoffMs = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const result = cwSnap.docs
+    .map(d => d.data())
+    .filter(cw => cw.due_date && cw.state === 'PUBLISHED')  // 마감일 있고 PUBLISHED 만
+    .filter(cw => {
+      const iso = cw.due_date.replace(' ', 'T') + '+09:00';
+      const t = Date.parse(iso);
+      return isNaN(t) || t >= cutoffMs;  // 마감 3일 지난 것 제외
+    })
+    .filter(cw => !completedSet.has(cw.coursework_id))  // 완료된 것 제외
+    .map(cw => {
+      const id = parseInt(cw.coursework_id) || 0;
+      return {
+        id,
+        title: cw.title,
+        content: [cw.description || '', cw.link ? `\n\n🔗 ${cw.link}` : ''].join('').trim(),
+        writer: 'classroom_bot',
+        class_id: null,
+        deadline: cw.due_date,
+        due_date: cw.due_date,
+        image_urls: null,
+        gclassroom_id: cw.coursework_id,
+        created_at: cw.fetched_at,
+        updated_at: cw.fetched_at,
+        subject_name: cw.course_name || '',
+        class_code: '',
+        teacher: '',
+        category: '일반',
+        completed: 0,
+      };
+    });
+
+  result.sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''));
+  return json(result);
+}
+
 // ─── 라우터 ─────────────────────────────────────────────────
 const routes = [];
 function route(method, pattern, handler) { routes.push({ method, pattern, handler }); }
@@ -112,6 +163,11 @@ route('PUT', '/api/me/password', async ({ body }) => {
 route('GET', '/api/assignments', async ({ search }) => {
   const c = await ctx();
   const mine = search.get('mine') === 'true';
+
+  // 학생 + Classroom 동의 → 본인 coursework 만 표시하는 단순 모드
+  if (c.role === 'student' && !mine && await userHasClassroomToken(c.legacyId)) {
+    return await listStudentOwnCoursework(c.legacyId);
+  }
 
   let assignments = [];
   let classIds;
