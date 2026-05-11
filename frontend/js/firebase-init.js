@@ -40,4 +40,7 @@ export const GOOGLE_OAUTH = {
     'https://www.googleapis.com/auth/classroom.courses.readonly',
     'https://www.googleapis.com/auth/classroom.coursework.me',
   ],
+  // Cloudflare Worker 토큰 교환 프록시 URL.
+  // 미설정 시 (빈 문자열) 자동으로 기존 흐름 (pendingTokens → 5분 cron) 으로 fallback.
+  proxyUrl: '',  // 예: 'https://oauth-proxy.your-name.workers.dev'
 };

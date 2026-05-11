@@ -135,19 +135,22 @@ service cloud.firestore {
 
     // ─── 크롤러/토큰 ─────────────────────────────────────
     match /coursework/{id} {
-      // 본인이 크롤한 coursework 만 학생이 읽기 가능 (Phase 2 단순 학생 뷰)
-      // admin 은 전체 read
+      // 본인이 크롤한 coursework 만 학생이 read 가능 (admin 은 전체 read)
       allow read: if hasMapping() && (
         resource.data.fetched_by == getMyLegacyId() || isAdmin()
       );
-      allow write: if false;  // Admin SDK (GitHub Actions) 만 쓰기
+      // 즉시 크롤 (Cloudflare Worker → 브라우저) 가 본인 fetched_by 데이터만 write
+      allow create, update: if hasMapping() && request.resource.data.fetched_by == getMyLegacyId();
+      allow delete: if false;  // Admin SDK 만 삭제 (cleanup workflow)
     }
     match /tokens/{id} {
-      // 본인 토큰 read + admin 은 전체 read (커버리지 페이지용)
+      // 본인 토큰 read + admin 은 전체 read
       allow read: if hasMapping() && (
         resource.data.user_id == getMyLegacyId() || isAdmin()
       );
-      allow write: if false;
+      // 즉시 크롤: Worker 가 교환한 토큰을 브라우저가 본인 user_id 로 write
+      allow create, update: if hasMapping() && request.resource.data.user_id == getMyLegacyId();
+      allow delete: if false;
     }
     // 동의 직후 임시 보관되는 OAuth 코드. 본인 docId 만 쓰기 가능, 5분 안에 GH Actions 가 교환 후 삭제.
     match /pendingTokens/{userId} {

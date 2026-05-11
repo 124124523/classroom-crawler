@@ -156,7 +156,18 @@
       sessionStorage.removeItem('oauth_state');
       sessionStorage.removeItem('oauth_legacy_id');
 
-      // pendingTokens 컬렉션에 코드 저장 (GitHub Actions 가 5분 안에 교환)
+      // 우선 Cloudflare Worker 가 설정돼 있으면 즉시 교환 시도
+      if (GOOGLE_OAUTH.proxyUrl) {
+        try {
+          await processWithWorker(code, mapping);
+          return;
+        } catch (e) {
+          console.warn('[oauth] Worker 즉시 교환 실패, pendingTokens fallback:', e.message);
+          // fallback 으로 진행
+        }
+      }
+
+      // Fallback: pendingTokens 에 코드 저장 → GitHub Actions 가 5분 안에 교환
       try {
         await setDoc(doc(db, 'pendingTokens', mapping.legacyId), {
           user_id: mapping.legacyId,
@@ -164,11 +175,9 @@
           redirect_uri: GOOGLE_OAUTH.redirectUri,
           requested_at: new Date().toISOString(),
         });
-        // 이미 토큰이 있을 수도 있으니 먼저 확인
         if (await checkTokenExists(mapping.legacyId)) {
           showSuccess();
         } else {
-          // 10분 (OAuth 코드 만료 한도) 동안 30초마다 폴링
           showPolling(mapping.legacyId, Date.now() + 10 * 60 * 1000);
         }
       } catch (e) {
@@ -176,6 +185,159 @@
         showError('서버에 저장 실패: ' + e.message);
       }
     })();
+
+    // ─── Worker 를 통한 즉시 토큰 교환 + 본인 클래스룸 크롤 ─────────────
+    async function processWithWorker(code, mapping) {
+      // 1) Worker 에게 code → tokens 교환 요청
+      const res = await fetch(GOOGLE_OAUTH.proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirect_uri: GOOGLE_OAUTH.redirectUri }),
+      });
+      if (!res.ok) throw new Error('Worker HTTP ' + res.status);
+      const tk = await res.json();
+      if (tk.error) throw new Error(tk.error_description || tk.error);
+      if (!tk.access_token) throw new Error('access_token 없음');
+
+      // 2) 본인 토큰을 Firestore tokens 에 저장
+      const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      const expiry = new Date(Date.now() + (tk.expires_in || 3600) * 1000)
+        .toISOString().replace('T', ' ').slice(0, 19);
+
+      // 기존 토큰 doc 확인 (user_id 매칭)
+      const existQ = query(collection(db, 'tokens'), where('user_id', '==', mapping.legacyId));
+      const existSnap = await getDocs(existQ);
+      const tokenData = {
+        user_id: mapping.legacyId,
+        access_token: tk.access_token,
+        token_expiry: expiry,
+        updated_at: ts,
+      };
+      if (tk.refresh_token) tokenData.refresh_token = tk.refresh_token;
+
+      let tokenDocId;
+      if (existSnap.empty) {
+        // 새 토큰 — docId 를 user_id 기반으로 (Admin SDK 처럼 max+1 못 함, 충돌 회피용)
+        tokenDocId = `u_${mapping.legacyId}`;
+        tokenData.created_at = ts;
+        await setDoc(doc(db, 'tokens', tokenDocId), tokenData);
+      } else {
+        tokenDocId = existSnap.docs[0].id;
+        await setDoc(existSnap.docs[0].ref, tokenData, { merge: true });
+      }
+
+      // 3) Worker 가 받은 access_token 으로 즉시 본인 Classroom 크롤
+      showCrawling();
+      await crawlOwnClassroom(tk.access_token, mapping.legacyId);
+
+      // 4) 완료 → 대시보드
+      showSuccess();
+    }
+
+    function showCrawling() {
+      card.innerHTML = `
+        <div class="spinner"></div>
+        <h1>본인 클래스룸 동기화 중...</h1>
+        <p>본인의 수업 + 과제 + 제출 상태를 가져오고 있습니다.</p>
+      `;
+    }
+
+    // 본인 토큰으로 Classroom API 직접 호출 → Firestore 에 저장
+    async function crawlOwnClassroom(accessToken, legacyId) {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+
+      // 본인 수업 목록 (ACTIVE + ARCHIVED)
+      const [activeRes, archivedRes] = await Promise.all([
+        fetch('https://classroom.googleapis.com/v1/courses?studentId=me&courseStates=ACTIVE&pageSize=50', { headers }),
+        fetch('https://classroom.googleapis.com/v1/courses?studentId=me&courseStates=ARCHIVED&pageSize=50', { headers }),
+      ]);
+      const activeData = activeRes.ok ? await activeRes.json() : { courses: [] };
+      const archivedData = archivedRes.ok ? await archivedRes.json() : { courses: [] };
+      const courses = [...(activeData.courses || []), ...(archivedData.courses || [])];
+
+      const cutoffDate = new Date(Date.now() + 9*60*60*1000 - 30*24*60*60*1000)
+        .toISOString().slice(0, 10);
+      const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+      // 각 수업의 coursework + 본인 제출 상태 fetch (병렬)
+      const allCw = [];
+      const allSubs = [];
+      await Promise.all(courses.map(async (course) => {
+        try {
+          const [cwRes, subRes] = await Promise.all([
+            fetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?courseWorkStates=PUBLISHED&pageSize=50`, { headers }),
+            fetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork/-/studentSubmissions?userId=me&pageSize=200`, { headers }),
+          ]);
+          if (cwRes.ok) {
+            const d = await cwRes.json();
+            for (const cw of (d.courseWork || [])) {
+              const due = parseDueDate(cw.dueDate, cw.dueTime);
+              if (!due || due.slice(0, 10) < cutoffDate) continue;
+              allCw.push({
+                coursework_id: cw.id,
+                course_id: course.id,
+                course_name: course.name,
+                title: cw.title,
+                description: cw.description || null,
+                due_date: due,
+                state: cw.state || 'PUBLISHED',
+                link: cw.alternateLink || null,
+              });
+            }
+          }
+          if (subRes.ok) {
+            const d = await subRes.json();
+            for (const sub of (d.studentSubmissions || [])) allSubs.push(sub);
+          }
+        } catch { /* 무시 */ }
+      }));
+
+      // coursework 저장 (배치 — 500 한도 안전 위해 그냥 개별 setDoc)
+      const writeOps = allCw.map(item =>
+        setDoc(doc(db, 'coursework', item.coursework_id), {
+          ...item,
+          fetched_by: legacyId,
+          fetched_at: ts,
+        }, { merge: true })
+      );
+
+      // 제출(TURNED_IN/RETURNED) → completions
+      const COMPLETED = new Set(['TURNED_IN', 'RETURNED']);
+      for (const sub of allSubs) {
+        if (!COMPLETED.has(sub.state)) continue;
+        const docId = `${legacyId}_coursework_${sub.courseWorkId}`;
+        writeOps.push(setDoc(doc(db, 'completions', docId), {
+          user_id: legacyId,
+          target_type: 'coursework',
+          target_id: sub.courseWorkId,
+          completed_at: ts,
+          source: 'classroom',
+          submission_state: sub.state,
+        }, { merge: true }));
+      }
+
+      await Promise.all(writeOps);
+      console.log(`[oauth-callback] coursework ${allCw.length}, submissions ${allSubs.length} 동기화 완료`);
+    }
+
+    // crawler/auth.js 의 parseDueDate 와 동일한 로직 (UTC dueDate+dueTime → KST 문자열)
+    function parseDueDate(dueDate, dueTime) {
+      if (!dueDate) return null;
+      const { year, month, day } = dueDate;
+      if (dueTime && (dueTime.hours != null || dueTime.minutes != null)) {
+        const utcH = dueTime.hours || 0;
+        const utcM = dueTime.minutes || 0;
+        const utc = new Date(Date.UTC(year, month - 1, day, utcH, utcM));
+        const kst = new Date(utc.getTime() + 9 * 60 * 60 * 1000);
+        const ky = kst.getUTCFullYear();
+        const km = String(kst.getUTCMonth() + 1).padStart(2, '0');
+        const kd = String(kst.getUTCDate()).padStart(2, '0');
+        const kh = String(kst.getUTCHours()).padStart(2, '0');
+        const ki = String(kst.getUTCMinutes()).padStart(2, '0');
+        return `${ky}-${km}-${kd} ${kh}:${ki}:00`;
+      }
+      return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')} 23:59:00`;
+    }
   </script>
 </body>
 </html>
