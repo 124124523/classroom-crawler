@@ -2,8 +2,8 @@ name: SchoolBoard 자동화
 
 on:
   schedule:
-    - cron: '*/5 * * * *'    # 5분마다 - OAuth 토큰 교환
-    - cron: '0 */3 * * *'    # 3시간마다 - Classroom 크롤링 + 동기화
+    - cron: '*/5 * * * *'    # 5분마다 - OAuth 토큰 교환 + 신규 학생 즉시 크롤
+    - cron: '0 * * * *'      # 1시간마다 - Classroom 전체 크롤링 + 동기화
     - cron: '0 16 * * *'     # 매일 새벽 1시 KST - NEIS 학사일정
   workflow_dispatch:
     inputs:
@@ -35,7 +35,7 @@ jobs:
       - name: OAuth 코드 교환 + 신규 학생 즉시 크롤
         if: |
           github.event.schedule == '*/5 * * * *' ||
-          github.event.schedule == '0 */3 * * *' ||
+          github.event.schedule == '0 * * * *' ||
           github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'exchange')
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -47,7 +47,7 @@ jobs:
       # Classroom 크롤링 + 동기화: 3시간 cron 또는 수동(all/crawl)
       - name: Classroom 크롤링 + 동기화
         if: |
-          github.event.schedule == '0 */3 * * *' ||
+          github.event.schedule == '0 * * * *' ||
           github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'crawl')
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}

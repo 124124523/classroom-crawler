@@ -600,7 +600,18 @@ route('GET', '/api/schedule', async ({ search }) => {
     where('date', '>=', from),
     where('date', '<=', to)
   ));
-  return json(snap.docs.map(d => ({ id: parseInt(d.id), ...d.data() })));
+  // student.html 이 기대하는 형식으로 매핑: { events: [{ date, name, classYn }] }
+  const events = snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: parseInt(d.id),
+      date: data.date,
+      name: data.event_name,
+      classYn: data.class_yn,
+      grade3Yn: data.grade3_yn,
+    };
+  });
+  return json({ events });
 });
 
 // ─────────────────────────────────────────────────────────────
