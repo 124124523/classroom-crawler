@@ -68,13 +68,31 @@ function parseDueDate(dueDate, dueTime) {
 }
 
 // coursework upsert (Firestore: coursework/{coursework_id})
-// 큰 배열은 450개씩 쪼개서 병렬 commit
-async function upsertCourseWork(items, userId) {
-  if (!items.length) return;
+// existingMap 이 주어지면 변경된 것만 write (Firestore writes 절감)
+async function upsertCourseWork(items, userId, existingMap = null) {
+  if (!items.length) return 0;
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+  let toWrite = items;
+  if (existingMap) {
+    toWrite = items.filter(item => {
+      const ex = existingMap[item.coursework_id];
+      if (!ex) return true;  // 신규 doc → 무조건 write
+      return ex.title !== item.title
+        || ex.due_date !== item.due_date
+        || ex.state !== item.state
+        || ex.course_name !== item.course_name
+        || ex.description !== item.description
+        || ex.link !== item.link
+        || ex.fetched_by !== userId;
+    });
+  }
+
+  if (toWrite.length === 0) return 0;
+
   const chunks = [];
-  for (let i = 0; i < items.length; i += FS_BATCH_LIMIT) {
-    chunks.push(items.slice(i, i + FS_BATCH_LIMIT));
+  for (let i = 0; i < toWrite.length; i += FS_BATCH_LIMIT) {
+    chunks.push(toWrite.slice(i, i + FS_BATCH_LIMIT));
   }
   await Promise.all(chunks.map(chunk => {
     const batch = db.batch();
@@ -95,6 +113,7 @@ async function upsertCourseWork(items, userId) {
     }
     return batch.commit();
   }));
+  return toWrite.length;
 }
 
 // 사용자가 학생인지 확인 (users 컬렉션 조회)
@@ -160,7 +179,7 @@ async function syncStudentSubmissions(userId, classroom, courses) {
   return { matched: allSubs.length, marked };
 }
 
-async function crawlForUser(tokenDocId, userId) {
+async function crawlForUser(tokenDocId, userId, existingMap = null) {
   const auth = await getClientForUser(tokenDocId, userId);
   const classroom = google.classroom({ version: 'v1', auth });
 
@@ -211,8 +230,8 @@ async function crawlForUser(tokenDocId, userId) {
     }
   }));
 
-  // 한 계정의 모든 coursework 를 한번에 batch upsert (네트워크 RTT 절감)
-  await upsertCourseWork(allItems, userId);
+  // 한 계정의 모든 coursework 를 한번에 batch upsert (변경된 것만)
+  const actualWrites = await upsertCourseWork(allItems, userId, existingMap);
 
   // 학생 토큰이면 본인 제출 상태도 동기화
   let submissionsMarked = 0;
@@ -226,7 +245,7 @@ async function crawlForUser(tokenDocId, userId) {
     console.error(`  [crawler] ${userId} 제출 동기화 오류: ${e.message}`);
   }
 
-  return { upserted: allItems.length, skipped, submissionsMarked };
+  return { upserted: actualWrites, scanned: allItems.length, skipped, submissionsMarked };
 }
 
 // 토큰을 6개 bucket 으로 나눠 시간대별 분산 크롤 (API quota 분산)
@@ -252,20 +271,26 @@ async function crawlAll() {
   const tokens = allTokens.filter(t => tokenInCurrentBucket(t.id));
   console.log(`[crawler] 토큰 ${allTokens.length}개 중 이 bucket ${tokens.length}개 처리 (UTC hour ${new Date().getUTCHours()} → bucket ${new Date().getUTCHours() % BUCKET_COUNT})`);
 
+  // 기존 coursework 사전 로드 → 변경된 것만 write (Firestore writes 절감)
+  const existingSnap = await db.collection('coursework').get();
+  const existingMap = {};
+  existingSnap.docs.forEach(d => { existingMap[d.id] = d.data(); });
+  console.log(`[crawler] 기존 coursework ${existingSnap.size}개 사전 로드 (write 변경분만 처리)`);
+
   let totalUpserted = 0, totalSkipped = 0, totalFailed = 0;
 
   for (let i = 0; i < tokens.length; i += PARALLEL_LIMIT) {
     const batch = tokens.slice(i, i + PARALLEL_LIMIT);
     const results = await Promise.allSettled(
-      batch.map(({ id, user_id }) => crawlForUser(id, user_id))
+      batch.map(({ id, user_id }) => crawlForUser(id, user_id, existingMap))
     );
     results.forEach((result, idx) => {
       const { user_id } = batch[idx];
       if (result.status === 'fulfilled') {
-        const { upserted, skipped } = result.value;
+        const { upserted, scanned, skipped } = result.value;
         totalUpserted += upserted;
         totalSkipped += skipped;
-        console.log(`  [crawler] ${user_id}: upsert ${upserted}, 스킵 ${skipped}`);
+        console.log(`  [crawler] ${user_id}: write ${upserted}/${scanned} (변경분), 스킵 ${skipped}`);
       } else {
         console.error(`  [crawler] ${user_id} 실패: ${result.reason?.message}`);
         totalFailed++;

@@ -22,6 +22,36 @@ function json(data, status = 200) {
 function ok(extra = {}) { return json({ success: true, ...extra }); }
 function err(message, status = 400) { return json({ success: false, message }, status); }
 
+// ─── 캐시 헬퍼 (Firestore reads 감축) ─────────────────────
+const _memCache = new Map();
+function getCached(key, ttlMs) {
+  const mem = _memCache.get(key);
+  if (mem && Date.now() - mem.ts < ttlMs) return mem.data;
+  try {
+    const raw = localStorage.getItem('shim:' + key);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > ttlMs) return null;
+    _memCache.set(key, { ts, data });
+    return data;
+  } catch { return null; }
+}
+function setCached(key, data) {
+  const entry = { ts: Date.now(), data };
+  _memCache.set(key, entry);
+  try { localStorage.setItem('shim:' + key, JSON.stringify(entry)); } catch {}
+}
+function clearCache(prefix = '') {
+  for (const k of [..._memCache.keys()]) if (k.startsWith(prefix)) _memCache.delete(k);
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('shim:' + prefix)) localStorage.removeItem(k);
+    }
+  } catch {}
+}
+window.__shimClearCache = clearCache;  // 디버그용
+
 // ─── 공통 컨텍스트 ─────────────────────────────────────────
 async function ctx() {
   const user = await getCurrentUser();
@@ -40,6 +70,10 @@ async function userHasClassroomToken(legacyId) {
 
 // 학생 본인 coursework 만 조회 (동의된 학생용 단순 모드)
 async function listStudentOwnCoursework(legacyId) {
+  const cacheKey = `assign-cw:${legacyId}`;
+  const cached = getCached(cacheKey, 2 * 60 * 1000);  // 2분 캐시
+  if (cached) return json(cached);
+
   const [cwSnap, compSnap] = await Promise.all([
     getDocs(query(collection(db, 'coursework'), where('fetched_by', '==', legacyId))),
     getDocs(query(
@@ -86,6 +120,7 @@ async function listStudentOwnCoursework(legacyId) {
     });
 
   result.sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''));
+  setCached(cacheKey, result);
   return json(result);
 }
 
@@ -307,6 +342,10 @@ route('GET', '/api/assignments/completion-stats', async () => {
 route('GET', '/api/notices', async ({ search }) => {
   const c = await ctx();
   const mine = search.get('mine') === 'true';
+  const cacheKey = `notices:${mine ? 'mine:' + c.legacyId : 'all'}`;
+  const cached = getCached(cacheKey, 5 * 60 * 1000);  // 5분 캐시
+  if (cached) return json(cached);
+
   let docs;
   if (mine) {
     const q = query(collection(db, 'notices'), where('writer', '==', c.legacyId));
@@ -316,6 +355,7 @@ route('GET', '/api/notices', async ({ search }) => {
   }
   const arr = docs.map(d => ({ id: parseInt(d.id), ...d.data() }));
   arr.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  setCached(cacheKey, arr);
   return json(arr);
 });
 
@@ -335,6 +375,7 @@ route('POST', '/api/notices', async ({ body }) => {
     target_class_num: body.target_class_num || null,
     created_at: nowIso(),
   });
+  clearCache('notices:');
   return ok({ id: maxId + 1 });
 });
 
@@ -342,6 +383,7 @@ route('PUT', '/api/notices/:id', async ({ params, body }) => {
   const c = await ctx();
   if (!['admin','teacher','leader'].includes(c.role)) return err('권한 없음', 403);
   await updateDoc(doc(db, 'notices', String(params.id)), body);
+  clearCache('notices:');
   return ok();
 });
 
@@ -349,6 +391,7 @@ route('DELETE', '/api/notices/:id', async ({ params }) => {
   const c = await ctx();
   if (!['admin','teacher','leader'].includes(c.role)) return err('권한 없음', 403);
   await deleteDoc(doc(db, 'notices', String(params.id)));
+  clearCache('notices:');
   return ok();
 });
 
@@ -482,6 +525,10 @@ route('GET', '/api/comments/unread-per-item', async () => {
 // ─────────────────────────────────────────────────────────────
 route('GET', '/api/subjects', async () => {
   const c = await ctx();
+  const cacheKey = `subjects:${c.legacyId}`;
+  const cached = getCached(cacheKey, 24 * 60 * 60 * 1000);  // 24시간 캐시
+  if (cached) return json(cached);
+
   const subSnap = await getDocs(collection(db, 'subjects'));
   const clsSnap = await getDocs(collection(db, 'classes'));
   const enrSnap = c.role === 'student'
@@ -500,6 +547,7 @@ route('GET', '/api/subjects', async () => {
       }));
     return { ...s, classes: subClasses };
   });
+  setCached(cacheKey, result);
   return json(result);
 });
 
@@ -613,6 +661,7 @@ route('POST', '/api/timetable/complete', async ({ body }) => {
   } else {
     await deleteDoc(doc(db, 'completions', docId)).catch(() => {});
   }
+  clearCache(`assign-cw:${c.legacyId}`);
   return ok();
 });
 
@@ -630,12 +679,18 @@ route('GET', '/api/meals/range', async ({ search }) => {
   await ctx();
   const from = search.get('from');
   const to = search.get('to');
+  const cacheKey = `meals:${from}~${to}`;
+  const cached = getCached(cacheKey, 12 * 60 * 60 * 1000);  // 12시간 캐시
+  if (cached) return json(cached);
+
   const snap = await getDocs(query(
     collection(db, 'meal_day_images'),
     where('date', '>=', from),
     where('date', '<=', to)
   ));
-  return json(snap.docs.map(d => d.data()));
+  const result = snap.docs.map(d => d.data());
+  setCached(cacheKey, result);
+  return json(result);
 });
 
 route('GET', '/api/meals', async ({ search }) => {
@@ -650,6 +705,10 @@ route('GET', '/api/schedule', async ({ search }) => {
   await ctx();
   const year = search.get('year');
   const month = String(search.get('month')).padStart(2, '0');
+  const cacheKey = `schedule:${year}-${month}`;
+  const cached = getCached(cacheKey, 60 * 60 * 1000);  // 1시간 캐시 (NEIS 매일 1회 동기화)
+  if (cached) return json(cached);
+
   const from = `${year}-${month}-01`;
   const to = `${year}-${month}-31`;
   const snap = await getDocs(query(
@@ -657,7 +716,6 @@ route('GET', '/api/schedule', async ({ search }) => {
     where('date', '>=', from),
     where('date', '<=', to)
   ));
-  // student.html 이 기대하는 형식으로 매핑: { events: [{ date, name, classYn }] }
   const events = snap.docs.map(d => {
     const data = d.data();
     return {
@@ -668,7 +726,9 @@ route('GET', '/api/schedule', async ({ search }) => {
       grade3Yn: data.grade3_yn,
     };
   });
-  return json({ events });
+  const result = { events };
+  setCached(cacheKey, result);
+  return json(result);
 });
 
 // ─────────────────────────────────────────────────────────────
