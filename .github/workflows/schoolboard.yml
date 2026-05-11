@@ -10,7 +10,7 @@ on:
       task:
         description: '실행할 작업'
         type: choice
-        options: [all, exchange, crawl, neis]
+        options: [all, exchange, crawl, neis, cleanup]
         default: all
 
 concurrency:
@@ -67,3 +67,12 @@ jobs:
           NEIS_SCHOOL_CODE: ${{ secrets.NEIS_SCHOOL_CODE }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node crawler/syncNeisSchedule.js
+
+      # 정기 데이터 정리: 매일 cron 또는 수동(all/cleanup)
+      - name: 데이터 정리 (coursework/completions/pendingTokens)
+        if: |
+          github.event.schedule == '0 16 * * *' ||
+          github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'cleanup')
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node crawler/cleanup.js

@@ -48,7 +48,7 @@
   </div>
 
   <script type="module">
-    import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
+    import { doc, setDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
     import { db, GOOGLE_OAUTH } from './js/firebase-init.js';
     import { getCurrentUser, getMyMapping, redirectToRolePage } from './js/auth.js';
 
@@ -62,7 +62,7 @@
       card.innerHTML = `
         <div class="icon">✅</div>
         <h1>동의 완료</h1>
-        <p>최대 5분 이내에 자동 동기화됩니다.<br>이후부터 본인 과제 제출 상태가 자동 추적됩니다.</p>
+        <p>본인 과제 제출 상태가 자동 추적됩니다.</p>
         <p style="margin-top:14px;font-size:0.82rem;opacity:0.6;">3초 후 대시보드로 이동...</p>
       `;
       setTimeout(async () => {
@@ -70,6 +70,56 @@
         if (m) redirectToRolePage(m.role);
         else location.href = 'login.html';
       }, 3000);
+    }
+
+    // 토큰 교환 대기 UI + 폴링
+    function showPolling(legacyId, deadline) {
+      let secondsLeft = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+      card.innerHTML = `
+        <div class="spinner"></div>
+        <h1>동의 처리 중...</h1>
+        <p>Google 인증을 마쳤습니다.<br>최대 <span id="countdown">${secondsLeft}</span>초 안에 자동 동기화됩니다.</p>
+        <p style="margin-top:14px;font-size:0.82rem;opacity:0.6;">완료되면 자동으로 대시보드로 이동합니다.</p>
+      `;
+      const tick = setInterval(() => {
+        const left = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+        const el = document.getElementById('countdown');
+        if (el) el.textContent = left;
+        if (left <= 0) clearInterval(tick);
+      }, 1000);
+
+      const pollInterval = setInterval(async () => {
+        const ok = await checkTokenExists(legacyId);
+        if (ok) {
+          clearInterval(pollInterval);
+          clearInterval(tick);
+          showSuccess();
+        } else if (Date.now() >= deadline) {
+          clearInterval(pollInterval);
+          clearInterval(tick);
+          showRetry();
+        }
+      }, 30 * 1000);  // 30초마다 확인
+    }
+
+    async function checkTokenExists(legacyId) {
+      try {
+        const q = query(collection(db, 'tokens'), where('user_id', '==', legacyId));
+        const snap = await getDocs(q);
+        return !snap.empty;
+      } catch { return false; }
+    }
+
+    function showRetry() {
+      card.innerHTML = `
+        <div class="icon">⏱️</div>
+        <h1>처리 지연</h1>
+        <p>아직 동기화가 완료되지 않았습니다.<br>GitHub Actions 일시 지연 또는 OAuth 코드 만료(10분)일 수 있습니다.</p>
+        <p style="margin-top:18px;">
+          <a href="classroom-consent.html" style="display:inline-block;padding:10px 20px;background:#fff;color:#1B4832;border-radius:8px;text-decoration:none;font-weight:700;margin-right:8px;">다시 시도</a>
+          <a href="student.html" style="color:rgba(255,255,255,0.7);">건너뛰고 대시보드</a>
+        </p>
+      `;
     }
 
     function showError(msg) {
@@ -114,7 +164,13 @@
           redirect_uri: GOOGLE_OAUTH.redirectUri,
           requested_at: new Date().toISOString(),
         });
-        showSuccess();
+        // 이미 토큰이 있을 수도 있으니 먼저 확인
+        if (await checkTokenExists(mapping.legacyId)) {
+          showSuccess();
+        } else {
+          // 10분 (OAuth 코드 만료 한도) 동안 30초마다 폴링
+          showPolling(mapping.legacyId, Date.now() + 10 * 60 * 1000);
+        }
       } catch (e) {
         console.error(e);
         showError('서버에 저장 실패: ' + e.message);

@@ -229,6 +229,17 @@ async function crawlForUser(tokenDocId, userId) {
   return { upserted: allItems.length, skipped, submissionsMarked };
 }
 
+// 토큰을 6개 bucket 으로 나눠 시간대별 분산 크롤 (API quota 분산)
+// UTC 시간 기준으로 hour%6 == tokenDocId%6 인 토큰만 그 시각에 크롤
+// → 토큰당 6시간마다 1회 크롤 (1시간 cron 유지하면서 부하 분산)
+const BUCKET_COUNT = 6;
+function tokenInCurrentBucket(tokenDocId) {
+  const idNum = parseInt(tokenDocId);
+  if (isNaN(idNum)) return true;  // 숫자 아닌 docId 는 안전을 위해 항상 포함
+  const bucketIdx = new Date().getUTCHours() % BUCKET_COUNT;
+  return idNum % BUCKET_COUNT === bucketIdx;
+}
+
 async function crawlAll() {
   console.log(`[crawler] 시작: ${new Date().toLocaleString('ko-KR')}`);
 
@@ -237,7 +248,9 @@ async function crawlAll() {
     console.warn('[crawler] tokens 컬렉션이 비어 있음');
     return { upserted: 0, skipped: 0, failed: 0 };
   }
-  const tokens = tokSnap.docs.map(d => ({ id: d.id, user_id: d.data().user_id }));
+  const allTokens = tokSnap.docs.map(d => ({ id: d.id, user_id: d.data().user_id }));
+  const tokens = allTokens.filter(t => tokenInCurrentBucket(t.id));
+  console.log(`[crawler] 토큰 ${allTokens.length}개 중 이 bucket ${tokens.length}개 처리 (UTC hour ${new Date().getUTCHours()} → bucket ${new Date().getUTCHours() % BUCKET_COUNT})`);
 
   let totalUpserted = 0, totalSkipped = 0, totalFailed = 0;
 
