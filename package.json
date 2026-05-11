@@ -1,26 +1,20 @@
 {
   "name": "classroom-crawler",
-  "version": "1.0.0",
-  "description": "",
-  "main": "backend/server.js",
+  "version": "2.0.0",
+  "description": "SchoolBoard — Firebase 기반 학사관리 (GitHub Actions 크롤러)",
+  "main": "crawler/run.js",
   "scripts": {
-    "start": "node backend/server.js"
+    "crawl": "node crawler/run.js",
+    "exchange": "node crawler/exchangeTokens.js",
+    "neis": "node crawler/syncNeisSchedule.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "bcrypt": "^5.1.1",
-    "cloudinary": "^1.41.3",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "express-session": "^1.19.0",
-    "firebase": "^12.13.0",
     "firebase-admin": "^13.9.0",
-    "googleapis": "^171.4.0",
-    "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.20.0",
-    "node-cron": "^3.0.3"
+    "googleapis": "^171.4.0"
   }
 }
